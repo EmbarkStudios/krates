@@ -13,9 +13,10 @@ mod errors;
 pub use builder::{Builder, Cmd, Scope};
 pub use errors::Error;
 
+/// A crate's unique identifier
 pub type Kid = cargo_metadata::PackageId;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DepKind {
     Normal,
     Build,
@@ -51,9 +52,44 @@ pub struct Node<N> {
     pub krate: N,
 }
 
+impl<N> fmt::Display for Node<N>
+where
+    N: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.krate)
+    }
+}
+
+impl<N> fmt::Debug for Node<N>
+where
+    N: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {:?}", self.id.repr, self.krate)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Edge {
     pub kind: DepKind,
     pub cfg: Option<String>,
+}
+
+impl fmt::Display for Edge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            DepKind::Normal => {}
+            DepKind::Build => f.write_str("(build)")?,
+            DepKind::Dev => f.write_str("(dev)")?,
+        };
+
+        if let Some(cfg) = &self.cfg {
+            write!(f, " '{}'", cfg)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub struct Krates<N = cm::Package, E = Edge> {
@@ -62,9 +98,11 @@ pub struct Krates<N = cm::Package, E = Edge> {
     lock_file: std::path::PathBuf,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<N, E> Krates<N, E> {
+    /// The number of unique crates in the graph
     #[inline]
-    pub fn krates_count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.graph.node_count()
     }
 
