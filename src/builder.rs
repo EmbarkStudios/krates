@@ -158,6 +158,7 @@ where
 #[derive(Default)]
 pub struct Builder {
     target_filters: Vec<TargetFilter>,
+    workspace_filters: Vec<PathBuf>,
     ignore_kinds: u32,
 }
 
@@ -184,16 +185,30 @@ impl Builder {
         self
     }
 
+    pub fn include_workspace_crates<P, I>(&mut self, crates: I) -> &mut Self
+    where
+        P: AsRef<Path>,
+        I: IntoIterator<Item = P>,
+    {
+        self.workspace_filters.extend(
+            crates
+                .into_iter()
+                .filter_map(|p| p.as_ref().canonicalize().ok()),
+        );
         self
     }
 
-    pub fn include_target(&mut self, triple: String, features: Vec<String>) -> &mut Self {
-        let tf = match cfg_expr::targets::get_target_by_triple(&triple) {
-            Some(ti) => TargetFilter::Known(ti, features),
-            None => TargetFilter::Unknown(triple, features),
-        };
-
-        self.target_filters.push(tf);
+    pub fn include_targets(
+        &mut self,
+        targets: impl IntoIterator<Item = (String, Vec<String>)>,
+    ) -> &mut Self {
+        self.target_filters
+            .extend(targets.into_iter().map(|(triple, features)| {
+                match cfg_expr::targets::get_target_by_triple(&triple) {
+                    Some(ti) => TargetFilter::Known(ti, features),
+                    None => TargetFilter::Unknown(triple, features),
+                }
+            }));
         self
     }
 
@@ -231,7 +246,41 @@ impl Builder {
 
         let mut edge_map = HashMap::new();
         let mut pid_stack = Vec::with_capacity(workspace_members.len());
-        pid_stack.extend(workspace_members.iter());
+
+        // Only include workspaces members the user wants if they have
+        // specified any, this is to take into account scenarios where
+        // you have a large workspace, but only want to get the crates
+        // used by a subset of the workspace
+        if self.workspace_filters.is_empty() {
+            // If the resolve graph specifies a root, it means the user specified
+            // a particular crate in a workspace, so we'll only use that single
+            // root for the entire graph rather than a root for each workspace
+            // member crate
+            match &resolved.root {
+                Some(root) => pid_stack.push(root),
+                None => pid_stack.extend(workspace_members.iter()),
+            }
+        } else {
+            // If the filters only contain 1 path, and it is the path to a
+            // workspace toml, then we disregard the filters
+            if self.workspace_filters.len() == 1
+                && Some(md.workspace_root.as_ref()) == self.workspace_filters[0].parent()
+            {
+                pid_stack.extend(workspace_members.iter());
+            } else {
+                for wm in &workspace_members {
+                    if let Ok(i) = packages.binary_search_by(|pkg| pkg.id.cmp(wm)) {
+                        if self
+                            .workspace_filters
+                            .iter()
+                            .any(|wf| wf == &packages[i].manifest_path)
+                        {
+                            pid_stack.push(wm);
+                        }
+                    }
+                }
+            }
+        }
 
         let include_all_targets = self.target_filters.is_empty();
         let ignore_kinds = self.ignore_kinds;
