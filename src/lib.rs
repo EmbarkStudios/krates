@@ -10,7 +10,7 @@ use petgraph::{graph::NodeIndex, Direction};
 mod builder;
 mod errors;
 
-pub use builder::{Builder, Unless};
+pub use builder::{Builder, Cmd, Scope};
 pub use errors::Error;
 
 pub type Kid = cargo_metadata::PackageId;

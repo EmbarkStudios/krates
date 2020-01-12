@@ -1,23 +1,135 @@
 use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
-enum TargetFilter {
-    Known(&'static cfg_expr::targets::TargetInfo, Vec<String>),
-    Unknown(String, Vec<String>),
+#[derive(Default, Debug)]
+pub struct Cmd {
+    cargo_path: Option<PathBuf>,
+    manifest_path: Option<PathBuf>,
+    current_dir: Option<PathBuf>,
+    features: Vec<String>,
+    other_options: Vec<String>,
+    all_features: bool,
+    no_default_features: bool,
 }
 
-pub enum Unless {
-    IsWorkspace,
-    IsNotWorkspace,
+impl Cmd {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Path to `cargo` executable.  If not set, this will use the
+    /// the `$CARGO` environment variable, and if that is not set, will
+    /// simply be `cargo`.
+    pub fn cargo_path(&mut self, path: PathBuf) -> &mut Self {
+        self.cargo_path = Some(path);
+        self
+    }
+
+    /// Path to a `Cargo.toml` manifest
+    pub fn manifest_path(&mut self, path: PathBuf) -> &mut Self {
+        self.manifest_path = Some(path);
+        self
+    }
+
+    /// Current directory of the `cargo metadata` process.
+    pub fn current_dir(&mut self, path: PathBuf) -> &mut Self {
+        self.current_dir = Some(path);
+        self
+    }
+
+    /// Disables default features.
+    ///
+    /// **NOTE**: This has **no effect** if
+    /// used on a workspace. You must specify a working directory
+    /// or manifest path to a specific crate if used on a crate
+    /// inside a workspace.
+    pub fn no_default_features(&mut self) -> &mut Self {
+        self.no_default_features = true;
+        self
+    }
+
+    /// Enables all features for all workspace crates. Usable
+    /// on both individual crates and on an entire workspace.
+    pub fn all_features(&mut self) -> &mut Self {
+        self.all_features = true;
+        self
+    }
+
+    /// Enables specific features. See the **NOTE** for `no_default_features`
+    pub fn features(&mut self, feats: impl IntoIterator<Item = String>) -> &mut Self {
+        self.features.extend(feats);
+        self
+    }
+
+    /// Arbitrary command line flags to pass to `cargo`.  These will be added
+    /// to the end of the command line invocation.
+    pub fn other_options(&mut self, options: impl IntoIterator<Item = String>) -> &mut Self {
+        self.other_options.extend(options);
+        self
+    }
 }
 
-impl Into<bool> for Unless {
-    fn into(self) -> bool {
-        match self {
-            Unless::IsWorkspace => true,
-            Unless::IsNotWorkspace => false,
+impl Into<cm::MetadataCommand> for Cmd {
+    fn into(mut self) -> cm::MetadataCommand {
+        let mut mdc = cm::MetadataCommand::new();
+
+        if let Some(cp) = self.cargo_path {
+            mdc.cargo_path(cp);
         }
+
+        // If the manifest path is set, we force set the current
+        // working directory to its parent and use the relative
+        // path, this is to fix an edge case where you can run
+        // cargo metadata from a directory outside of a workspace
+        // which could fail if eg. there is a reference to a
+        // registry that is defined in the workspace's .cargo/config
+        if let Some(mp) = self.manifest_path {
+            self.current_dir = Some(mp.parent().unwrap().to_owned());
+            mdc.manifest_path("Cargo.toml");
+        }
+
+        if let Some(cd) = self.current_dir {
+            mdc.current_dir(cd);
+        }
+
+        // Everything else we specify as additional options, as
+        // MetadataCommand does not handle features correctly, eg.
+        // you cannot disable default and set specific ones at the
+        // same time https://github.com/oli-obk/cargo_metadata/issues/79
+        self.features.sort();
+        self.features.dedup();
+
+        let mut opts = Vec::with_capacity(
+            self.features.len()
+                + self.other_options.len()
+                + if self.no_default_features { 1 } else { 0 }
+                + if self.all_features { 1 } else { 0 },
+        );
+
+        if self.no_default_features {
+            opts.push("--no-default-features".to_owned());
+        }
+
+        if self.all_features {
+            opts.push("--all-features".to_owned());
+        }
+
+        if !self.features.is_empty() {
+            opts.push("--features".to_owned());
+            opts.append(&mut self.features);
+        }
+
+        opts.append(&mut self.other_options);
+
+        mdc.other_options(opts);
+
+        mdc
+    }
+}
 
 enum TargetFilter {
     Known(&'static cfg_expr::targets::TargetInfo, Vec<String>),
@@ -87,7 +199,7 @@ impl Builder {
 
     pub fn build<N, E, F>(
         self,
-        mut cmd: cargo_metadata::MetadataCommand,
+        cmd: impl Into<cm::MetadataCommand>,
         on_filter: Option<F>,
     ) -> Result<Krates<N, E>, Error>
     where
@@ -95,7 +207,7 @@ impl Builder {
         E: From<Edge>,
         F: OnFilter,
     {
-        let metadata = cmd.exec()?;
+        let metadata = cmd.into().exec()?;
         self.build_with_metadata(metadata, on_filter)
     }
 
