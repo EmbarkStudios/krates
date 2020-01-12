@@ -286,11 +286,13 @@ impl Builder {
         let ignore_kinds = self.ignore_kinds;
         let targets = self.target_filters;
 
+        #[derive(Debug)]
         struct DepKindInfo {
             kind: DepKind,
             cfg: Option<String>,
         }
 
+        #[derive(Debug)]
         // We use our resolution nodes because cargo_metadata uses non-exhaustive everywhere :p
         struct NodeDep {
             //name: String,
@@ -298,6 +300,7 @@ impl Builder {
             dep_kinds: Vec<DepKindInfo>,
         }
 
+        #[derive(Debug)]
         struct Node {
             id: Kid,
             deps: Vec<NodeDep>,
