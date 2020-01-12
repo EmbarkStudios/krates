@@ -18,7 +18,16 @@ impl Into<bool> for Unless {
             Unless::IsWorkspace => true,
             Unless::IsNotWorkspace => false,
         }
-    }
+
+enum TargetFilter {
+    Known(&'static cfg_expr::targets::TargetInfo, Vec<String>),
+    Unknown(String, Vec<String>),
+}
+
+pub enum Scope {
+    Workspace,
+    NonWorkspace,
+    All,
 }
 
 pub trait OnFilter {
@@ -45,18 +54,23 @@ impl Builder {
         Self::default()
     }
 
-    pub fn ignore_kind(&mut self, kind: DepKind, unless: Unless) -> &mut Self {
+    pub fn ignore_kind(&mut self, kind: DepKind, scope: Scope) -> &mut Self {
         let kind_flag = match kind {
             DepKind::Normal => 0x1,
-            DepKind::Dev => 0x4,
-            DepKind::Build => 0x10,
+            DepKind::Dev => 0x8,
+            DepKind::Build => 0x40,
         };
 
         self.ignore_kinds |= kind_flag;
 
-        if unless.into() {
-            self.ignore_kinds |= kind_flag << 1;
-        }
+        self.ignore_kinds |= match scope {
+            Scope::Workspace => kind_flag << 1,
+            Scope::NonWorkspace => kind_flag << 2,
+            Scope::All => kind_flag << 1 | kind_flag << 2,
+        };
+
+        self
+    }
 
         self
     }
@@ -135,52 +149,53 @@ impl Builder {
             .into_iter()
             .map(|rn| {
                 let krate = &packages[packages.binary_search_by(|k| k.id.cmp(&rn.id)).unwrap()];
-                Node {
-                    id: rn.id,
-                    deps: rn
-                        .deps
-                        .into_iter()
-                        .map(|dn| {
-                            // We can't rely on the user using cargo from 1.41+ at least for a little bit,
-                            // so use a fallback for now. Maybe eventually can do a breaking change to require
-                            // 1.41 so this is nicer
-                            let dep_kinds = if dn.dep_kinds.is_empty() {
-                                let name = &dn.pkg.repr[..dn.pkg.repr.find(' ').unwrap()];
 
-                                krate
-                                    .dependencies
-                                    .iter()
-                                    .filter_map(|dep| {
-                                        if name == dep.name {
-                                            Some(DepKindInfo {
-                                                kind: dep.kind.into(),
-                                                cfg: dep.target.as_ref().map(|t| format!("{}", t)),
-                                            })
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .collect()
-                            } else {
-                                dn.dep_kinds
-                                    .into_iter()
-                                    .map(|dk| DepKindInfo {
-                                        kind: dk.kind.into(),
-                                        cfg: dk.target.map(|t| format!("{}", t)),
-                                    })
-                                    .collect()
-                            };
+                let deps = rn
+                    .deps
+                    .into_iter()
+                    .map(|dn| {
+                        // We can't rely on the user using cargo from 1.41+ at least for a little bit,
+                        // so use a fallback for now. Maybe eventually can do a breaking change to require
+                        // 1.41 so this is nicer
+                        let dep_kinds = if dn.dep_kinds.is_empty() {
+                            let name = &dn.pkg.repr[..dn.pkg.repr.find(' ').unwrap()];
 
-                            NodeDep {
-                                //name: dn.name,
-                                pkg: dn.pkg,
-                                dep_kinds,
-                            }
-                        })
-                        .collect(),
-                }
+                            krate
+                                .dependencies
+                                .iter()
+                                .filter_map(|dep| {
+                                    if name == dep.name {
+                                        Some(DepKindInfo {
+                                            kind: dep.kind.into(),
+                                            cfg: dep.target.as_ref().map(|t| format!("{}", t)),
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        } else {
+                            dn.dep_kinds
+                                .into_iter()
+                                .map(|dk| DepKindInfo {
+                                    kind: dk.kind.into(),
+                                    cfg: dk.target.map(|t| format!("{}", t)),
+                                })
+                                .collect()
+                        };
+
+                        NodeDep {
+                            //name: dn.name,
+                            pkg: dn.pkg,
+                            dep_kinds,
+                        }
+                    })
+                    .collect();
+
+                Node { id: rn.id, deps }
             })
             .collect();
+
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
         while let Some(pid) = pid_stack.pop() {
@@ -203,25 +218,14 @@ impl Builder {
                 .flat_map(|rdep| {
                     let targets = &targets;
                     rdep.dep_kinds.iter().filter_map(move |dk| {
-                        let ignore_kind = match dk.kind {
-                            DepKind::Normal => {
-                                ignore_kinds & 0x1 != 0
-                                    && ignore_kinds & 0x2 != 0
-                                    && !is_in_workspace
-                            }
-                            DepKind::Dev => {
-                                ignore_kinds & 0x4 != 0
-                                    && ignore_kinds & 0x8 != 0
-                                    && !is_in_workspace
-                            }
-                            DepKind::Build => {
-                                ignore_kinds & 0x10 != 0
-                                    && ignore_kinds & 0x20 != 0
-                                    && !is_in_workspace
-                            }
+                        let mask = match dk.kind {
+                            DepKind::Normal => 0x1,
+                            DepKind::Dev => 0x8,
+                            DepKind::Build => 0x40,
                         };
 
-                        if ignore_kind {
+                        let mask = mask | mask << if is_in_workspace { 1 } else { 2 };
+                        if mask & ignore_kinds == mask {
                             return None;
                         }
 
@@ -368,13 +372,14 @@ impl Builder {
             )
         };
 
-        for (kid, edges) in edge_map {
-            let source = get(&graph, &kid);
-
-            for (de, pid) in edges {
-                let target = get(&graph, &pid);
-
-                graph.add_edge(source, target, E::from(de));
+        // Keep edges ordered as well
+        for srcind in 0..graph.node_count() {
+            let srcid = crate::NodeId::new(srcind);
+            if let Some(edges) = edge_map.remove(&graph[srcid].id) {
+                for (dep, tid) in edges {
+                    let target = get(&graph, &tid);
+                    graph.add_edge(srcid, target, E::from(dep));
+                }
             }
         }
 
