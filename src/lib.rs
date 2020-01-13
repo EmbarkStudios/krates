@@ -1,3 +1,30 @@
+//! Transforms the output of `cargo metadata` into a graph, `Krates`,
+//! where crates are nodes and dependency links are edges.
+//!
+//! ```no_run
+//! use krates::{Builder, Cmd, Krates, cm, petgraph};
+//!
+//! fn main() -> Result<(), krates::Error> {
+//!     let mut cmd = Cmd::new();
+//!     cmd.manifest_path("path/to/a/Cargo.toml");
+//!     // Enable all features, works for either an entire workspace or a single crate
+//!     cmd.all_features();
+//!
+//!     let mut builder = Builder::new();
+//!     // Let's filter out any crates that aren't used by x86_64 windows
+//!     builder.include_targets(std::iter::once(("x86_64-pc-windows-msvc", vec![])));
+//!
+//!     let krates: Krates = builder.build(cmd, |pkg: cm::Package| {
+//!         println!("Crate {} was filtered out", pkg.id);
+//!     })?;
+//!
+//!     // Print a dot graph of the entire crate graph
+//!     println!("{:?}", petgraph::dot::Dot::new(krates.graph()));
+//!
+//!     Ok(())
+//! }
+//! ```
+
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
 
