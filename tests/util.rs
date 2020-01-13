@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{fmt, path::Path};
 
 pub struct JustId(krates::Kid);
@@ -63,12 +65,9 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
     let mut filtered = Vec::new();
 
     let graph = kb
-        .build_with_metadata(
-            md,
-            Some(|f: krates::cm::Package| {
-                filtered.push(f.id);
-            }),
-        )
+        .build_with_metadata(md, |f: krates::cm::Package| {
+            filtered.push(f.id);
+        })
         .map_err(|e| format!("failed to build graph: {}", e))?;
 
     filtered.sort();
@@ -202,15 +201,13 @@ impl SimpleGraph {
 
         for kid in self.nodes.iter().map(|(id, _)| id) {
             if let Some(source) = node_map.get(kid) {
-                dbg!(kid);
                 let edges = edge_map.remove(kid).unwrap();
                 for edge in edges {
-                    if !node_map.contains_key(edge.0) {
-                        continue;
-                    }
-                    let target = &node_map[dbg!(edge.0)];
+                    let target = &node_map[edge.0];
                     graph.add_edge(*source, *target, edge.1.clone());
                 }
+            } else {
+                println!("filtered {}", kid);
             }
         }
 
@@ -237,9 +234,6 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
     let expected = format!("{}", Dot::new(&expected));
     let actual = format!("{}", Dot::new(&grafs.actual.graph()));
 
-    //println!("EXPECTED {}", expected);
-    //panic!("ACTUAL {}", actual);
-
     if expected != actual {
         println!("{:#?}", grafs.filtered);
         assert!(
@@ -250,17 +244,17 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
     }
 }
 
-pub fn assert_filtered(actual: &[krates::Kid], expected: &mut [krates::Kid]) {
-    expected.sort();
+// pub fn assert_filtered(actual: &[krates::Kid], expected: &mut [krates::Kid]) {
+//     expected.sort();
 
-    if actual != expected {
-        let expected = format!("{:#?}", expected);
-        let actual = format!("{:#?}", actual);
+//     if actual != expected {
+//         let expected = format!("{:#?}", expected);
+//         let actual = format!("{:#?}", actual);
 
-        assert!(
-            false,
-            "{}",
-            difference::Changeset::new(&expected, &actual, "\n")
-        );
-    }
-}
+//         assert!(
+//             false,
+//             "{}",
+//             difference::Changeset::new(&expected, &actual, "\n")
+//         );
+//     }
+// }

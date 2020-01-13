@@ -31,18 +31,21 @@
 pub use cargo_metadata as cm;
 pub use cfg_expr;
 pub use petgraph;
+pub use semver;
 
 use petgraph::{graph::NodeIndex, Direction};
 
 mod builder;
 mod errors;
 
-pub use builder::{Builder, Cmd, Scope};
+pub use builder::{Builder, Cmd, NoneFilter, Scope};
 pub use errors::Error;
 
 /// A crate's unique identifier
 pub type Kid = cargo_metadata::PackageId;
 
+/// The dependency kind. A crate can depend on the same crate
+/// multiple times with different dependency kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DepKind {
     Normal,
@@ -73,9 +76,14 @@ impl fmt::Display for DepKind {
     }
 }
 
+/// A node identifier.
 pub type NodeId = NodeIndex<u32>;
+
+/// A node in the crate graph.
 pub struct Node<N> {
+    /// The unique identifier for this node.
     pub id: Kid,
+    /// Associated user data with the node. Must be From<cargo_metadata::Package>
     pub krate: N,
 }
 
@@ -97,9 +105,12 @@ where
     }
 }
 
+/// The default type used for edges in the crate graph.
 #[derive(Debug, Clone)]
 pub struct Edge {
+    /// The dependency kind for the edge link
     pub kind: DepKind,
+    /// A possible cfg() or <target-triple> applied to this dependency
     pub cfg: Option<String>,
 }
 
@@ -119,6 +130,8 @@ impl fmt::Display for Edge {
     }
 }
 
+/// A crate graph. Each unique crate is a node, and each
+/// unique dependency between 2 crates is an edge.
 pub struct Krates<N = cm::Package, E = Edge> {
     graph: petgraph::Graph<Node<N>, E>,
     workspace_members: Vec<Kid>,
@@ -133,20 +146,51 @@ impl<N, E> Krates<N, E> {
         self.graph.node_count()
     }
 
+    /// Path to the Cargo.lock file for the crate or workspace
+    /// where the graph metadata was acquired from
     #[inline]
     pub fn lock_path(&self) -> &std::path::PathBuf {
         &self.lock_file
     }
 
+    /// Get access to the raw petgraph
     #[inline]
     pub fn graph(&self) -> &petgraph::Graph<Node<N>, E> {
         &self.graph
     }
 
+    /// Get an iterator over the crate nodes in the graph.
+    /// The crates are always ordered lexicographically by their
+    /// identfier.
+    ///
+    /// ```no_run
+    /// use krates::Krates;
+    ///
+    /// fn print_krates(krates: &Krates) {
+    ///     for (name, version) in krates.krates().map(|kn| (&kn.krate.name, &kn.krate.version)) {
+    ///         println!("Crate {} @ {}", name, version);
+    ///     }
+    /// }
+    /// ```
+    #[inline]
     pub fn krates(&self) -> impl Iterator<Item = &Node<N>> {
         self.graph.node_indices().map(move |nid| &self.graph[nid])
     }
 
+    /// Get an iterator over each dependency of the specified crate. The
+    /// same dependency can be returned multiple times if the crate depends
+    /// on it with more than 1 dependency kind.
+    ///
+    /// ```no_run
+    /// use krates::{Krates, Kid, DepKind};
+    ///
+    /// fn count_build_deps(krates: &Krates, pkg: &Kid) -> usize {
+    ///     krates.get_deps(krates.nid_for_kid(pkg).unwrap())
+    ///         .filter(|(_, edge)| edge.kind == DepKind::Build)
+    ///         .count()
+    /// }
+    /// ```
+    #[inline]
     pub fn get_deps(&self, id: NodeId) -> impl Iterator<Item = (&Node<N>, &E)> {
         use petgraph::visit::EdgeRef;
 
@@ -158,6 +202,8 @@ impl<N, E> Krates<N, E> {
             })
     }
 
+    /// Get the node identifier for the specified crate identifier
+    #[inline]
     pub fn nid_for_kid(&self, kid: &Kid) -> Option<NodeId> {
         self.graph
             .raw_nodes()
@@ -166,10 +212,14 @@ impl<N, E> Krates<N, E> {
             .map(NodeId::new)
     }
 
+    /// Get the node for the specified crate identifier
+    #[inline]
     pub fn node_for_kid(&self, kid: &Kid) -> Option<&Node<N>> {
         self.nid_for_kid(kid).map(|nid| &self.graph[nid])
     }
 
+    /// Get an iterator over the nodes for the members of the workspace
+    #[inline]
     pub fn workspace_members(&self) -> impl Iterator<Item = &Node<N>> {
         self.workspace_members
             .iter()
@@ -177,8 +227,12 @@ impl<N, E> Krates<N, E> {
     }
 }
 
+/// A trait that can be applied to the type stored in the graph nodes to give
+/// additional features on `Krates`.
 pub trait KrateDetails {
+    /// The name of the crate
     fn name(&self) -> &str;
+    /// The version of the crate
     fn version(&self) -> &semver::Version;
 }
 
@@ -192,10 +246,25 @@ impl KrateDetails for cm::Package {
     }
 }
 
+/// If the node type N supports `KrateDetails`, we can also iterator over krates
+/// of a given name and or version
 impl<N, E> Krates<N, E>
 where
     N: KrateDetails,
 {
+    /// Get an iterator over the crates that match the specified name, as well
+    /// as satisfy the specified semver requirement.
+    ///
+    /// ```no_run
+    /// use krates::{Krates, semver::VersionReq};
+    ///
+    /// fn print(krates: &Krates, name: &str) {
+    ///     let req = VersionReq::parse("=0.2").unwrap();
+    ///     for vs in krates.search_matches(name, &req).map(|(_, kn)| &kn.krate.version) {
+    ///         println!("found version {} matching {}!", vs, req);
+    ///     }
+    /// }
+    /// ```
     pub fn search_matches<'a: 'b, 'b>(
         &'b self,
         name: &'a str,
@@ -205,6 +274,18 @@ where
             .filter(move |(_, n)| req.matches(n.krate.version()))
     }
 
+    /// Get an iterator over all of the crates in the graph with the given name, in the
+    /// case there are multiple versions, or sources, of the crate.
+    ///
+    /// ```
+    /// use krates::Krates;
+    ///
+    /// fn print_all_versions(krates: &Krates, name: &str) {
+    ///     for vs in krates.krates_by_name(name).map(|(_, kn)| &kn.krate.version) {
+    ///         println!("found version {}", vs);
+    ///     }
+    /// }
+    /// ```
     pub fn krates_by_name(&self, name: &str) -> impl Iterator<Item = (NodeId, &Node<N>)> {
         let lowest = semver::Version::new(0, 0, 0);
 
