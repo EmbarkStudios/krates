@@ -1,8 +1,15 @@
 [package]
 name = "krates"
 version = "0.1.0"
-authors = ["Jake Shadle <jake.shadle@embark-studios.com>"]
+description = "Create graphs of crates gathered from cargo metadata"
+authors = ["Embark <opensource@embark-studios.com>", "Jake Shadle <jake.shadle@embark-studios.com>"]
 edition = "2018"
+repository = "https://github.com/EmbarkStudios/krates"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/krates"
+homepage = "https://github.com/EmbarkStudios/krates"
+keywords = ["cargo", "metadata", "graph"]
 
 [dependencies]
 # Used for acquiring and deserializing `cargo metadata` output
