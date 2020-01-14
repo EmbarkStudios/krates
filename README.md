@@ -1,4 +1,4 @@
-# 🌲 krates
+# 📦 krates
 
 [![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 [![Crates.io](https://img.shields.io/crates/v/krates.svg)](https://crates.io/crates/krates)
