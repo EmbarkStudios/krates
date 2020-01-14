@@ -1,4 +1,4 @@
-# 🌲 krates
+# 📦 krates
 
 [![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 [![Crates.io](https://img.shields.io/crates/v/krates.svg)](https://crates.io/crates/krates)
@@ -6,11 +6,32 @@
 [![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 
-Creates a graph of crates from [cargo_metadata](https://crates.io/crates/cargo_metadata) metadata.
+Creates graphs of crates from [cargo_metadata](https://crates.io/crates/cargo_metadata) metadata.
 
 ## Usage
 
-TODO:
+```rust
+use krates::{Builder, Cmd, Krates, cm, petgraph};
+fn main() -> Result<(), krates::Error> {
+    let mut cmd = Cmd::new();
+    cmd.manifest_path("path/to/a/Cargo.toml");
+    // Enable all features, works for either an entire workspace or a single crate
+    cmd.all_features();
+
+    let mut builder = Builder::new();
+    // Let's filter out any crates that aren't used by x86_64 windows
+    builder.include_targets(std::iter::once(("x86_64-pc-windows-msvc", vec![])));
+
+    let krates: Krates = builder.build(cmd, |pkg: cm::Package| {
+        println!("Crate {} was filtered out", pkg.id);
+    })?;
+
+    // Print a dot graph of the entire crate graph
+    println!("{:?}", petgraph::dot::Dot::new(krates.graph()));
+
+    Ok(())
+}
+```
 
 ## Contributing
 

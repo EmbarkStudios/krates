@@ -1,14 +1,28 @@
 [package]
 name = "krates"
 version = "0.1.0"
-authors = ["Jake Shadle <jake.shadle@embark-studios.com>"]
+description = "Create graphs of crates gathered from cargo metadata"
+authors = ["Embark <opensource@embark-studios.com>", "Jake Shadle <jake.shadle@embark-studios.com>"]
 edition = "2018"
+repository = "https://github.com/EmbarkStudios/krates"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/krates"
+homepage = "https://github.com/EmbarkStudios/krates"
+keywords = ["cargo", "metadata", "graph"]
 
 [dependencies]
+# Used for acquiring and deserializing `cargo metadata` output
 cargo_metadata = "0.9.1"
+# Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.1.0"
+# Used to create and traverse graph structures
 petgraph = "0.5.0"
+# Used for checking version requirements
 semver = "0.9.0"
 
-[patch.crates-io]
-#cfg-expr = { path = "../" }
+[dev-dependencies]
+# Used to print colored diffs in case of test failures
+difference = "2.0.0"
+# Used to deserialize test files into metadata we can load
+serde_json = "1.0.44"

@@ -1,0 +1,14 @@
+[package]
+name = "a"
+version = "0.1.0"
+authors = ["Jake Shadle <jake.shadle@embark-studios.com>"]
+edition = "2018"
+
+[dependencies]
+b = { path = "../b" }
+
+[dev-dependencies]
+c = { path = "../c" }
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+c = { path = "../c" }
