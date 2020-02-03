@@ -1,8 +1,7 @@
 use cargo_metadata::Error as CMErr;
 use std::fmt;
 
-/// Errors that can occur when acquiring metadata
-/// to create a graph from
+/// Errors that can occur when acquiring metadata to create a graph from
 #[derive(Debug)]
 pub enum Error {
     /// --no-deps was specified when acquiring metadata
