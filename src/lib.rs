@@ -37,9 +37,11 @@ use petgraph::{graph::NodeIndex, Direction};
 
 mod builder;
 mod errors;
+mod pkgspec;
 
 pub use builder::{Builder, Cmd, NoneFilter, Scope};
 pub use errors::Error;
+pub use pkgspec::PkgSpec;
 
 /// A crate's unique identifier
 pub type Kid = cargo_metadata::PackageId;

@@ -174,6 +174,8 @@ where
 pub struct Builder {
     target_filters: Vec<TargetFilter>,
     workspace_filters: Vec<PathBuf>,
+    exclude: Vec<crate::PkgSpec>,
+    workspace: bool,
     ignore_kinds: u32,
 }
 
@@ -217,10 +219,36 @@ impl Builder {
         self
     }
 
-    /// By default, every workspace crate is treated as a root node and implicitly
-    /// added to the graph if the graph is built from a workspace context and not
-    /// a specific crate in the workspace.
+    /// By default, the response from `cargo metadata` determines what the
+    /// root(s) of the crate graph will be. If the Cargo.toml path used is a
+    /// virtual manifest, then each workspace member will be used as a root. If
+    /// the manifest path is for a single crate, or a non-virtual manifest
+    /// inside a workspace, then only that single crate will be used as the
+    /// root, and in the workspace case, only other workspace members that are
+    /// dependencies of that root crate, directly or indirectly, will be
+    /// included in the final graph.
     ///
+    /// Setting workspace = true will change that default behavior, and instead
+    /// include all workspace crates (unless they are filtered via other
+    /// methods) even if the manifest path is not a virtual manifest inside
+    /// a workspace
+    pub fn workspace(&mut self, workspace: bool) -> &mut Self {
+        self.workspace = workspace;
+        self
+    }
+
+    /// Package specification(s) to exclude from the final graph. Unlike with
+    /// cargo, each exclusion spec can apply to more than 1 instance of a
+    /// package, eg if multiple crates are source from the same url, or multiple
+    /// versions of the same crate
+    pub fn exclude<I>(&mut self, exclude: I) -> &mut Self
+    where
+        I: IntoIterator<Item = crate::PkgSpec>,
+    {
+        self.exclude.extend(exclude);
+        self
+    }
+
     /// By default, every workspace crate is treated as a root node and
     /// implicitly added to the graph if the graph is built from a workspace
     /// context and not a specific crate in the workspace.
@@ -262,6 +290,7 @@ impl Builder {
                 p
             }
         }));
+
         self
     }
 
@@ -427,18 +456,23 @@ impl Builder {
         let mut edge_map = HashMap::new();
         let mut pid_stack = Vec::with_capacity(workspace_members.len());
 
-        // Only include workspaces members the user wants if they have
-        // specified any, this is to take into account scenarios where
-        // you have a large workspace, but only want to get the crates
-        // used by a subset of the workspace
+        // Only include workspaces members the user wants if they have specified
+        // any, this is to take into account scenarios where you have a large
+        // workspace, but only want to get the crates used by a subset of the
+        // workspace
         if self.workspace_filters.is_empty() {
-            // If the resolve graph specifies a root, it means the user specified
-            // a particular crate in a workspace, so we'll only use that single
-            // root for the entire graph rather than a root for each workspace
-            // member crate
-            match &resolved.root {
-                Some(root) => pid_stack.push(root),
-                None => pid_stack.extend(workspace_members.iter()),
+            // If the resolve graph specifies a root, it means the user
+            // specified a particular crate in a workspace, so we'll only use
+            // that single root for the entire graph rather than a root for each
+            // workspace member crate
+            if !self.workspace {
+                if let Some(ref root) = resolved.root {
+                    pid_stack.push(root);
+                }
+            }
+
+            if pid_stack.is_empty() {
+                pid_stack.extend(workspace_members.iter());
             }
         } else {
             // If the filters only contain 1 path, and it is the path to a
@@ -461,6 +495,10 @@ impl Builder {
                 }
             }
         }
+
+        let exclude = self.exclude;
+
+        if !exclude.is_empty() {}
 
         let include_all_targets = self.target_filters.is_empty();
         let ignore_kinds = self.ignore_kinds;
@@ -551,6 +589,45 @@ impl Builder {
 
             let rnode = &nodes[krate_index];
             let krate = &packages[krate_index];
+
+            if !exclude.is_empty() {
+                if exclude.iter().any(|exc| {
+                    if exc.name != krate.name {
+                        return false;
+                    }
+
+                    if let Some(ref vers) = exc.version {
+                        if vers != &krate.version {
+                            return false;
+                        }
+                    }
+
+                    match exc.url {
+                        Some(ref u) => {
+                            // Get the url from the identifier to avoid pointless
+                            // allocations.
+                            if let Some(mut url) = pid.repr.splitn(3, ' ').nth(2) {
+                                // Strip off the leading <source>+
+                                if let Some(ind) = url.find('+') {
+                                    url = &url[ind + 1..];
+                                }
+
+                                // Strip off any query parts
+                                if let Some(ind) = url.find('?') {
+                                    url = &url[..ind];
+                                }
+
+                                u == url
+                            } else {
+                                false
+                            }
+                        }
+                        None => true,
+                    }
+                }) {
+                    continue;
+                }
+            }
 
             debug_assert!(rnode.id == krate.id);
 
@@ -672,7 +749,7 @@ impl Builder {
         }
 
         let mut graph = petgraph::Graph::<crate::Node<N>, E>::new();
-        graph.reserve_nodes(packages.len());
+        graph.reserve_nodes(edge_map.len());
 
         let mut edge_count = 0;
 

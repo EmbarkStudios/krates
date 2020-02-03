@@ -7,6 +7,7 @@ pub enum Error {
     /// --no-deps was specified when acquiring metadata
     NoResolveGraph,
     Metadata(CMErr),
+    InvalidPkgSpec(&'static str),
 }
 
 impl fmt::Display for Error {
@@ -14,6 +15,7 @@ impl fmt::Display for Error {
         match self {
             Self::NoResolveGraph => f.write_str("no resolution graph was provided"),
             Self::Metadata(err) => write!(f, "{}", err),
+            Self::InvalidPkgSpec(err) => write!(f, "package spec was invalid: {}", err),
         }
     }
 }
@@ -21,7 +23,7 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::NoResolveGraph => None,
+            Self::NoResolveGraph | Self::InvalidPkgSpec(_) => None,
             Self::Metadata(err) => Some(err),
         }
     }
