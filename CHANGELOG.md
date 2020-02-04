@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.1.1] - 2020-02-04
 ### Added
 - Added `PkgSpec`, an implementation of cargo's [package id specifications](https://doc.rust-lang.org/cargo/reference/pkgid-spec.html)
 - Added `Builder::workspace`, which allows the equivalent of `cargo <cmd> --workspace` when building the graph
@@ -16,5 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/EmbarkStudios/krates/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/EmbarkStudios/krates/releases/tag/0.1.0
