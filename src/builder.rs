@@ -232,6 +232,11 @@ impl Builder {
     /// include all workspace crates (unless they are filtered via other
     /// methods) even if the manifest path is not a virtual manifest inside
     /// a workspace
+    ///
+    /// ```
+    /// # use krates::Builder;
+    /// Builder::new().workspace(true);
+    /// ```
     pub fn workspace(&mut self, workspace: bool) -> &mut Self {
         self.workspace = workspace;
         self
@@ -239,8 +244,13 @@ impl Builder {
 
     /// Package specification(s) to exclude from the final graph. Unlike with
     /// cargo, each exclusion spec can apply to more than 1 instance of a
-    /// package, eg if multiple crates are source from the same url, or multiple
-    /// versions of the same crate
+    /// package, eg if multiple crates are sourced from the same url, or
+    /// multiple versions of the same crate
+    ///
+    /// ```
+    /// # use krates::Builder;
+    /// Builder::new().exclude(["a-crate:0.1.0"].iter().map(|spec| spec.parse().unwrap()));
+    /// ```
     pub fn exclude<I>(&mut self, exclude: I) -> &mut Self
     where
         I: IntoIterator<Item = crate::PkgSpec>,
