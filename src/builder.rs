@@ -590,51 +590,8 @@ impl Builder {
             let rnode = &nodes[krate_index];
             let krate = &packages[krate_index];
 
-            if !exclude.is_empty() {
-                if exclude.iter().any(|exc| {
-                    if exc.name != krate.name {
-                        return false;
-                    }
-
-                    if let Some(ref vers) = exc.version {
-                        if vers != &krate.version {
-                            return false;
-                        }
-                    }
-
-                    match exc.url {
-                        Some(ref u) => {
-                            // Get the url from the identifier to avoid pointless
-                            // allocations.
-                            if let Some(mut url) = pid.repr.splitn(3, ' ').nth(2) {
-                                // Strip off the the enclosing parens
-                                url = &url[1..url.len() - 1];
-
-                                // Strip off the leading <source>+
-                                if let Some(ind) = url.find('+') {
-                                    url = &url[ind + 1..];
-                                }
-
-                                // Strip off any fragments
-                                if let Some(ind) = url.find('#') {
-                                    url = &url[..ind];
-                                }
-
-                                // Strip off any query parts
-                                if let Some(ind) = url.find('?') {
-                                    url = &url[..ind];
-                                }
-
-                                u == url
-                            } else {
-                                false
-                            }
-                        }
-                        None => true,
-                    }
-                }) {
-                    continue;
-                }
+            if exclude.iter().any(|exc| exc.matches(&krate)) {
+                continue;
             }
 
             debug_assert!(rnode.id == krate.id);

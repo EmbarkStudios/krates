@@ -11,6 +11,51 @@ pub struct PkgSpec {
     pub url: Option<String>,
 }
 
+impl PkgSpec {
+    pub fn matches(&self, krate: &crate::cm::Package) -> bool {
+        if self.name != krate.name {
+            return false;
+        }
+
+        if let Some(ref vers) = self.version {
+            if vers != &krate.version {
+                return false;
+            }
+        }
+
+        match self.url {
+            Some(ref u) => {
+                // Get the url from the identifier to avoid pointless
+                // allocations.
+                if let Some(mut url) = krate.id.repr.splitn(3, ' ').nth(2) {
+                    // Strip off the the enclosing parens
+                    url = &url[1..url.len() - 1];
+
+                    // Strip off the leading <source>+
+                    if let Some(ind) = url.find('+') {
+                        url = &url[ind + 1..];
+                    }
+
+                    // Strip off any fragments
+                    if let Some(ind) = url.rfind('#') {
+                        url = &url[..ind];
+                    }
+
+                    // Strip off any query parts
+                    if let Some(ind) = url.rfind('?') {
+                        url = &url[..ind];
+                    }
+
+                    u == url
+                } else {
+                    false
+                }
+            }
+            None => true,
+        }
+    }
+}
+
 impl std::str::FromStr for PkgSpec {
     type Err = Error;
 
@@ -19,8 +64,8 @@ impl std::str::FromStr for PkgSpec {
                                    url: Option<&str>|
          -> Result<(String, Option<Version>), Self::Err> {
             let validate_name = |n: &str| -> Result<String, Self::Err> {
-                if let Some(_) =
-                    n.find(|c: char| c != '-' && c != '_' && !c.is_ascii_alphanumeric())
+                if n.find(|c: char| c != '-' && c != '_' && !c.is_ascii_alphanumeric())
+                    .is_some()
                 {
                     Err(Error::InvalidPkgSpec(
                         "found an invalid character for the package name",
