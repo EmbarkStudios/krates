@@ -1,0 +1,15 @@
+[package]
+name = "b"
+version = "0.1.0"
+authors = ["Jake Shadle <jake.shadle@embark-studios.com>"]
+edition = "2018"
+
+[dependencies]
+top = { path = "../" }
+c = { path = "../c" }
+
+[target.'cfg(target_arch = "x86_64")'.dev-dependencies]
+ring = "0.16.9"
+
+[target.'cfg(all(target_arch = "wasm32", target_feature = "atomics"))'.dependencies]
+wasm-bindgen-futures = "0.4.6"

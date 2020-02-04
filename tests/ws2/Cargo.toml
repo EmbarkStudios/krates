@@ -1,0 +1,10 @@
+[package]
+name = "top"
+version = "0.1.0"
+
+[workspace]
+members = [
+    "a",
+    "b",
+    "c",
+]

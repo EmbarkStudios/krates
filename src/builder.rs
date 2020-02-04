@@ -5,10 +5,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// An alternative to cargo_metadata::MetadataCommand which
-/// allows correct feature usage, as well as ensuring that
-/// the command can run successfully regardless of where
-/// it is executed and on what.
+/// An alternative to cargo_metadata::MetadataCommand which allows correct
+/// feature usage, as well as ensuring that the command can run successfully
+/// regardless of where it is executed and on what.
 #[derive(Default, Debug)]
 pub struct Cmd {
     cargo_path: Option<PathBuf>,
@@ -25,9 +24,8 @@ impl Cmd {
         Self::default()
     }
 
-    /// Path to `cargo` executable.  If not set, this will use the
-    /// the `$CARGO` environment variable, and if that is not set, will
-    /// simply be `cargo`.
+    /// Path to `cargo` executable.  If not set, this will use the the `$CARGO`
+    /// environment variable, and if that is not set, will simply be `cargo`.
     pub fn cargo_path(&mut self, path: impl Into<PathBuf>) -> &mut Self {
         self.cargo_path = Some(path.into());
         self
@@ -47,16 +45,16 @@ impl Cmd {
 
     /// Disables default features.
     ///
-    /// **NOTE**: This has **no effect** if used on a workspace.
-    /// You must specify a working directory or manifest path to
-    /// a specific crate if used on a crate inside a workspace.
+    /// **NOTE**: This has **no effect** if used on a workspace. You must
+    /// specify a working directory or manifest path to a specific crate if used
+    /// on a crate inside a workspace.
     pub fn no_default_features(&mut self) -> &mut Self {
         self.no_default_features = true;
         self
     }
 
-    /// Enables all features for all workspace crates. Usable
-    /// on both individual crates and on an entire workspace.
+    /// Enables all features for all workspace crates. Usable on both individual
+    /// crates and on an entire workspace.
     pub fn all_features(&mut self) -> &mut Self {
         self.all_features = true;
         self
@@ -68,8 +66,8 @@ impl Cmd {
         self
     }
 
-    /// Arbitrary command line flags to pass to `cargo`.  These will be added
-    /// to the end of the command line invocation.
+    /// Arbitrary command line flags to pass to `cargo`.  These will be added to
+    /// the end of the command line invocation.
     pub fn other_options(&mut self, options: impl IntoIterator<Item = String>) -> &mut Self {
         self.other_options.extend(options);
         self
@@ -84,11 +82,10 @@ impl Into<cm::MetadataCommand> for Cmd {
             mdc.cargo_path(cp);
         }
 
-        // If the manifest path is set, we force set the current
-        // working directory to its parent and use the relative
-        // path, this is to fix an edge case where you can run
-        // cargo metadata from a directory outside of a workspace
-        // which could fail if eg. there is a reference to a
+        // If the manifest path is set, we force set the current working
+        // directory to its parent and use the relative path, this is to fix an
+        // edge case where you can run cargo metadata from a directory outside
+        // of a workspace which could fail if eg. there is a reference to a
         // registry that is defined in the workspace's .cargo/config
         if let Some(mp) = self.manifest_path {
             self.current_dir = Some(mp.parent().unwrap().to_owned());
@@ -99,10 +96,10 @@ impl Into<cm::MetadataCommand> for Cmd {
             mdc.current_dir(cd);
         }
 
-        // Everything else we specify as additional options, as
-        // MetadataCommand does not handle features correctly, eg.
-        // you cannot disable default and set specific ones at the
-        // same time https://github.com/oli-obk/cargo_metadata/issues/79
+        // Everything else we specify as additional options, as MetadataCommand
+        // does not handle features correctly, eg. you cannot disable default
+        // and set specific ones at the same time
+        // https://github.com/oli-obk/cargo_metadata/issues/79
         self.features.sort();
         self.features.dedup();
 
@@ -149,9 +146,9 @@ pub enum Scope {
     All,
 }
 
-/// Trait used to report back any crates that are completely ignored
-/// in the final crate graph that is built. This occurs when the crate
-/// has no dependents any longer due to the applied filters.
+/// Trait used to report back any crates that are completely ignored in the
+/// final crate graph that is built. This occurs when the crate has no
+/// dependents any longer due to the applied filters.
 pub trait OnFilter {
     fn filtered(&mut self, krate: cm::Package);
 }
@@ -177,6 +174,8 @@ where
 pub struct Builder {
     target_filters: Vec<TargetFilter>,
     workspace_filters: Vec<PathBuf>,
+    exclude: Vec<crate::PkgSpec>,
+    workspace: bool,
     ignore_kinds: u32,
 }
 
@@ -192,15 +191,16 @@ impl Builder {
     /// Builder::new().ignore_kind(DepKind::Build, Scope::NonWorkspace);
     /// ```
     ///
-    /// In the above example, let's say we depended on `zstd`. zstd depends
-    /// on the `cc` crate (`zstd -> zstd-safe -> zstd-sys -> cc`) for building
+    /// In the above example, let's say we depended on `zstd`. zstd depends on
+    /// the `cc` crate (`zstd -> zstd-safe -> zstd-sys -> cc`) for building
     /// C code. By ignoring the `build` kind for non-workspace crates, the link
     /// from `zstd-sys` -> `cc` will be filtered out. If the same `cc` is not
     /// depended on by a crate in the workspace, `cc` will not end up in the
     /// final `Krates` graph.
     ///
-    /// Note that ignoring `DepKind::Dev` for `Scope::NonWorkspace` is meaningless
-    /// as dev dependencies are not resolved by cargo for transitive dependencies.
+    /// Note that ignoring `DepKind::Dev` for `Scope::NonWorkspace` is
+    /// meaningless as dev dependencies are not resolved by cargo for transitive
+    /// dependencies.
     pub fn ignore_kind(&mut self, kind: DepKind, scope: Scope) -> &mut Self {
         let kind_flag = match kind {
             DepKind::Normal => 0x1,
@@ -219,17 +219,59 @@ impl Builder {
         self
     }
 
-    /// By default, every workspace crate is treated as a root node and implicitly
-    /// added to the graph if the graph is built from a workspace context and not
-    /// a specific crate in the workspace.
+    /// By default, the response from `cargo metadata` determines what the
+    /// root(s) of the crate graph will be. If the Cargo.toml path used is a
+    /// virtual manifest, then each workspace member will be used as a root. If
+    /// the manifest path is for a single crate, or a non-virtual manifest
+    /// inside a workspace, then only that single crate will be used as the
+    /// root, and in the workspace case, only other workspace members that are
+    /// dependencies of that root crate, directly or indirectly, will be
+    /// included in the final graph.
+    ///
+    /// Setting workspace = true will change that default behavior, and instead
+    /// include all workspace crates (unless they are filtered via other
+    /// methods) even if the manifest path is not a virtual manifest inside
+    /// a workspace
+    ///
+    /// ```
+    /// # use krates::Builder;
+    /// Builder::new().workspace(true);
+    /// ```
+    pub fn workspace(&mut self, workspace: bool) -> &mut Self {
+        self.workspace = workspace;
+        self
+    }
+
+    /// Package specification(s) to exclude from the final graph. Unlike with
+    /// cargo, each exclusion spec can apply to more than 1 instance of a
+    /// package, eg if multiple crates are sourced from the same url, or
+    /// multiple versions of the same crate
+    ///
+    /// ```
+    /// # use krates::Builder;
+    /// Builder::new().exclude(["a-crate:0.1.0"].iter().map(|spec| spec.parse().unwrap()));
+    /// ```
+    pub fn exclude<I>(&mut self, exclude: I) -> &mut Self
+    where
+        I: IntoIterator<Item = crate::PkgSpec>,
+    {
+        self.exclude.extend(exclude);
+        self
+    }
+
+    /// By default, every workspace crate is treated as a root node and
+    /// implicitly added to the graph if the graph is built from a workspace
+    /// context and not a specific crate in the workspace.
     ///
     /// By using this method, only the workspace crates whose Cargo.toml path
-    /// matches one of the specified crates will be added as root notes, meaning
-    /// that any workspace crate not in the list that doesn't have any dependendents
-    /// on a workspace crate that does, will no longer appear in the graph.
+    /// matches one of the specified crates will be added as root nodes, meaning
+    /// that any workspace crate not in the list that doesn't have any
+    /// dependendents on a workspace crate that does, will no longer appear in
+    /// the graph.
     ///
-    /// If you specify only a single path, and that path is actually to a workspace's
-    /// Cargo.toml, this will function exactly the same.
+    /// If you specify only a single path, and that path is actually to a
+    /// a workspace's virtual manifest, the graph will be the same as if
+    /// invlude_workspace_crates was not specified.
     ///
     /// ```
     /// # use krates::{Builder, DepKind, Scope};
@@ -248,8 +290,8 @@ impl Builder {
             let p = p.as_ref();
 
             // Attempt to canonicalize the path, which might not work if the
-            // user is attempting to add a path to filter from another filesystem
-            // or similar
+            // user is attempting to add a path to filter from another
+            // filesystem or similar
             let p = p.canonicalize().unwrap_or_else(|_| p.to_owned());
 
             if !p.ends_with("Cargo.toml") {
@@ -258,23 +300,28 @@ impl Builder {
                 p
             }
         }));
+
         self
     }
 
     /// By default, cargo resolves all target specific dependencies. Optionally,
-    /// you can use the `--filter-platform` option on `cargo metadata` to resolve
-    /// only dependencies that match the specified target, but it can only do this
-    /// for one platlform.
+    /// you can use the `--filter-platform` option on `cargo metadata` to
+    /// resolve only dependencies that match the specified target, but it can
+    /// only do this for one platlform.
     ///
-    /// By using this method, you can specify one or more targets by their triple,
-    /// as well as any [`target_features`](https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute)
-    /// that you [promise](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)
-    /// are enabled for that target to filter dependencies by. If any of the specified
-    /// targets matches a target specific dependency, it will be included in the graph.
+    /// By using this method, you can specify one or more targets by their
+    /// triple, as well as any
+    /// [`target_features`](https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute)
+    /// that you
+    /// [promise](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)
+    /// are enabled for that target to filter dependencies by. If any of the
+    /// specified targets matches a target specific dependency, it will be
+    /// included in the graph.
     ///
-    /// When specifying a target triple, only builtin targets of rustc (as of 1.40)
-    /// can be used to evaluate `cfg()` expressions. If the triple is not recognized,
-    /// it will only be evaluated against `[target.<triple-or-json>.<|build-|dev->dependencies]`.
+    /// When specifying a target triple, only builtin targets of rustc
+    /// (as of 1.40) can be used to evaluate `cfg()` expressions. If the triple
+    /// is not recognized, it will only be evaluated against
+    /// `[target.<triple-or-json>.<|build-|dev->dependencies]`.
     ///
     /// ```
     /// # use krates::{Builder, DepKind, Scope};
@@ -311,13 +358,13 @@ impl Builder {
         self
     }
 
-    /// Builds a `Krates` graph using metadata that be retrieved via the specified
-    /// metadata command. If `on_filter` is specified, it will be called with each
-    /// package that was filtered from the graph, if any.
+    /// Builds a `Krates` graph using metadata that be retrieved via the
+    /// specified metadata command. If `on_filter` is specified, it will be
+    /// called with each package that was filtered from the graph, if any.
     ///
     /// This method will fail if the metadata command fails for some reason, or
-    /// if the command specifies `--no-deps` which means there will be no resolution
-    /// graph to build our graph from.
+    /// if the command specifies `--no-deps` which means there will be no
+    /// resolution graph to build our graph from.
     ///
     /// ```no_run
     /// # use krates::cm::Package;
@@ -377,8 +424,8 @@ impl Builder {
     }
 
     /// Builds a `Krates` graph using the specified metadata. If `on_filter` is
-    /// specified, it will be called with each package that was filtered from the
-    /// graph, if any.
+    /// specified, it will be called with each package that was filtered from
+    /// the graph, if any.
     ///
     /// The metadata **must** have resolved dependencies for the graph to be
     /// built, so not having it is the only way this method will fail.
@@ -419,18 +466,23 @@ impl Builder {
         let mut edge_map = HashMap::new();
         let mut pid_stack = Vec::with_capacity(workspace_members.len());
 
-        // Only include workspaces members the user wants if they have
-        // specified any, this is to take into account scenarios where
-        // you have a large workspace, but only want to get the crates
-        // used by a subset of the workspace
+        // Only include workspaces members the user wants if they have specified
+        // any, this is to take into account scenarios where you have a large
+        // workspace, but only want to get the crates used by a subset of the
+        // workspace
         if self.workspace_filters.is_empty() {
-            // If the resolve graph specifies a root, it means the user specified
-            // a particular crate in a workspace, so we'll only use that single
-            // root for the entire graph rather than a root for each workspace
-            // member crate
-            match &resolved.root {
-                Some(root) => pid_stack.push(root),
-                None => pid_stack.extend(workspace_members.iter()),
+            // If the resolve graph specifies a root, it means the user
+            // specified a particular crate in a workspace, so we'll only use
+            // that single root for the entire graph rather than a root for each
+            // workspace member crate
+            if !self.workspace {
+                if let Some(ref root) = resolved.root {
+                    pid_stack.push(root);
+                }
+            }
+
+            if pid_stack.is_empty() {
+                pid_stack.extend(workspace_members.iter());
             }
         } else {
             // If the filters only contain 1 path, and it is the path to a
@@ -454,6 +506,10 @@ impl Builder {
             }
         }
 
+        let exclude = self.exclude;
+
+        if !exclude.is_empty() {}
+
         let include_all_targets = self.target_filters.is_empty();
         let ignore_kinds = self.ignore_kinds;
         let targets = self.target_filters;
@@ -465,7 +521,8 @@ impl Builder {
         }
 
         #[derive(Debug)]
-        // We use our resolution nodes because cargo_metadata uses non-exhaustive everywhere :p
+        // We use our resolution nodes because cargo_metadata uses
+        // non-exhaustive everywhere :p
         struct NodeDep {
             //name: String,
             pkg: Kid,
@@ -476,7 +533,8 @@ impl Builder {
         struct Node {
             id: Kid,
             deps: Vec<NodeDep>,
-            // We don't use this for now, but maybe we should expose it on each crate?
+            // We don't use this for now, but maybe we should expose it on each
+            // crate?
             // features: Vec<String>,
         }
 
@@ -541,6 +599,10 @@ impl Builder {
 
             let rnode = &nodes[krate_index];
             let krate = &packages[krate_index];
+
+            if exclude.iter().any(|exc| exc.matches(&krate)) {
+                continue;
+            }
 
             debug_assert!(rnode.id == krate.id);
 
@@ -661,8 +723,15 @@ impl Builder {
             edge_map.insert(pid, edges);
         }
 
+        // Sanity check, it's possible the user could exclude all of the
+        // possible workspace root nodes leaving themselves with an empty graph,
+        // which isn't much use to anyone
+        if edge_map.is_empty() {
+            return Err(Error::NoRootKrates);
+        }
+
         let mut graph = petgraph::Graph::<crate::Node<N>, E>::new();
-        graph.reserve_nodes(packages.len());
+        graph.reserve_nodes(edge_map.len());
 
         let mut edge_count = 0;
 
@@ -684,13 +753,12 @@ impl Builder {
 
         graph.reserve_edges(edge_count);
 
-        let get = |graph: &petgraph::Graph<crate::Node<N>, E>, id: &Kid| -> crate::NodeId {
-            crate::NodeId::new(
-                graph
-                    .raw_nodes()
-                    .binary_search_by(|n| n.weight.id.cmp(id))
-                    .unwrap(),
-            )
+        let get = |graph: &petgraph::Graph<crate::Node<N>, E>, id: &Kid| -> Option<crate::NodeId> {
+            graph
+                .raw_nodes()
+                .binary_search_by(|n| n.weight.id.cmp(id))
+                .ok()
+                .map(crate::NodeId::new)
         };
 
         // Keep edges ordered as well
@@ -698,8 +766,11 @@ impl Builder {
             let srcid = crate::NodeId::new(srcind);
             if let Some(edges) = edge_map.remove(&graph[srcid].id) {
                 for (dep, tid) in edges {
-                    let target = get(&graph, &tid);
-                    graph.add_edge(srcid, target, E::from(dep));
+                    // We might not have a target in the case of explicitly excluded
+                    // packages
+                    if let Some(target) = get(&graph, &tid) {
+                        graph.add_edge(srcid, target, E::from(dep));
+                    }
                 }
             }
         }

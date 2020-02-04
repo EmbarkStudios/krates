@@ -1,4 +1,3 @@
-#[macro_use]
 mod util;
 
 use krates::cfg_expr::targets;

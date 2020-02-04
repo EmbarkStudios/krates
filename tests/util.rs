@@ -202,8 +202,10 @@ impl SimpleGraph {
         for kid in self.nodes.iter().map(|(id, _)| id) {
             if let Some(source) = node_map.get(kid) {
                 let edges = edge_map.remove(kid).unwrap();
-                for edge in edges {
-                    let target = &node_map[edge.0];
+                for (edge, target) in edges
+                    .into_iter()
+                    .filter_map(|edge| node_map.get(edge.0).map(|target| (edge, target)))
+                {
                     graph.add_edge(*source, *target, edge.1.clone());
                 }
             } else {

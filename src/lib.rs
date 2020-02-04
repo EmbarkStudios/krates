@@ -1,5 +1,5 @@
-//! Transforms the output of `cargo metadata` into a graph, `Krates`,
-//! where crates are nodes and dependency links are edges.
+//! Transforms the output of `cargo metadata` into a graph, `Krates`, where
+//! crates are nodes and dependency links are edges.
 //!
 //! ```no_run
 //! use krates::{Builder, Cmd, Krates, cm, petgraph};
@@ -37,15 +37,17 @@ use petgraph::{graph::NodeIndex, Direction};
 
 mod builder;
 mod errors;
+mod pkgspec;
 
 pub use builder::{Builder, Cmd, NoneFilter, Scope};
 pub use errors::Error;
+pub use pkgspec::PkgSpec;
 
 /// A crate's unique identifier
 pub type Kid = cargo_metadata::PackageId;
 
-/// The dependency kind. A crate can depend on the same crate
-/// multiple times with different dependency kinds
+/// The dependency kind. A crate can depend on the same crate multiple times
+/// with different dependency kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DepKind {
     Normal,
@@ -130,8 +132,8 @@ impl fmt::Display for Edge {
     }
 }
 
-/// A crate graph. Each unique crate is a node, and each
-/// unique dependency between 2 crates is an edge.
+/// A crate graph. Each unique crate is a node, and each unique dependency
+/// between 2 crates is an edge.
 pub struct Krates<N = cm::Package, E = Edge> {
     graph: petgraph::Graph<Node<N>, E>,
     workspace_members: Vec<Kid>,
@@ -146,8 +148,8 @@ impl<N, E> Krates<N, E> {
         self.graph.node_count()
     }
 
-    /// Path to the Cargo.lock file for the crate or workspace
-    /// where the graph metadata was acquired from
+    /// Path to the Cargo.lock file for the crate or workspace where the graph
+    /// metadata was acquired from
     #[inline]
     pub fn lock_path(&self) -> &std::path::PathBuf {
         &self.lock_file
@@ -159,9 +161,8 @@ impl<N, E> Krates<N, E> {
         &self.graph
     }
 
-    /// Get an iterator over the crate nodes in the graph.
-    /// The crates are always ordered lexicographically by their
-    /// identfier.
+    /// Get an iterator over the crate nodes in the graph. The crates are always
+    /// ordered lexicographically by their identfier.
     ///
     /// ```no_run
     /// use krates::Krates;
@@ -177,9 +178,9 @@ impl<N, E> Krates<N, E> {
         self.graph.node_indices().map(move |nid| &self.graph[nid])
     }
 
-    /// Get an iterator over each dependency of the specified crate. The
-    /// same dependency can be returned multiple times if the crate depends
-    /// on it with more than 1 dependency kind.
+    /// Get an iterator over each dependency of the specified crate. The same
+    /// dependency can be returned multiple times if the crate depends on it
+    /// with more than 1 dependency kind.
     ///
     /// ```no_run
     /// use krates::{Krates, Kid, DepKind};
@@ -274,8 +275,8 @@ where
             .filter(move |(_, n)| req.matches(n.krate.version()))
     }
 
-    /// Get an iterator over all of the crates in the graph with the given name, in the
-    /// case there are multiple versions, or sources, of the crate.
+    /// Get an iterator over all of the crates in the graph with the given name,
+    /// in the case there are multiple versions, or sources, of the crate.
     ///
     /// ```
     /// use krates::Krates;
