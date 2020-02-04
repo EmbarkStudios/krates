@@ -1,4 +1,3 @@
-#[macro_use]
 mod util;
 
 use util::{build, cmp};
