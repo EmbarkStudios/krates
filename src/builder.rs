@@ -607,9 +607,17 @@ impl Builder {
                             // Get the url from the identifier to avoid pointless
                             // allocations.
                             if let Some(mut url) = pid.repr.splitn(3, ' ').nth(2) {
+                                // Strip off the the enclosing parens
+                                url = &url[1..url.len() - 1];
+
                                 // Strip off the leading <source>+
                                 if let Some(ind) = url.find('+') {
                                     url = &url[ind + 1..];
+                                }
+
+                                // Strip off any fragments
+                                if let Some(ind) = url.find('#') {
+                                    url = &url[..ind];
                                 }
 
                                 // Strip off any query parts
@@ -748,6 +756,13 @@ impl Builder {
             edge_map.insert(pid, edges);
         }
 
+        // Sanity check, it's possible the user could exclude all of the
+        // possible workspace root nodes leaving themselves with an empty graph,
+        // which isn't much use to anyone
+        if edge_map.is_empty() {
+            return Err(Error::NoRootKrates);
+        }
+
         let mut graph = petgraph::Graph::<crate::Node<N>, E>::new();
         graph.reserve_nodes(edge_map.len());
 
@@ -771,13 +786,12 @@ impl Builder {
 
         graph.reserve_edges(edge_count);
 
-        let get = |graph: &petgraph::Graph<crate::Node<N>, E>, id: &Kid| -> crate::NodeId {
-            crate::NodeId::new(
-                graph
-                    .raw_nodes()
-                    .binary_search_by(|n| n.weight.id.cmp(id))
-                    .unwrap(),
-            )
+        let get = |graph: &petgraph::Graph<crate::Node<N>, E>, id: &Kid| -> Option<crate::NodeId> {
+            graph
+                .raw_nodes()
+                .binary_search_by(|n| n.weight.id.cmp(id))
+                .ok()
+                .map(crate::NodeId::new)
         };
 
         // Keep edges ordered as well
@@ -785,8 +799,11 @@ impl Builder {
             let srcid = crate::NodeId::new(srcind);
             if let Some(edges) = edge_map.remove(&graph[srcid].id) {
                 for (dep, tid) in edges {
-                    let target = get(&graph, &tid);
-                    graph.add_edge(srcid, target, E::from(dep));
+                    // We might not have a target in the case of explicitly excluded
+                    // packages
+                    if let Some(target) = get(&graph, &tid) {
+                        graph.add_edge(srcid, target, E::from(dep));
+                    }
                 }
             }
         }
