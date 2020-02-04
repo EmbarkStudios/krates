@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- Added `PkgSpec`, an implementation of cargo's [package id specifications](https://doc.rust-lang.org/cargo/reference/pkgid-spec.html)
+- Added `Builder::workspace`, which allows the equivalent of `cargo <cmd> --workspace` when building the graph
+- Added `Builder::exclude`, which allows the equivalent of `cargo <cmd> --exclude` when building the graph
 
 ## [0.1.0] - 2020-01-14
 ### Added
