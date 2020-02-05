@@ -508,8 +508,6 @@ impl Builder {
 
         let exclude = self.exclude;
 
-        if !exclude.is_empty() {}
-
         let include_all_targets = self.target_filters.is_empty();
         let ignore_kinds = self.ignore_kinds;
         let targets = self.target_filters;
