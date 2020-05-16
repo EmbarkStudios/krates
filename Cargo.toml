@@ -15,7 +15,7 @@ keywords = ["cargo", "metadata", "graph"]
 # Used for acquiring and deserializing `cargo metadata` output
 cargo_metadata = "0.9.1"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.2.0"
+cfg-expr = "0.3.0"
 # Used to create and traverse graph structures
 petgraph = "0.5.0"
 # Used for checking version requirements
