@@ -131,7 +131,7 @@ impl Into<cm::MetadataCommand> for Cmd {
 }
 
 enum TargetFilter {
-    Known(&'static cfg_expr::targets::TargetInfo, Vec<String>),
+    Known(&'static cfg_expr::targets::TargetInfo<'static>, Vec<String>),
     Unknown(String, Vec<String>),
 }
 
@@ -350,7 +350,7 @@ impl Builder {
     ) -> &mut Self {
         self.target_filters
             .extend(targets.into_iter().map(|(triple, features)| {
-                match cfg_expr::targets::get_target_by_triple(triple.as_ref()) {
+                match cfg_expr::targets::get_builtin_target_by_triple(triple.as_ref()) {
                     Some(ti) => TargetFilter::Known(ti, features),
                     None => TargetFilter::Unknown(triple.as_ref().to_owned(), features),
                 }
