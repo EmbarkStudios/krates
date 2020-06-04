@@ -171,7 +171,7 @@ impl SimpleGraph {
                         source: kid,
                         target: &edge.0,
                         kind: edge.1.kind,
-                        cfg: edge.1.cfg.as_ref().map(|s| s.as_str()),
+                        cfg: edge.1.cfg.as_deref(),
                     }) {
                         None
                     } else {

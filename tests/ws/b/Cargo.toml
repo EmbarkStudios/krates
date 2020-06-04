@@ -12,3 +12,6 @@ ring = "0.16.9"
 
 [target.'cfg(all(target_arch = "wasm32", target_feature = "atomics"))'.dependencies]
 wasm-bindgen-futures = "0.4.6"
+
+[target.'cfg(all(target_vendor = "xboxone"))'.dependencies]
+wasm-bindgen-futures = "0.4.6"

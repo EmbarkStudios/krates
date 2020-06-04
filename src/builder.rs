@@ -130,9 +130,75 @@ impl Into<cm::MetadataCommand> for Cmd {
     }
 }
 
-enum TargetFilter {
-    Known(&'static cfg_expr::targets::TargetInfo, Vec<String>),
-    Unknown(String, Vec<String>),
+pub enum Target {
+    Builtin(&'static cfg_expr::targets::TargetInfo<'static>),
+    #[cfg(feature = "targets")]
+    Triple(cfg_expr::target_lexicon::Triple),
+    Unknown(String),
+}
+
+impl<T> From<T> for Target
+where
+    T: AsRef<str>,
+{
+    fn from(triple: T) -> Self {
+        let triple = triple.as_ref();
+        match cfg_expr::targets::get_builtin_target_by_triple(triple) {
+            Some(bi) => Self::Builtin(bi),
+            None => {
+                #[cfg(feature = "targets")]
+                {
+                    match triple.parse() {
+                        Ok(triple) => Self::Triple(triple),
+                        Err(_) => Self::Unknown(triple.to_owned()),
+                    }
+                }
+
+                #[cfg(not(feature = "targets"))]
+                Self::Unknown(triple.to_owned())
+            }
+        }
+    }
+}
+
+struct TargetFilter {
+    inner: Target,
+    features: Vec<String>,
+}
+
+impl TargetFilter {
+    fn eval(&self, predicate: &cfg_expr::Predicate<'_>) -> bool {
+        match predicate {
+            cfg_expr::expr::Predicate::Target(tp) => match &self.inner {
+                Target::Builtin(bi) => tp.matches(*bi),
+                #[cfg(feature = "targets")]
+                Target::Triple(trip) => tp.matches(trip),
+                Target::Unknown(_) => false,
+            },
+            cfg_expr::expr::Predicate::TargetFeature(feat) => {
+                // TODO: target_features are extremely rare in cargo.toml
+                // files, it might be a good idea to inform the user of this
+                // somehow, if they are unsure why a particular dependency
+                // is being filtered
+                self.features.iter().any(|f| f == feat)
+            }
+            // We *could* warn here about an invalid expression, but
+            // presumably cargo will be responsible for that, so don't bother
+            _ => false,
+        }
+    }
+
+    fn matches_triple(&self, triple: &str) -> bool {
+        match &self.inner {
+            Target::Builtin(bi) => bi.triple == triple,
+            #[cfg(feature = "targets")]
+            Target::Triple(trip) => {
+                let as_triple = format!("{}", trip);
+                as_triple == triple
+            }
+            Target::Unknown(unknown) => unknown == triple,
+        }
+    }
 }
 
 /// The scope for which a dependency kind will be ignored
@@ -344,16 +410,14 @@ impl Builder {
     ///     }
     /// }));
     /// ```
-    pub fn include_targets<S: AsRef<str>>(
+    pub fn include_targets<S: Into<Target>>(
         &mut self,
         targets: impl IntoIterator<Item = (S, Vec<String>)>,
     ) -> &mut Self {
         self.target_filters
-            .extend(targets.into_iter().map(|(triple, features)| {
-                match cfg_expr::targets::get_target_by_triple(triple.as_ref()) {
-                    Some(ti) => TargetFilter::Known(ti, features),
-                    None => TargetFilter::Unknown(triple.as_ref().to_owned(), features),
-                }
+            .extend(targets.into_iter().map(|(triple, features)| TargetFilter {
+                inner: triple.into(),
+                features,
             }));
         self
     }
@@ -654,34 +718,9 @@ impl Builder {
                                             // it would lead to weird situations where an expression could evaluate to true
                                             // (or false) with a combination of platform, that would otherwise by impossible,
                                             // eg cfg(all(windows, target_env = "musl")) could evaluate to true
-                                            targets.iter().any(|target| {
-                                                expr.eval(|pred| match pred {
-                                                    cfg_expr::expr::Predicate::Target(tp) => {
-                                                        if let TargetFilter::Known(ti, _) = target {
-                                                            tp.matches(ti)
-                                                        } else {
-                                                            false
-                                                        }
-                                                    }
-                                                    cfg_expr::expr::Predicate::TargetFeature(
-                                                        feat,
-                                                    ) => {
-                                                        let features = match target {
-                                                            TargetFilter::Known(_, f) => f,
-                                                            TargetFilter::Unknown(_, f) => f,
-                                                        };
-
-                                                        // TODO: target_features are extremely rare in cargo.toml
-                                                        // files, it might be a good idea to inform the user of this
-                                                        // somehow, filteredare unsure why a particular dependency
-                                                        // is being filtered
-                                                        features.iter().any(|f| f == feat)
-                                                    }
-                                                    // We *could* warn here about an invalid expression, but
-                                                    // presumably cargo will be responsible for that so don't bother
-                                                    _ => false,
-                                                })
-                                            })
+                                            targets
+                                                .iter()
+                                                .any(|target| expr.eval(|pred| target.eval(pred)))
                                         }
                                         Err(_pe) => {
                                             // TODO: maybe log a warning if we somehow fail to parse the cfg?
@@ -689,10 +728,9 @@ impl Builder {
                                         }
                                     }
                                 } else {
-                                    targets.iter().any(|target| match target {
-                                        TargetFilter::Known(ti, _) => ti.triple == cfg,
-                                        TargetFilter::Unknown(t, _) => t.as_str() == cfg,
-                                    })
+                                    // If it's not a cfg expression, it's just a fully specified target triple,
+                                    // so we just do a string comparison
+                                    targets.iter().any(|target| target.matches_triple(cfg))
                                 };
 
                                 if matched {
