@@ -27,5 +27,10 @@ difference = "2.0"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 
+[features]
+default = []
+targets = ["cfg-expr/targets"]
+
 [patch.crates-io]
 cfg-expr = { path = "../cfg-expr" }
+target-lexicon = { path = "../target-lexicon" }

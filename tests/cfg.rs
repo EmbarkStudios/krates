@@ -31,7 +31,7 @@ fn ignores_non_linux() {
 
                     for ti in &targets {
                         if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(&ti),
+                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
                             println!("{} matched {}", cfg, ti.triple);
@@ -78,7 +78,7 @@ fn ignores_non_tier1() {
 
                     for ti in &targets {
                         if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(&ti),
+                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
                             println!("{} matched {}", cfg, ti.triple);
@@ -117,7 +117,7 @@ fn ignores_non_wasm() {
 
                     for ti in &targets {
                         if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(&ti),
+                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
                             println!("{} matched {}", cfg, ti.triple);
@@ -128,6 +128,41 @@ fn ignores_non_wasm() {
                     true
                 } else {
                     !targets.iter().any(|ti| ti.triple == cfg)
+                }
+            } else {
+                false
+            }
+        },
+    );
+}
+
+#[cfg(feature = "targets")]
+#[test]
+fn handles_non_builtin() {
+    let mut kb = krates::Builder::new();
+
+    use krates::target_lexicon::Triple;
+
+    let xbox: Triple = "x86_64-xboxone-windows-msvc".parse().unwrap();
+
+    kb.include_targets(std::iter::once(("x86_64-xboxone-windows-msvc", vec![])));
+
+    let grafs = build("all-features.json", kb).unwrap();
+
+    cmp(
+        grafs,
+        |_| false,
+        |ef| {
+            if let Some(cfg) = ef.cfg {
+                if cfg.starts_with("cfg(") {
+                    let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
+
+                    !expr.eval(|pred| match pred {
+                        krates::cfg_expr::Predicate::Target(tp) => tp.matches(&xbox),
+                        _ => false,
+                    })
+                } else {
+                    "x86_64-xboxone-windows-msvc" != cfg
                 }
             } else {
                 false

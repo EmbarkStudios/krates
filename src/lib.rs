@@ -30,6 +30,10 @@
 
 pub use cargo_metadata as cm;
 pub use cfg_expr;
+
+#[cfg(feature = "targets")]
+pub use cfg_expr::target_lexicon;
+
 pub use petgraph;
 pub use semver;
 
@@ -39,7 +43,7 @@ mod builder;
 mod errors;
 mod pkgspec;
 
-pub use builder::{Builder, Cmd, NoneFilter, Scope};
+pub use builder::{Builder, Cmd, NoneFilter, Scope, Target};
 pub use errors::Error;
 pub use pkgspec::PkgSpec;
 
