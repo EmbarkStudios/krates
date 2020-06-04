@@ -15,7 +15,7 @@ keywords = ["cargo", "metadata", "graph"]
 # Used for acquiring and deserializing `cargo metadata` output
 cargo_metadata = "0.10"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.3.0"
+cfg-expr = "0.4"
 # Used to create and traverse graph structures
 petgraph = "0.5"
 # Used for checking version requirements
@@ -30,7 +30,3 @@ serde_json = "1.0"
 [features]
 default = []
 targets = ["cfg-expr/targets"]
-
-[patch.crates-io]
-cfg-expr = { path = "../cfg-expr" }
-target-lexicon = { path = "../target-lexicon" }
