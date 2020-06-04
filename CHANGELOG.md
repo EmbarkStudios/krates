@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.3.0] - 2020-06-04
 ### Changed
 - Updated `cfg-expr` to 0.4.0, and added the `targets` feature, will enable the `targets` feature in cfg-expr, allowing the use of matching cfg expressions against `target_lexicon::Triple` instead of only built-in targets/names.
 
@@ -24,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/EmbarkStudios/krates/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/EmbarkStudios/krates/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/EmbarkStudios/krates/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/EmbarkStudios/krates/releases/tag/0.1.0
