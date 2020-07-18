@@ -19,7 +19,7 @@ cfg-expr = "0.4"
 # Used to create and traverse graph structures
 petgraph = "0.5"
 # Used for checking version requirements
-semver = "0.9" # cargo_metadata uses 0.9
+semver = "0.10"
 
 [dev-dependencies]
 # Used to print colored diffs in case of test failures
