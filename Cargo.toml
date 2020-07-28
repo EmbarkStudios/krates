@@ -13,7 +13,7 @@ keywords = ["cargo", "metadata", "graph"]
 
 [dependencies]
 # Used for acquiring and deserializing `cargo metadata` output
-cargo_metadata = "=0.11.0"
+cargo_metadata = "=0.11.1"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.4"
 # Used to create and traverse graph structures
