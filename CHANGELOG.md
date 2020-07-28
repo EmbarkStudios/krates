@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- Fix to version `0.11.1` of `cargo_metadata`.
+
 ## [0.4.0] - 2020-07-28
 ### Fixed
 - Align `semver` version with the same one used by `cargo_metadata`, again.
