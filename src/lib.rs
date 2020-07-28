@@ -302,6 +302,7 @@ where
                 o => o,
             }) {
                 Ok(i) | Err(i) => {
+                    #[allow(clippy::reversed_empty_ranges)]
                     if i >= raw_nodes.len() || raw_nodes[i].weight.krate.name() != name {
                         0..0
                     } else {
