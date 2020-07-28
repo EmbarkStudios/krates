@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.1] - 2020-07-28
 ### Fixed
 - Fix to version `0.11.1` of `cargo_metadata`.
 
@@ -36,7 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/EmbarkStudios/krates/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/EmbarkStudios/krates/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/EmbarkStudios/krates/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/EmbarkStudios/krates/compare/0.2.0...0.3.0
