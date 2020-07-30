@@ -27,6 +27,7 @@
 
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
+#![allow(clippy::reversed_empty_ranges)]
 
 pub use cargo_metadata as cm;
 pub use cfg_expr;
@@ -302,7 +303,6 @@ where
                 o => o,
             }) {
                 Ok(i) | Err(i) => {
-                    #[allow(clippy::reversed_empty_ranges)]
                     if i >= raw_nodes.len() || raw_nodes[i].weight.krate.name() != name {
                         0..0
                     } else {
