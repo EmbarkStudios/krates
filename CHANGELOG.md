@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.2] - 2020-10-13
 ### Fixed
 - [PR#19](https://github.com/EmbarkStudios/krates/pull/19) Fixed an issue where `git` sources could differ in package id representation between the actual source, and the id used to specify it as a dependency from another package.
 
@@ -40,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.4.2...HEAD
+[0.4.2]: https://github.com/EmbarkStudios/krates/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/EmbarkStudios/krates/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/EmbarkStudios/krates/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/EmbarkStudios/krates/compare/0.3.0...0.3.1
