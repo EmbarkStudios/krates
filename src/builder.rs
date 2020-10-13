@@ -604,7 +604,25 @@ impl Builder {
             .nodes
             .into_iter()
             .map(|rn| {
-                let krate = &packages[packages.binary_search_by(|k| k.id.cmp(&rn.id)).unwrap()];
+                let krate = match packages.binary_search_by(|k| k.id.cmp(&rn.id)) {
+                    Ok(i) => &packages[i],
+                    Err(i) => {
+                        // In the case of git dependencies, the package ids may not line up exactly, due to the
+                        // user facing id containing the revision specifier (eg ?branch=master), whereas the id used to
+                        // reference it as a dependency in other parts of the graph only use the fully resolved
+                        // id with the #<rev>
+                        let probable = &packages[i];
+
+                        let prepr = DecomposedRepr::build(&probable.id);
+                        let drepr = DecomposedRepr::build(&rn.id);
+
+                        if prepr == drepr {
+                            probable
+                        } else {
+                            panic!("Unable to find dependency {} in list of packages", rn.id);
+                        }
+                    }
+                };
 
                 let deps = rn
                     .deps
@@ -614,7 +632,8 @@ impl Builder {
                         // so use a fallback for now. Maybe eventually can do a breaking change to require
                         // 1.41 so this is nicer
                         let dep_kinds = if dn.dep_kinds.is_empty() {
-                            let name = &dn.pkg.repr[..dn.pkg.repr.find(' ').unwrap()];
+                            let dr = DecomposedRepr::build(&dn.pkg);
+                            let name = dr.name;
 
                             krate
                                 .dependencies
@@ -666,7 +685,12 @@ impl Builder {
                 continue;
             }
 
-            debug_assert!(rnode.id == krate.id);
+            #[cfg(debug_assertions)]
+            {
+                let rrepr = DecomposedRepr::build(&rnode.id);
+                let krepr = DecomposedRepr::build(&krate.id);
+                debug_assert!(rrepr == krepr);
+            }
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -816,5 +840,52 @@ impl Builder {
             workspace_members,
             lock_file: md.workspace_root.join("Cargo.lock"),
         })
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct DecomposedRepr<'a> {
+    name: &'a str,
+    version: &'a str,
+    rev: Option<&'a str>,
+}
+
+impl<'a> DecomposedRepr<'a> {
+    fn build(id: &'a cm::PackageId) -> Self {
+        let repr = &id.repr[..];
+        let mut riter = repr.split(' ');
+
+        let name = riter.next().unwrap();
+        let version = riter.next().unwrap();
+        let src = riter.next().unwrap();
+
+        let rev = if src.starts_with("(git+") {
+            src.find('#').map(|i| &src[i + 1..])
+        } else {
+            None
+        };
+
+        Self { name, version, rev }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn decompose_matches() {
+        let lock_repr = cm::PackageId {
+            repr: "fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)".to_owned(),
+        };
+
+        let dep_repr = cm::PackageId {
+            repr: "fuser 0.4.1 (git+https://github.com/cberner/fuser#b2e7622942e52a28ffa85cdaf48e28e982bb6923)".to_owned(),
+        };
+
+        assert_eq!(
+            DecomposedRepr::build(&lock_repr),
+            DecomposedRepr::build(&dep_repr)
+        );
     }
 }
