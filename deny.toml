@@ -7,6 +7,7 @@ ignore = []
 unlicensed = "deny"
 allow = [
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
     "MIT",
 ]
 copyleft = "deny"
