@@ -13,13 +13,13 @@ keywords = ["cargo", "metadata", "graph"]
 
 [dependencies]
 # Used for acquiring and deserializing `cargo metadata` output
-cargo_metadata = "0.11"
+cargo_metadata = "0.12"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.4"
 # Used to create and traverse graph structures
 petgraph = "0.5"
 # Used for checking version requirements
-semver = "0.10" # Using the same version as cargo_metadata
+semver = "0.11" # Using the same version as cargo_metadata
 
 [dev-dependencies]
 # Used to print colored diffs in case of test failures
