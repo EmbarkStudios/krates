@@ -34,6 +34,33 @@ fn main() -> Result<(), krates::Error> {
 }
 ```
 
+`krates` can also be used if you use `cargo` as a dependency. It doesn't depend on `cargo` itself since cargo moves quickly and we don't want to artificially limit which versions you use, but, at least with the current stable `cargo` crate, the following code works well.
+
+```rust
+fn get_metadata(
+    no_default_features: bool,
+    all_features: bool,
+    features: Vec<String>,
+    manifest_path: PathBuf,
+) -> Result<krates::cm::Metadata, anyhow::Error> {
+    let config = cargo::util::Config::default()?;
+    let ws = cargo::core::Workspace::new(&manifest_path, &config)?;
+    let options = cargo::ops::OutputMetadataOptions {
+        features,
+        no_default_features,
+        all_features,
+        no_deps: false,
+        version: 1,
+        filter_platforms: vec![],
+    };
+
+    let md = cargo::ops::output_metadata(&ws, &options)?;
+    let md_value = serde_json::to_value(md)?;
+
+    Ok(serde_json::from_value(md_value)?)
+}
+```
+
 ## Contributing
 
 We welcome community contributions to this project.
