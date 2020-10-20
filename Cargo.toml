@@ -11,11 +11,17 @@ documentation = "https://docs.rs/krates"
 homepage = "https://github.com/EmbarkStudios/krates"
 keywords = ["cargo", "metadata", "graph"]
 
+[features]
+default = []
+# Adds support for filtering target specific dependencies
+targets = ["cfg-expr/targets"]
+#features = []
+
 [dependencies]
-# Used for acquiring and deserializing `cargo metadata` output
+# Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.12"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.4"
+cfg-expr = "0.5"
 # Used to create and traverse graph structures
 petgraph = "0.5"
 # Used for checking version requirements
@@ -26,7 +32,3 @@ semver = "0.11" # Using the same version as cargo_metadata
 difference = "2.0"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
-
-[features]
-default = []
-targets = ["cfg-expr/targets"]
