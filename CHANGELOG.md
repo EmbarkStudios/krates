@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- Added `impl PartialEq<cargo_metadata::DependencyKind> for DepKind`
+
+### Changed
+- Updated `semver`, `cargo_metadata`, and `cfg-expr.
+
 ## [0.4.2] - 2020-10-13
 ### Fixed
 - [PR#19](https://github.com/EmbarkStudios/krates/pull/19) Fixed an issue where `git` sources could differ in package id representation between the actual source, and the id used to specify it as a dependency from another package.

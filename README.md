@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 [![Crates.io](https://img.shields.io/crates/v/krates.svg)](https://crates.io/crates/krates)
 [![Docs](https://docs.rs/krates/badge.svg)](https://docs.rs/krates)
-[![Rust Version](https://img.shields.io/badge/Rust%20Version-1.41.0-blue.svg)](https://forge.rust-lang.org/release/platform-support.html)
+[![Rust Version](https://img.shields.io/badge/Rust%20Version-1.47.0-blue.svg)](https://forge.rust-lang.org/release/platform-support.html)
 [![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 
@@ -31,6 +31,33 @@ fn main() -> Result<(), krates::Error> {
     println!("{:?}", petgraph::dot::Dot::new(krates.graph()));
 
     Ok(())
+}
+```
+
+`krates` can also be used if you use `cargo` as a dependency. It doesn't depend on `cargo` itself since cargo moves quickly and we don't want to artificially limit which versions you use, but, at least with the current stable `cargo` crate, the following code works well.
+
+```rust
+fn get_metadata(
+    no_default_features: bool,
+    all_features: bool,
+    features: Vec<String>,
+    manifest_path: PathBuf,
+) -> Result<krates::cm::Metadata, anyhow::Error> {
+    let config = cargo::util::Config::default()?;
+    let ws = cargo::core::Workspace::new(&manifest_path, &config)?;
+    let options = cargo::ops::OutputMetadataOptions {
+        features,
+        no_default_features,
+        all_features,
+        no_deps: false,
+        version: 1,
+        filter_platforms: vec![],
+    };
+
+    let md = cargo::ops::output_metadata(&ws, &options)?;
+    let md_value = serde_json::to_value(md)?;
+
+    Ok(serde_json::from_value(md_value)?)
 }
 ```
 
