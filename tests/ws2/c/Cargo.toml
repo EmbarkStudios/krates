@@ -24,7 +24,7 @@ web-sys = { version = "0.3.25", default-features = false, features = ["Crypto", 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.2.8", default-features = false }
 
-# You can also use full target triples isntead of a cfg expression
+# You can also use full target triples instead of a cfg expression
 [target.x86_64-unknown-linux-gnu.dependencies]
 nix-xy = { package = "nix", version = "0.16.1" }
 
