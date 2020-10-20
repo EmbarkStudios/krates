@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.5.0] - 2020-10-20
 ### Added
 - Added `impl PartialEq<cargo_metadata::DependencyKind> for DepKind`
 
@@ -47,7 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.4.2...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/EmbarkStudios/krates/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/EmbarkStudios/krates/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/EmbarkStudios/krates/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/EmbarkStudios/krates/compare/0.3.1...0.4.0
