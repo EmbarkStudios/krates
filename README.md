@@ -1,11 +1,11 @@
 # 📦 krates
 
-[![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
+[![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
+[![Embark](https://img.shields.io/badge/discord-ark-%237289da.svg?logo=discord)](https://discord.gg/dAuKfZS)
 [![Crates.io](https://img.shields.io/crates/v/krates.svg)](https://crates.io/crates/krates)
 [![Docs](https://docs.rs/krates/badge.svg)](https://docs.rs/krates)
-[![Rust Version](https://img.shields.io/badge/Rust%20Version-1.47.0-blue.svg)](https://forge.rust-lang.org/release/platform-support.html)
-[![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
-[![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
+[![dependency status](https://deps.rs/repo/github/EmbarkStudios/krates/status.svg)](https://deps.rs/repo/github/EmbarkStudios/krates)
+[![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 
 Creates graphs of crates from [cargo_metadata](https://crates.io/crates/cargo_metadata) metadata.
 
@@ -62,6 +62,8 @@ fn get_metadata(
 ```
 
 ## Contributing
+
+[![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4-ff69b4.svg)](../CODE_OF_CONDUCT.md)
 
 We welcome community contributions to this project.
 
