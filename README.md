@@ -5,6 +5,7 @@
 [![Crates.io](https://img.shields.io/crates/v/krates.svg)](https://crates.io/crates/krates)
 [![Docs](https://docs.rs/krates/badge.svg)](https://docs.rs/krates)
 [![dependency status](https://deps.rs/repo/github/EmbarkStudios/krates/status.svg)](https://deps.rs/repo/github/EmbarkStudios/krates)
+[![Rust Version](https://img.shields.io/badge/Rust%20Version-1.47.0-blue.svg)](https://forge.rust-lang.org/release/platform-support.html)
 [![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 
 Creates graphs of crates from [cargo_metadata](https://crates.io/crates/cargo_metadata) metadata.
