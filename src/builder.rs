@@ -519,7 +519,7 @@ impl Builder {
         E: From<Edge>,
         F: OnFilter,
     {
-        let resolved = md.resolve.ok_or_else(|| Error::NoResolveGraph)?;
+        let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
         let mut packages = md.packages;
         packages.sort_by(|a, b| a.id.cmp(&b.id));
