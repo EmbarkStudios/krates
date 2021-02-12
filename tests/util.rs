@@ -238,11 +238,7 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
 
     if expected != actual {
         println!("{:#?}", grafs.filtered);
-        assert!(
-            false,
-            "{}",
-            difference::Changeset::new(&expected, &actual, "\n")
-        );
+        panic!("{}", difference::Changeset::new(&expected, &actual, "\n"));
     }
 }
 
