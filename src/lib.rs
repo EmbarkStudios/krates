@@ -72,12 +72,12 @@ impl From<cm::DependencyKind> for DepKind {
 
 impl PartialEq<cm::DependencyKind> for DepKind {
     fn eq(&self, other: &cm::DependencyKind) -> bool {
-        match (self, *other) {
-            (Self::Normal, cm::DependencyKind::Normal) => true,
-            (Self::Build, cm::DependencyKind::Build) => true,
-            (Self::Dev, cm::DependencyKind::Development) => true,
-            _ => false,
-        }
+        matches!(
+            (self, *other),
+            (Self::Normal, cm::DependencyKind::Normal)
+                | (Self::Build, cm::DependencyKind::Build)
+                | (Self::Dev, cm::DependencyKind::Development)
+        )
     }
 }
 

@@ -1,7 +1,10 @@
 [advisories]
 vulnerability = "deny"
 unmaintained = "deny"
-ignore = []
+ignore = [
+    # difference is unmaintained
+    "RUSTSEC-2020-0095",
+]
 
 [licenses]
 unlicensed = "deny"

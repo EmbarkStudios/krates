@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- Updated `cfg-expr` to 0.7.0, which brings targets as of 1.50.0
+
 ## [0.5.0] - 2020-10-20
 ### Added
 - Added `impl PartialEq<cargo_metadata::DependencyKind> for DepKind`
