@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.6.0] - 2021-02-12
 ### Changed
 - Updated `cfg-expr` to 0.7.0, which brings targets as of 1.50.0
 
@@ -51,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/EmbarkStudios/krates/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/EmbarkStudios/krates/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/EmbarkStudios/krates/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/EmbarkStudios/krates/compare/0.4.0...0.4.1
