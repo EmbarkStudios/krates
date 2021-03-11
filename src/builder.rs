@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// An alternative to cargo_metadata::MetadataCommand which allows correct
+/// An alternative to [`cargo_metadata::MetadataCommand`] which allows correct
 /// feature usage, as well as ensuring that the command can run successfully
 /// regardless of where it is executed and on what.
 #[derive(Default, Debug)]
@@ -219,7 +219,7 @@ pub trait OnFilter {
     fn filtered(&mut self, krate: cm::Package);
 }
 
-/// For when you just want to satisfy OnFilter without doing anything
+/// For when you just want to satisfy [`OnFilter`] without doing anything
 pub struct NoneFilter;
 impl OnFilter for NoneFilter {
     fn filtered(&mut self, _: cm::Package) {}
@@ -235,7 +235,7 @@ where
 }
 
 /// A builder used to create a Krates graph, either by running a cargo metadata
-/// command, or using an already deserialized `cargo_metadata::Metadata`
+/// command, or using an already deserialized [`cargo_metadata::Metadata`]
 #[derive(Default)]
 pub struct Builder {
     target_filters: Vec<TargetFilter>,
@@ -264,7 +264,7 @@ impl Builder {
     /// depended on by a crate in the workspace, `cc` will not end up in the
     /// final `Krates` graph.
     ///
-    /// Note that ignoring `DepKind::Dev` for `Scope::NonWorkspace` is
+    /// Note that ignoring [`DepKind::Dev`] for [`Scope::NonWorkspace`] is
     /// meaningless as dev dependencies are not resolved by cargo for transitive
     /// dependencies.
     pub fn ignore_kind(&mut self, kind: DepKind, scope: Scope) -> &mut Self {
@@ -337,7 +337,7 @@ impl Builder {
     ///
     /// If you specify only a single path, and that path is actually to a
     /// a workspace's virtual manifest, the graph will be the same as if
-    /// invlude_workspace_crates was not specified.
+    /// [`Builder::include_workspace_crates`] was not specified.
     ///
     /// ```
     /// # use krates::{Builder, DepKind, Scope};
@@ -422,7 +422,7 @@ impl Builder {
         self
     }
 
-    /// Builds a `Krates` graph using metadata that be retrieved via the
+    /// Builds a [`Krates`] graph using metadata that be retrieved via the
     /// specified metadata command. If `on_filter` is specified, it will be
     /// called with each package that was filtered from the graph, if any.
     ///
@@ -487,7 +487,7 @@ impl Builder {
         self.build_with_metadata(metadata, on_filter)
     }
 
-    /// Builds a `Krates` graph using the specified metadata. If `on_filter` is
+    /// Builds a [`Krates`] graph using the specified metadata. If `on_filter` is
     /// specified, it will be called with each package that was filtered from
     /// the graph, if any.
     ///
@@ -674,14 +674,14 @@ impl Builder {
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
         while let Some(pid) = pid_stack.pop() {
-            let is_in_workspace = workspace_members.binary_search(&pid).is_ok();
+            let is_in_workspace = workspace_members.binary_search(pid).is_ok();
 
-            let krate_index = nodes.binary_search_by(|n| n.id.cmp(&pid)).unwrap();
+            let krate_index = nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap();
 
             let rnode = &nodes[krate_index];
             let krate = &packages[krate_index];
 
-            if exclude.iter().any(|exc| exc.matches(&krate)) {
+            if exclude.iter().any(|exc| exc.matches(krate)) {
                 continue;
             }
 
@@ -733,7 +733,7 @@ impl Builder {
                                 }
 
                                 let matched = if cfg.starts_with("cfg(") {
-                                    match cfg_expr::Expression::parse(&cfg) {
+                                    match cfg_expr::Expression::parse(cfg) {
                                         Ok(expr) => {
                                             // We only need to focus on target predicates because they are
                                             // the only type of predicate allowed by cargo at the moment
@@ -828,7 +828,7 @@ impl Builder {
                 for (dep, tid) in edges {
                     // We might not have a target in the case of explicitly excluded
                     // packages
-                    if let Some(target) = get(&graph, &tid) {
+                    if let Some(target) = get(&graph, tid) {
                         graph.add_edge(srcid, target, E::from(dep));
                     }
                 }

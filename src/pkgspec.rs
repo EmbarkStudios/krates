@@ -115,7 +115,7 @@ impl std::str::FromStr for PkgSpec {
 
                             Ok((
                                 validate_name(&nv[..ind])?,
-                                Some(Version::parse(&nv[ind + 1..]).map_err(|_| {
+                                Some(Version::parse(&nv[ind + 1..]).map_err(|_e| {
                                     Error::InvalidPkgSpec("failed to parse version")
                                 })?),
                             ))
@@ -128,7 +128,7 @@ impl std::str::FromStr for PkgSpec {
                                     if nv.chars().next().unwrap().is_alphabetic() {
                                         Ok((validate_name(nv)?, None))
                                     } else {
-                                        let version = Version::parse(&nv).map_err(|_| {
+                                        let version = Version::parse(nv).map_err(|_e| {
                                             Error::InvalidPkgSpec("failed to parse version")
                                         })?;
 

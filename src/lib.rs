@@ -1,4 +1,4 @@
-//! Transforms the output of `cargo metadata` into a graph, `Krates`, where
+//! Transforms the output of [`cargo metadata`] into a graph, [`Krates`], where
 //! crates are nodes and dependency links are edges.
 //!
 //! ```no_run
@@ -25,8 +25,58 @@
 //! }
 //! ```
 
-#![warn(clippy::all)]
-#![warn(rust_2018_idioms)]
+// BEGIN - Embark standard lints v0.3
+// do not change or add/remove here, but one can add exceptions after this section
+// for more info see: <https://github.com/EmbarkStudios/rust-ecosystem/issues/59>
+#![deny(unsafe_code)]
+#![warn(
+    clippy::all,
+    clippy::await_holding_lock,
+    clippy::dbg_macro,
+    clippy::debug_assert_with_mut_call,
+    clippy::doc_markdown,
+    clippy::empty_enum,
+    clippy::enum_glob_use,
+    clippy::exit,
+    clippy::explicit_into_iter_loop,
+    clippy::filter_map_next,
+    clippy::fn_params_excessive_bools,
+    clippy::if_let_mutex,
+    clippy::imprecise_flops,
+    clippy::inefficient_to_string,
+    clippy::large_types_passed_by_value,
+    clippy::let_unit_value,
+    clippy::linkedlist,
+    clippy::lossy_float_literal,
+    clippy::macro_use_imports,
+    clippy::map_err_ignore,
+    clippy::map_flatten,
+    clippy::map_unwrap_or,
+    clippy::match_on_vec_items,
+    clippy::match_same_arms,
+    clippy::match_wildcard_for_single_variants,
+    clippy::mem_forget,
+    clippy::mismatched_target_os,
+    clippy::needless_borrow,
+    clippy::needless_continue,
+    clippy::option_option,
+    clippy::pub_enum_variant_names,
+    clippy::ref_option_ref,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::string_add_assign,
+    clippy::string_add,
+    clippy::string_to_string,
+    clippy::suboptimal_flops,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unnested_or_patterns,
+    clippy::unused_self,
+    clippy::verbose_file_reads,
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms
+)]
+// END - Embark standard lints v0.3
 
 pub use cargo_metadata as cm;
 pub use cfg_expr;
@@ -34,6 +84,7 @@ pub use cfg_expr;
 #[cfg(feature = "targets")]
 pub use cfg_expr::target_lexicon;
 
+use cm::DependencyKind as DK;
 pub use petgraph;
 pub use semver;
 
@@ -44,7 +95,7 @@ mod builder;
 mod errors;
 mod pkgspec;
 
-pub use builder::{Builder, Cmd, NoneFilter, Scope, Target};
+pub use builder::{Builder, Cmd, NoneFilter, OnFilter, Scope, Target};
 pub use errors::Error;
 pub use pkgspec::PkgSpec;
 
@@ -60,24 +111,22 @@ pub enum DepKind {
     Dev,
 }
 
-impl From<cm::DependencyKind> for DepKind {
-    fn from(dk: cm::DependencyKind) -> Self {
+impl From<DK> for DepKind {
+    fn from(dk: DK) -> Self {
         match dk {
-            cm::DependencyKind::Normal => Self::Normal,
-            cm::DependencyKind::Build => Self::Build,
-            cm::DependencyKind::Development => Self::Dev,
-            _ => unreachable!(),
+            DK::Normal => Self::Normal,
+            DK::Build => Self::Build,
+            DK::Development => Self::Dev,
+            DK::Unknown => unreachable!(),
         }
     }
 }
 
-impl PartialEq<cm::DependencyKind> for DepKind {
-    fn eq(&self, other: &cm::DependencyKind) -> bool {
+impl PartialEq<DK> for DepKind {
+    fn eq(&self, other: &DK) -> bool {
         matches!(
             (self, *other),
-            (Self::Normal, cm::DependencyKind::Normal)
-                | (Self::Build, cm::DependencyKind::Build)
-                | (Self::Dev, cm::DependencyKind::Development)
+            (Self::Normal, DK::Normal) | (Self::Build, DK::Build) | (Self::Dev, DK::Development)
         )
     }
 }
@@ -263,7 +312,7 @@ impl KrateDetails for cm::Package {
     }
 }
 
-/// If the node type N supports `KrateDetails`, we can also iterator over krates
+/// If the node type N supports [`KrateDetails`], we can also iterator over krates
 /// of a given name and or version
 impl<N, E> Krates<N, E>
 where
@@ -309,7 +358,7 @@ where
         let raw_nodes = self.graph.raw_nodes();
 
         let range =
-            match raw_nodes.binary_search_by(|node| match node.weight.krate.name().cmp(&name) {
+            match raw_nodes.binary_search_by(|node| match node.weight.krate.name().cmp(name) {
                 std::cmp::Ordering::Equal => node.weight.krate.version().cmp(&lowest),
                 o => o,
             }) {
