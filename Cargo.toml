@@ -20,8 +20,6 @@ targets = ["cfg-expr/targets"]
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.13"
-# Used for Cargo.lock paths
-camino = "1"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.7"
 # Used to create and traverse graph structures

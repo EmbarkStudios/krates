@@ -28,7 +28,6 @@
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
 
-pub use camino;
 pub use cargo_metadata as cm;
 pub use cfg_expr;
 
@@ -38,7 +37,7 @@ pub use cfg_expr::target_lexicon;
 pub use petgraph;
 pub use semver;
 
-use camino::{Utf8Path, Utf8PathBuf};
+pub use cm::camino::{self, Utf8Path, Utf8PathBuf};
 use petgraph::{graph::NodeIndex, Direction};
 
 mod builder;
