@@ -28,6 +28,7 @@
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
 
+pub use camino;
 pub use cargo_metadata as cm;
 pub use cfg_expr;
 
@@ -37,6 +38,7 @@ pub use cfg_expr::target_lexicon;
 pub use petgraph;
 pub use semver;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use petgraph::{graph::NodeIndex, Direction};
 
 mod builder;
@@ -152,7 +154,7 @@ impl fmt::Display for Edge {
 pub struct Krates<N = cm::Package, E = Edge> {
     graph: petgraph::Graph<Node<N>, E>,
     workspace_members: Vec<Kid>,
-    lock_file: std::path::PathBuf,
+    lock_file: Utf8PathBuf,
 }
 
 #[allow(clippy::len_without_is_empty)]
@@ -166,7 +168,7 @@ impl<N, E> Krates<N, E> {
     /// Path to the Cargo.lock file for the crate or workspace where the graph
     /// metadata was acquired from
     #[inline]
-    pub fn lock_path(&self) -> &std::path::PathBuf {
+    pub fn lock_path(&self) -> &Utf8Path {
         &self.lock_file
     }
 
