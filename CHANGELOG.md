@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- Updated `cargo_metadata` to 0.13.0, which uses [`camino`](https://docs.rs/camino/1.0.2/camino/) for path information, so it is reexported and used for `Krates::lock_path`
+
 ## [0.6.0] - 2021-02-12
 ### Changed
 - Updated `cfg-expr` to 0.7.0, which brings targets as of 1.50.0
