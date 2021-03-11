@@ -376,18 +376,15 @@ impl Builder {
     /// only do this for one platlform.
     ///
     /// By using this method, you can specify one or more targets by their
-    /// triple, as well as any
-    /// [`target_features`](https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute)
-    /// that you
-    /// [promise](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)
+    /// triple, as well as any [`target_features`](https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute)
+    /// that you [promise](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)
     /// are enabled for that target to filter dependencies by. If any of the
     /// specified targets matches a target specific dependency, it will be
     /// included in the graph.
     ///
-    /// When specifying a target triple, only builtin targets of rustc
-    /// (as of 1.40) can be used to evaluate `cfg()` expressions. If the triple
-    /// is not recognized, it will only be evaluated against
-    /// `[target.<triple-or-json>.<|build-|dev->dependencies]`.
+    /// When specifying a target triple, only builtin targets of rustc can be
+    /// used to evaluate `cfg()` expressions. If the triple is not recognized,
+    /// it will only be evaluated against `[target.<triple-or-json>.<|build-|dev->dependencies]`.
     ///
     /// ```
     /// # use krates::{Builder, DepKind, Scope};
