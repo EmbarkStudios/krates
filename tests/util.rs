@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use similar::{ChangeTag, TextDiff};
 use std::{fmt, path::Path};
 
 pub struct JustId(krates::Kid);
@@ -224,6 +225,21 @@ pub struct EdgeFilter<'a> {
     pub cfg: Option<&'a str>,
 }
 
+fn diff(orig_text: &str, edit_text: &str) -> String {
+    let mut buf = String::new();
+    let diff = TextDiff::from_lines(orig_text, edit_text);
+
+    for change in diff.iter_all_changes() {
+        let c = match change.tag() {
+            ChangeTag::Delete => format!("\x1b[91m{}\x1b[0m", change.value()),
+            ChangeTag::Insert => format!("\x1b[92m{}\x1b[0m", change.value()),
+            ChangeTag::Equal => change.value().to_string(),
+        };
+        buf.push_str(&c);
+    }
+    buf
+}
+
 pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
     grafs: Grafs,
     node_filter: NF,
@@ -238,7 +254,7 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
 
     if expected != actual {
         println!("{:#?}", grafs.filtered);
-        panic!("{}", difference::Changeset::new(&expected, &actual, "\n"));
+        panic!("{}", diff(&expected, &actual));
     }
 }
 
