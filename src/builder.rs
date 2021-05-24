@@ -74,11 +74,11 @@ impl Cmd {
     }
 }
 
-impl Into<cm::MetadataCommand> for Cmd {
-    fn into(mut self) -> cm::MetadataCommand {
+impl From<Cmd> for cm::MetadataCommand {
+    fn from(mut cmd: Cmd) -> cm::MetadataCommand {
         let mut mdc = cm::MetadataCommand::new();
 
-        if let Some(cp) = self.cargo_path {
+        if let Some(cp) = cmd.cargo_path {
             mdc.cargo_path(cp);
         }
 
@@ -87,12 +87,12 @@ impl Into<cm::MetadataCommand> for Cmd {
         // edge case where you can run cargo metadata from a directory outside
         // of a workspace which could fail if eg. there is a reference to a
         // registry that is defined in the workspace's .cargo/config
-        if let Some(mp) = self.manifest_path {
-            self.current_dir = Some(mp.parent().unwrap().to_owned());
+        if let Some(mp) = cmd.manifest_path {
+            cmd.current_dir = Some(mp.parent().unwrap().to_owned());
             mdc.manifest_path("Cargo.toml");
         }
 
-        if let Some(cd) = self.current_dir {
+        if let Some(cd) = cmd.current_dir {
             mdc.current_dir(cd);
         }
 
@@ -100,30 +100,30 @@ impl Into<cm::MetadataCommand> for Cmd {
         // does not handle features correctly, eg. you cannot disable default
         // and set specific ones at the same time
         // https://github.com/oli-obk/cargo_metadata/issues/79
-        self.features.sort();
-        self.features.dedup();
+        cmd.features.sort();
+        cmd.features.dedup();
 
         let mut opts = Vec::with_capacity(
-            self.features.len()
-                + self.other_options.len()
-                + if self.no_default_features { 1 } else { 0 }
-                + if self.all_features { 1 } else { 0 },
+            cmd.features.len()
+                + cmd.other_options.len()
+                + if cmd.no_default_features { 1 } else { 0 }
+                + if cmd.all_features { 1 } else { 0 },
         );
 
-        if self.no_default_features {
+        if cmd.no_default_features {
             opts.push("--no-default-features".to_owned());
         }
 
-        if self.all_features {
+        if cmd.all_features {
             opts.push("--all-features".to_owned());
         }
 
-        if !self.features.is_empty() {
+        if !cmd.features.is_empty() {
             opts.push("--features".to_owned());
-            opts.append(&mut self.features);
+            opts.append(&mut cmd.features);
         }
 
-        opts.append(&mut self.other_options);
+        opts.append(&mut cmd.other_options);
         mdc.other_options(opts);
 
         mdc
