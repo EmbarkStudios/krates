@@ -179,7 +179,7 @@ impl std::str::FromStr for PkgSpec {
                 }
             }
         } else {
-            let (name, version) = name_and_or_version(Some(&s[..]), None)?;
+            let (name, version) = name_and_or_version(Some(s), None)?;
 
             Ok(Self {
                 url: None,
