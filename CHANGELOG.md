@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.8.0] - 2021-07-16
 ### Changed
 - [PR#32](https://github.com/EmbarkStudios/krates/pull/32) replaced the use of `difference` with `similar`. Thanks [@j-k](https://github.com/06kellyjac)!
 - [PR#33](https://github.com/EmbarkStudios/krates/pull/33) updated `semver`, `cargo_metadata`, `petgraph`, and `cfg-expr` to their latest versions.
@@ -60,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/EmbarkStudios/krates/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/EmbarkStudios/krates/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/EmbarkStudios/krates/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/EmbarkStudios/krates/compare/0.4.2...0.5.0
