@@ -68,7 +68,7 @@ fn iter_matches() {
         .unwrap();
 
     {
-        let any = krates::semver::VersionReq::any();
+        let any = krates::semver::VersionReq::STAR;
         let mut iter = krates.search_matches("winapi", &any);
 
         let win28 = iter.next().unwrap();

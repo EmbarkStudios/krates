@@ -19,13 +19,13 @@ targets = ["cfg-expr/targets"]
 
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = "0.13"
+cargo_metadata = "0.14"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.7"
+cfg-expr = "0.8"
 # Used to create and traverse graph structures
-petgraph = "0.5"
+petgraph = "0.6"
 # Used for checking version requirements
-semver = "0.11" # Using the same version as cargo_metadata
+semver = "1.0"
 
 [dev-dependencies]
 # Used to print colored diffs in case of test failures
