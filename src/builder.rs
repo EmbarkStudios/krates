@@ -17,6 +17,32 @@ pub struct Cmd {
     other_options: Vec<String>,
     all_features: bool,
     no_default_features: bool,
+    frozen: bool,
+    locked: bool,
+    offline: bool,
+}
+
+#[derive(Copy, Clone)]
+pub struct LockOptions {
+    /// Requires that the Cargo.lock file is up-to-date. If the lock file is
+    /// missing, or it needs to be updated, Cargo will exit with an error.
+    /// Prevents Cargo from attempting to access the network to determine if it
+    /// is out-of-date.
+    pub frozen: bool,
+    /// Requires that the Cargo.lock file is up-to-date. If the lock file is
+    /// missing, or it needs to be updated, Cargo will exit with an error.
+    pub locked: bool,
+    /// Prevents Cargo from accessing the network for any reason. Without this
+    /// flag, Cargo will stop with an error if it needs to access the network
+    /// and the network is not available. With this flag, Cargo will attempt to
+    /// proceed without the network if possible.
+    ///
+    /// Beware that this may result in different dependency resolution than
+    /// online mode. Cargo will restrict itself to crates that are downloaded
+    /// locally, even if there might be a newer version as indicated in the
+    /// local copy of the index. See the [cargo fetch](https://doc.rust-lang.org/cargo/commands/cargo-fetch.html)
+    /// command to download dependencies before going offline.
+    pub offline: bool,
 }
 
 impl Cmd {
@@ -63,6 +89,16 @@ impl Cmd {
     /// Enables specific features. See the **NOTE** for `no_default_features`
     pub fn features(&mut self, feats: impl IntoIterator<Item = String>) -> &mut Self {
         self.features.extend(feats);
+        self
+    }
+
+    /// Sets the various [lock options](https://doc.rust-lang.org/cargo/commands/cargo-metadata.html#manifest-options)
+    /// for determining if cargo can access the network and if the lockfile must
+    /// be present and can be modified
+    pub fn lock_opts(&mut self, lopts: LockOptions) -> &mut Self {
+        self.frozen = lopts.frozen;
+        self.locked = lopts.locked;
+        self.offline = lopts.offline;
         self
     }
 
@@ -121,6 +157,18 @@ impl From<Cmd> for cm::MetadataCommand {
         if !cmd.features.is_empty() {
             opts.push("--features".to_owned());
             opts.append(&mut cmd.features);
+        }
+
+        if cmd.frozen {
+            opts.push("--frozen".to_owned());
+        }
+
+        if cmd.locked {
+            opts.push("--locked".to_owned());
+        }
+
+        if cmd.offline {
+            opts.push("--offline".to_owned());
         }
 
         opts.append(&mut cmd.other_options);

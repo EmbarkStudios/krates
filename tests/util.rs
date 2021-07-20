@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use similar::{ChangeTag, TextDiff};
 use std::{fmt, path::Path};
 
 pub struct JustId(krates::Kid);
@@ -225,21 +224,6 @@ pub struct EdgeFilter<'a> {
     pub cfg: Option<&'a str>,
 }
 
-fn diff(orig_text: &str, edit_text: &str) -> String {
-    let mut buf = String::new();
-    let diff = TextDiff::from_lines(orig_text, edit_text);
-
-    for change in diff.iter_all_changes() {
-        let c = match change.tag() {
-            ChangeTag::Delete => format!("\x1b[91m{}\x1b[0m", change.value()),
-            ChangeTag::Insert => format!("\x1b[92m{}\x1b[0m", change.value()),
-            ChangeTag::Equal => change.value().to_string(),
-        };
-        buf.push_str(&c);
-    }
-    buf
-}
-
 pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
     grafs: Grafs,
     node_filter: NF,
@@ -249,26 +233,10 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
 
     use krates::petgraph::dot::Dot;
 
-    let expected = format!("{}", Dot::new(&expected));
-    let actual = format!("{}", Dot::new(&grafs.actual.graph()));
-
-    if expected != actual {
-        println!("{:#?}", grafs.filtered);
-        panic!("{}", diff(&expected, &actual));
-    }
+    similar_asserts::assert_str_eq!(
+        Dot::new(&expected),
+        Dot::new(&grafs.actual.graph()),
+        "filtered: {:#?}",
+        grafs.filtered
+    );
 }
-
-// pub fn assert_filtered(actual: &[krates::Kid], expected: &mut [krates::Kid]) {
-//     expected.sort();
-
-//     if actual != expected {
-//         let expected = format!("{:#?}", expected);
-//         let actual = format!("{:#?}", actual);
-
-//         assert!(
-//             false,
-//             "{}",
-//             difference::Changeset::new(&expected, &actual, "\n")
-//         );
-//     }
-// }
