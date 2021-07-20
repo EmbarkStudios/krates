@@ -257,18 +257,3 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
         panic!("{}", diff(&expected, &actual));
     }
 }
-
-// pub fn assert_filtered(actual: &[krates::Kid], expected: &mut [krates::Kid]) {
-//     expected.sort();
-
-//     if actual != expected {
-//         let expected = format!("{:#?}", expected);
-//         let actual = format!("{:#?}", actual);
-
-//         assert!(
-//             false,
-//             "{}",
-//             difference::Changeset::new(&expected, &actual, "\n")
-//         );
-//     }
-// }
