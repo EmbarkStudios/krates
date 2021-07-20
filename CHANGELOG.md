@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#34](https://github.com/EmbarkStudios/krates/pull/34) added support for the [`--locked`, `--offline`, and `--frozen`](https://doc.rust-lang.org/cargo/commands/cargo-metadata.html#manifest-options) arguments.
+
 ## [0.8.0] - 2021-07-16
 ### Changed
 - [PR#32](https://github.com/EmbarkStudios/krates/pull/32) replaced the use of `difference` with `similar`. Thanks [@j-k](https://github.com/06kellyjac)!
