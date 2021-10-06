@@ -4,7 +4,7 @@ use semver::Version;
 /// A package specification. See
 /// [cargo pkgid](https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html)
 /// for more information on this.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PkgSpec {
     pub name: String,
     pub version: Option<Version>,

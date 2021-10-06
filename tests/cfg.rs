@@ -8,7 +8,7 @@ fn ignores_non_linux() {
     let mut kb = krates::Builder::new();
     kb.include_targets(targets::ALL_BUILTINS.iter().filter_map(|ti| {
         if ti.os == Some(targets::Os::linux) {
-            Some((ti.triple, Vec::new()))
+            Some((ti.triple.clone(), Vec::new()))
         } else {
             None
         }
@@ -41,7 +41,7 @@ fn ignores_non_linux() {
 
                     true
                 } else {
-                    !targets.iter().any(|ti| ti.triple == cfg)
+                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
                 }
             } else {
                 false
@@ -64,7 +64,7 @@ fn ignores_non_tier1() {
         targets::get_builtin_target_by_triple("x86_64-unknown-linux-gnu").unwrap(),
     ];
 
-    kb.include_targets(targets.iter().map(|ti| (ti.triple, vec![])));
+    kb.include_targets(targets.iter().map(|ti| (ti.triple.clone(), vec![])));
 
     let grafs = build("all-features.json", kb).unwrap();
 
@@ -88,7 +88,7 @@ fn ignores_non_tier1() {
 
                     true
                 } else {
-                    !targets.iter().any(|ti| ti.triple == cfg)
+                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
                 }
             } else {
                 false
@@ -103,7 +103,7 @@ fn ignores_non_wasm() {
 
     let targets = vec![targets::get_builtin_target_by_triple("wasm32-unknown-unknown").unwrap()];
 
-    kb.include_targets(targets.iter().map(|ti| (ti.triple, vec![])));
+    kb.include_targets(targets.iter().map(|ti| (ti.triple.clone(), vec![])));
 
     let grafs = build("all-features.json", kb).unwrap();
 
@@ -127,7 +127,7 @@ fn ignores_non_wasm() {
 
                     true
                 } else {
-                    !targets.iter().any(|ti| ti.triple == cfg)
+                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
                 }
             } else {
                 false

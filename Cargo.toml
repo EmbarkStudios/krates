@@ -2,7 +2,10 @@
 name = "krates"
 version = "0.8.1"
 description = "Create graphs of crates gathered from cargo metadata"
-authors = ["Embark <opensource@embark-studios.com>", "Jake Shadle <jake.shadle@embark-studios.com>"]
+authors = [
+    "Embark <opensource@embark-studios.com>",
+    "Jake Shadle <jake.shadle@embark-studios.com>",
+]
 edition = "2018"
 repository = "https://github.com/EmbarkStudios/krates"
 license = "MIT OR Apache-2.0"
@@ -21,7 +24,7 @@ targets = ["cfg-expr/targets"]
 # Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.14"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.8"
+cfg-expr = "0.9"
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements

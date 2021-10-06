@@ -178,8 +178,9 @@ impl From<Cmd> for cm::MetadataCommand {
     }
 }
 
+#[derive(Clone)]
 pub enum Target {
-    Builtin(&'static cfg_expr::targets::TargetInfo<'static>),
+    Builtin(&'static cfg_expr::targets::TargetInfo),
     #[cfg(feature = "targets")]
     Triple(cfg_expr::target_lexicon::Triple),
     Unknown(String),
@@ -205,6 +206,19 @@ where
                 #[cfg(not(feature = "targets"))]
                 Self::Unknown(triple.to_owned())
             }
+        }
+    }
+}
+
+use std::fmt;
+
+impl fmt::Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Builtin(bi) => f.write_str(bi.triple.as_str()),
+            #[cfg(feature = "targets")]
+            Self::Triple(trip) => write!(f, "{}", trip),
+            Self::Unknown(unknown) => f.write_str(&unknown),
         }
     }
 }
@@ -238,7 +252,7 @@ impl TargetFilter {
 
     fn matches_triple(&self, triple: &str) -> bool {
         match &self.inner {
-            Target::Builtin(bi) => bi.triple == triple,
+            Target::Builtin(bi) => bi.triple.as_str() == triple,
             #[cfg(feature = "targets")]
             Target::Triple(trip) => {
                 let as_triple = format!("{}", trip);
