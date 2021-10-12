@@ -331,10 +331,10 @@ where
     ///     }
     /// }
     /// ```
-    pub fn search_matches<'a: 'b, 'b>(
-        &'b self,
-        name: &'a str,
-        req: &'a semver::VersionReq,
+    pub fn search_matches(
+        &self,
+        name: &str,
+        req: semver::VersionReq,
     ) -> impl Iterator<Item = (NodeId, &Node<N>)> {
         self.krates_by_name(name)
             .filter(move |(_, n)| req.matches(n.krate.version()))
