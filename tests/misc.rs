@@ -69,7 +69,7 @@ fn iter_matches() {
 
     {
         let any = krates::semver::VersionReq::STAR;
-        let mut iter = krates.search_matches("winapi", &any);
+        let mut iter = krates.search_matches("winapi", any);
 
         let win28 = iter.next().unwrap();
         assert_eq!(win28.1.krate.name, "winapi");
@@ -90,7 +90,7 @@ fn iter_matches() {
 
     {
         let two = krates::semver::VersionReq::parse("=0.2").unwrap();
-        let mut iter = krates.search_matches("winapi", &two);
+        let mut iter = krates.search_matches("winapi", two);
 
         let win28 = iter.next().unwrap();
         assert_eq!(win28.1.krate.name, "winapi");
@@ -104,7 +104,7 @@ fn iter_matches() {
 
     {
         let grtr = krates::semver::VersionReq::parse(">0.2.8").unwrap();
-        let mut iter = krates.search_matches("winapi", &grtr);
+        let mut iter = krates.search_matches("winapi", grtr);
 
         let win38 = iter.next().unwrap();
         assert_eq!(win38.1.krate.name, "winapi");
@@ -118,7 +118,7 @@ fn iter_matches() {
 
     {
         let none = krates::semver::VersionReq::parse("=0.4").unwrap();
-        let mut iter = krates.search_matches("winapi", &none);
+        let mut iter = krates.search_matches("winapi", none);
 
         assert!(iter.next().is_none());
     }

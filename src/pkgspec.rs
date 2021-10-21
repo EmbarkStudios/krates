@@ -4,7 +4,7 @@ use semver::Version;
 /// A package specification. See
 /// [cargo pkgid](https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html)
 /// for more information on this.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PkgSpec {
     pub name: String,
     pub version: Option<Version>,
@@ -151,32 +151,29 @@ impl std::str::FromStr for PkgSpec {
                 std::borrow::Cow::Owned(format!("cargo://{}", s))
             };
 
-            match url.find('#') {
-                Some(ind) => {
-                    if ind == url.len() - 1 {
-                        return Err(Error::InvalidPkgSpec("package spec cannot end with '#'"));
-                    }
-
-                    let url_no_frag = (&url[..ind]).to_owned();
-
-                    let (name, version) =
-                        name_and_or_version(Some(&url[ind + 1..]), Some(&url_no_frag))?;
-
-                    Ok(Self {
-                        url: Some(url_no_frag),
-                        name,
-                        version,
-                    })
+            if let Some(ind) = url.find('#') {
+                if ind == url.len() - 1 {
+                    return Err(Error::InvalidPkgSpec("package spec cannot end with '#'"));
                 }
-                None => {
-                    let (name, version) = name_and_or_version(None, Some(&url))?;
 
-                    Ok(Self {
-                        url: Some(url.into_owned()),
-                        name,
-                        version,
-                    })
-                }
+                let url_no_frag = (&url[..ind]).to_owned();
+
+                let (name, version) =
+                    name_and_or_version(Some(&url[ind + 1..]), Some(&url_no_frag))?;
+
+                Ok(Self {
+                    url: Some(url_no_frag),
+                    name,
+                    version,
+                })
+            } else {
+                let (name, version) = name_and_or_version(None, Some(&url))?;
+
+                Ok(Self {
+                    url: Some(url.into_owned()),
+                    name,
+                    version,
+                })
             }
         } else {
             let (name, version) = name_and_or_version(Some(s), None)?;
@@ -307,7 +304,7 @@ mod test {
         for nope in &["crates.io#foo", "crates.io#1.2.3"] {
             match nope.parse::<PkgSpec>().unwrap_err() {
                 Error::InvalidPkgSpec(err) => {
-                    assert_eq!(err, "found an invalid character for the package name")
+                    assert_eq!(err, "found an invalid character for the package name");
                 }
                 nope => panic!("didn't expect {:?}", nope),
             }
