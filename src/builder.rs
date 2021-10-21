@@ -110,6 +110,7 @@ impl Cmd {
     }
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<Cmd> for cm::MetadataCommand {
     fn from(mut cmd: Cmd) -> cm::MetadataCommand {
         let mut mdc = cm::MetadataCommand::new();
@@ -218,7 +219,7 @@ impl fmt::Display for Target {
             Self::Builtin(bi) => f.write_str(bi.triple.as_str()),
             #[cfg(feature = "targets")]
             Self::Triple(trip) => write!(f, "{}", trip),
-            Self::Unknown(unknown) => f.write_str(&unknown),
+            Self::Unknown(unknown) => f.write_str(unknown),
         }
     }
 }
@@ -292,7 +293,7 @@ where
     F: FnMut(cm::Package),
 {
     fn filtered(&mut self, krate: cm::Package) {
-        self(krate)
+        self(krate);
     }
 }
 
@@ -785,7 +786,7 @@ impl Builder {
                                     return Some((
                                         Edge {
                                             kind: dk.kind,
-                                            cfg: Some(cfg.to_owned()),
+                                            cfg: Some(cfg.clone()),
                                         },
                                         &rdep.pkg,
                                     ));
@@ -820,7 +821,7 @@ impl Builder {
                                     Some((
                                         Edge {
                                             kind: dk.kind,
-                                            cfg: Some(cfg.to_owned()),
+                                            cfg: Some(cfg.clone()),
                                         },
                                         &rdep.pkg,
                                     ))
