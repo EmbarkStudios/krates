@@ -354,7 +354,7 @@ where
     ///
     /// fn print(krates: &Krates, name: &str) {
     ///     let req = VersionReq::parse("=0.2").unwrap();
-    ///     for vs in krates.search_matches(name, &req).map(|(_, kn)| &kn.krate.version) {
+    ///     for vs in krates.search_matches(name, req.clone()).map(|(_, kn)| &kn.krate.version) {
     ///         println!("found version {} matching {}!", vs, req);
     ///     }
     /// }
