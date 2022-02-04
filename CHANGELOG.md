@@ -1,3 +1,5 @@
+<!-- markdownlint-disable blanks-around-headings blanks-around-lists no-duplicate-heading -->
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#36](https://github.com/EmbarkStudios/krates/pull/36) updated `cfg-expr` and fixed up crates.io metadata.
+
 ## [0.9.0] - 2021-10-21
 ### Fixed
 - [PR#35](https://github.com/EmbarkStudios/krates/pull/35) changed `Krates::search_matches` to get rid of unnecessary lifetime coupling.
