@@ -462,7 +462,7 @@ impl Builder {
     ///     "wasm32-unknown-unknown",
     /// ];
     ///
-    /// Builder::new().include_targets(targets.into_iter().map(|triple| {
+    /// Builder::new().include_targets(targets.iter().map(|triple| {
     ///     if triple.starts_with("wasm32") {
     ///         (*triple, vec!["atomics".to_owned()])
     ///     } else {
