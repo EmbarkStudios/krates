@@ -1,4 +1,6 @@
-# 📦 krates
+<div align="center">
+
+# `📦 krates`
 
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 [![Embark](https://img.shields.io/badge/discord-ark-%237289da.svg?logo=discord)](https://discord.gg/dAuKfZS)
@@ -8,6 +10,8 @@
 [![Build Status](https://github.com/EmbarkStudios/krates/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/krates/actions?workflow=CI)
 
 Creates graphs of crates from [cargo_metadata](https://crates.io/crates/cargo_metadata) metadata.
+
+</div>
 
 ## Usage
 
