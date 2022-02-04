@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.10.0] - 2022-02-04
 ### Changed
 - [PR#36](https://github.com/EmbarkStudios/krates/pull/36) updated `cfg-expr` and fixed up crates.io metadata.
 
@@ -77,7 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.9.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.10.0...HEAD
+[0.10.0]: https://github.com/EmbarkStudios/krates/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/EmbarkStudios/krates/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/EmbarkStudios/krates/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/EmbarkStudios/krates/compare/0.7.0...0.8.0
