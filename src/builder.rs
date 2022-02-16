@@ -157,7 +157,7 @@ impl From<Cmd> for cm::MetadataCommand {
 
         if !cmd.features.is_empty() {
             opts.push("--features".to_owned());
-            opts.append(&mut cmd.features);
+            opts.push(cmd.features.join(" "));
         }
 
         if cmd.frozen {
