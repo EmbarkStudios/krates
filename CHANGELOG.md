@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.11.0] - 2022-07-04
 ### Changed
 - [PR#40](https://github.com/EmbarkStudios/krates/pull/40) updated `cargo_metadata` to 0.15. Thanks [@pinkforest](https://github.com/pinkforest)!
 
@@ -85,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.10.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/EmbarkStudios/krates/compare/0.10.1...0.11.0
 [0.10.1]: https://github.com/EmbarkStudios/krates/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/EmbarkStudios/krates/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/EmbarkStudios/krates/compare/0.8.1...0.9.0
