@@ -587,7 +587,6 @@ impl Builder {
         let mut workspace_members = md.workspace_members;
         workspace_members.sort();
 
-        let mut edge_map = HashMap::new();
         let mut pid_stack = Vec::with_capacity(workspace_members.len());
 
         // Only include workspaces members the user wants if they have specified
@@ -646,7 +645,6 @@ impl Builder {
         // We use our resolution nodes because cargo_metadata uses
         // non-exhaustive everywhere :p
         struct NodeDep {
-            //name: String,
             pkg: Kid,
             dep_kinds: Vec<DepKindInfo>,
         }
@@ -655,9 +653,7 @@ impl Builder {
         struct Node {
             id: Kid,
             deps: Vec<NodeDep>,
-            // We don't use this for now, but maybe we should expose it on each
-            // crate?
-            // features: Vec<String>,
+            features: Vec<String>,
         }
 
         let mut nodes: Vec<_> = resolved
@@ -688,36 +684,15 @@ impl Builder {
                     .deps
                     .into_iter()
                     .map(|dn| {
-                        // We can't rely on the user using cargo from 1.41+ at least for a little bit,
-                        // so use a fallback for now. Maybe eventually can do a breaking change to require
-                        // 1.41 so this is nicer
-                        let dep_kinds = if dn.dep_kinds.is_empty() {
-                            let dr = DecomposedRepr::build(&dn.pkg);
-                            let name = dr.name;
-
-                            krate
-                                .dependencies
-                                .iter()
-                                .filter_map(|dep| {
-                                    if name == dep.name {
-                                        Some(DepKindInfo {
-                                            kind: dep.kind.into(),
-                                            cfg: dep.target.as_ref().map(|t| format!("{}", t)),
-                                        })
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect()
-                        } else {
-                            dn.dep_kinds
-                                .into_iter()
-                                .map(|dk| DepKindInfo {
-                                    kind: dk.kind.into(),
-                                    cfg: dk.target.map(|t| format!("{}", t)),
-                                })
-                                .collect()
-                        };
+                        // This requires 1.41+
+                        let dep_kinds = dn
+                            .dep_kinds
+                            .into_iter()
+                            .map(|dk| DepKindInfo {
+                                kind: dk.kind.into(),
+                                cfg: dk.target.map(|t| format!("{}", t)),
+                            })
+                            .collect();
 
                         NodeDep {
                             //name: dn.name,
@@ -727,11 +702,23 @@ impl Builder {
                     })
                     .collect();
 
-                Node { id: rn.id, deps }
+                Node {
+                    id: rn.id,
+                    deps,
+                    features: rn.features,
+                }
             })
             .collect();
 
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
+
+        enum FeatureEdge {
+            Feature(String),
+            Krate(Kid),
+        }
+
+        let mut dep_edge_map = HashMap::new();
+        let mut feature_edge_map = HashMap::new();
 
         while let Some(pid) = pid_stack.pop() {
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();
@@ -749,8 +736,18 @@ impl Builder {
             {
                 let rrepr = DecomposedRepr::build(&rnode.id);
                 let krepr = DecomposedRepr::build(&krate.id);
-                debug_assert!(rrepr == krepr);
+                debug_assert_eq!(rrepr, krepr);
             }
+
+            // Cargo puts out a flat list of the enabled features, but we need
+            // to use the declared features on the crate itself to figure out
+            // the actual chain of features from one crate to another
+            //
+            // We also need to account for a bug in cargo, where weak dependencies
+            // that aren't explicitly enabled still end up as resolved in the graph.
+            // Luckily this is trivial due to how we build the graph up, but it
+            // would be nicer if the bug was fixed.
+            // https://github.com/EmbarkStudios/krates/issues/41
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -835,18 +832,18 @@ impl Builder {
                 .collect();
 
             for pid in edges.iter().map(|(_, pid)| pid) {
-                if !edge_map.contains_key(pid) {
+                if !dep_edge_map.contains_key(pid) {
                     pid_stack.push(pid);
                 }
             }
 
-            edge_map.insert(pid, edges);
+            dep_edge_map.insert(pid, edges);
         }
 
         // Sanity check, it's possible the user could exclude all of the
         // possible workspace root nodes leaving themselves with an empty graph,
         // which isn't much use to anyone
-        if edge_map.is_empty() {
+        if dep_edge_map.is_empty() {
             return Err(Error::NoRootKrates);
         }
 
@@ -856,8 +853,10 @@ impl Builder {
         let mut edge_count = 0;
 
         // Preserve the ordering of the krates when inserting them into the graph
+        // so that we can easily binary search for the crates based on their
+        // package id with just the graph and no ancillary tables
         for krate in packages {
-            if let Some(edges) = edge_map.get(&krate.id) {
+            if let Some(edges) = dep_edge_map.get(&krate.id) {
                 let id = krate.id.clone();
                 let krate = crate::Node {
                     id,
@@ -884,7 +883,7 @@ impl Builder {
         // Keep edges ordered as well
         for srcind in 0..graph.node_count() {
             let srcid = crate::NodeId::new(srcind);
-            if let Some(edges) = edge_map.remove(&graph[srcid].id) {
+            if let Some(edges) = dep_edge_map.remove(&graph[srcid].id) {
                 for (dep, tid) in edges {
                     // We might not have a target in the case of explicitly excluded
                     // packages
@@ -899,6 +898,7 @@ impl Builder {
             graph,
             workspace_members,
             lock_file: md.workspace_root.join("Cargo.lock"),
+            krates_end: nodes.len(),
         })
     }
 }

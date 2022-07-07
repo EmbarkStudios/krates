@@ -173,11 +173,20 @@ impl fmt::Display for DepKind {
 pub type NodeId = NodeIndex<u32>;
 
 /// A node in the crate graph.
-pub struct Node<N> {
-    /// The unique identifier for this node.
-    pub id: Kid,
-    /// Associated user data with the node. Must be From<cargo_metadata::Package>
-    pub krate: N,
+pub enum Node<N> {
+    Krate {
+        /// The unique identifier for this node.
+        id: Kid,
+        /// Associated user data with the node. Must be From<cargo_metadata::Package>
+        krate: N,
+        /// Features enabled on the crate
+        features: Vec<String>,
+    },
+    Feature {
+        /// The node index for the crate this feature is for
+        krate_index: NodeId,
+        name: String,
+    },
 }
 
 impl<N> fmt::Display for Node<N>
@@ -185,7 +194,14 @@ where
     N: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.krate)
+        match self {
+            Self::Krate { krate, .. } => {
+                write!(f, "crate {}", krate)
+            }
+            Self::Feature { name, .. } => {
+                write!(f, "feature {}", name)
+            }
+        }
     }
 }
 
@@ -194,29 +210,44 @@ where
     N: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {:?}", self.id.repr, self.krate)
+        match self {
+            Self::Krate { id, krate, .. } => {
+                write!(f, "crate {} {krate:?}", id.repr)
+            }
+            Self::Feature { name, .. } => {
+                write!(f, "feature {name}")
+            }
+        }
     }
 }
 
 /// The default type used for edges in the crate graph.
 #[derive(Debug, Clone)]
-pub struct Edge {
-    /// The dependency kind for the edge link
-    pub kind: DepKind,
-    /// A possible cfg() or <target-triple> applied to this dependency
-    pub cfg: Option<String>,
+pub enum Edge {
+    Dep {
+        /// The dependency kind for the edge link
+        kind: DepKind,
+        /// A possible cfg() or <target-triple> applied to this dependency
+        cfg: Option<String>,
+    },
+    Feature,
 }
 
 impl fmt::Display for Edge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            DepKind::Normal => {}
-            DepKind::Build => f.write_str("(build)")?,
-            DepKind::Dev => f.write_str("(dev)")?,
-        };
+        match self {
+            Self::Dep { kind, cfg } => {
+                match kind {
+                    DepKind::Normal => {}
+                    DepKind::Build => f.write_str("(build)")?,
+                    DepKind::Dev => f.write_str("(dev)")?,
+                };
 
-        if let Some(cfg) = &self.cfg {
-            write!(f, " '{}'", cfg)?;
+                if let Some(cfg) = cfg {
+                    write!(f, " '{}'", cfg)?;
+                }
+            }
+            Self::Feature => f.write_str("feature")?,
         }
 
         Ok(())
@@ -229,6 +260,9 @@ pub struct Krates<N = cm::Package, E = Edge> {
     graph: petgraph::Graph<Node<N>, E>,
     workspace_members: Vec<Kid>,
     lock_file: Utf8PathBuf,
+    /// We split the graph between crate and feature nodes, but keep the crates
+    /// grouped together in the front since most queries are against them
+    krates_end: usize,
 }
 
 #[allow(clippy::len_without_is_empty)]
@@ -236,7 +270,7 @@ impl<N, E> Krates<N, E> {
     /// The number of unique crates in the graph
     #[inline]
     pub fn len(&self) -> usize {
-        self.graph.node_count()
+        self.krates_end
     }
 
     /// Path to the Cargo.lock file for the crate or workspace where the graph
@@ -265,8 +299,16 @@ impl<N, E> Krates<N, E> {
     /// }
     /// ```
     #[inline]
-    pub fn krates(&self) -> impl Iterator<Item = &Node<N>> {
-        self.graph.node_indices().map(move |nid| &self.graph[nid])
+    pub fn krates(&self) -> impl Iterator<Item = &N> {
+        self.graph.raw_nodes()[..self.krates_end]
+            .iter()
+            .filter_map(move |node| {
+                if let Node::Krate { krate, .. } = &node.weight {
+                    Some(krate)
+                } else {
+                    None
+                }
+            })
     }
 
     /// Get an iterator over each dependency of the specified crate. The same
@@ -297,9 +339,14 @@ impl<N, E> Krates<N, E> {
     /// Get the node identifier for the specified crate identifier
     #[inline]
     pub fn nid_for_kid(&self, kid: &Kid) -> Option<NodeId> {
-        self.graph
-            .raw_nodes()
-            .binary_search_by(|rn| rn.weight.id.cmp(kid))
+        self.graph.raw_nodes()[..self.krates_end]
+            .binary_search_by(|rn| {
+                if let Node::Krate { id, .. } = &rn.weight {
+                    id.cmp(kid)
+                } else {
+                    unreachable!();
+                }
+            })
             .ok()
             .map(NodeId::new)
     }
@@ -357,13 +404,13 @@ where
     ///     }
     /// }
     /// ```
-    pub fn search_matches(
-        &self,
-        name: &str,
+    pub fn search_matches<'k>(
+        &'k self,
+        name: &'k str,
         req: semver::VersionReq,
-    ) -> impl Iterator<Item = (NodeId, &Node<N>)> {
+    ) -> impl Iterator<Item = (NodeId, &'k N)> + 'k {
         self.krates_by_name(name)
-            .filter(move |(_, n)| req.matches(n.krate.version()))
+            .filter(move |(_, n)| req.matches(n.version()))
     }
 
     /// Get an iterator over all of the crates in the graph with the given name,
@@ -378,61 +425,44 @@ where
     ///     }
     /// }
     /// ```
-    pub fn krates_by_name(&self, name: &str) -> impl Iterator<Item = (NodeId, &Node<N>)> {
-        let lowest = semver::Version::new(0, 0, 0);
+    pub fn krates_by_name<'k>(
+        &'k self,
+        name: &'k str,
+    ) -> impl Iterator<Item = (NodeId, &'k N)> + 'k {
+        let raw_nodes = &self.graph.raw_nodes()[0..self.krates_end];
 
-        let raw_nodes = self.graph.raw_nodes();
-
-        let range =
-            match raw_nodes.binary_search_by(|node| match node.weight.krate.name().cmp(name) {
-                std::cmp::Ordering::Equal => node.weight.krate.version().cmp(&lowest),
-                o => o,
-            }) {
-                Ok(i) | Err(i) => {
-                    #[allow(clippy::reversed_empty_ranges)]
-                    if i >= raw_nodes.len() || raw_nodes[i].weight.krate.name() != name {
-                        0..0
-                    } else {
-                        // Backtrack until if the crate name matches, as, for instance, 0.0.0-pre
-                        // versions will be sorted before a 0.0.0 version
-                        let mut begin = i;
-                        while begin > 0 && raw_nodes[begin - 1].weight.krate.name() == name {
-                            begin -= 1;
-                        }
-
-                        let end = raw_nodes[begin..]
-                            .iter()
-                            .take_while(|kd| kd.weight.krate.name() == name)
-                            .count()
-                            + begin;
-
-                        begin..end
-                    }
+        raw_nodes.iter().enumerate().filter_map(move |(id, node)| {
+            if let Node::Krate { krate, .. } = &node.weight {
+                if krate.name() == name {
+                    return Some((NodeId::new(id), krate));
                 }
-            };
+            }
 
-        let begin = range.start;
-        raw_nodes[range]
-            .iter()
-            .enumerate()
-            .map(move |(i, n)| (NodeId::new(begin + i), &n.weight))
+            None
+        })
     }
 }
 
 impl<N, E> std::ops::Index<NodeId> for Krates<N, E> {
-    type Output = N;
+    type Output = Option<N>;
 
     #[inline]
     fn index(&self, id: NodeId) -> &Self::Output {
-        &self.graph[id].krate
+        match &self.graph[id] {
+            Node::Krate { krate, .. } => &Some(*krate),
+            Node::Feature { .. } => &None,
+        }
     }
 }
 
 impl<N, E> std::ops::Index<usize> for Krates<N, E> {
-    type Output = N;
+    type Output = Option<N>;
 
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
-        &self.graph.raw_nodes()[idx].weight.krate
+        match &self.graph.raw_nodes()[idx].weight {
+            Node::Krate { krate, .. } => &Some(*krate),
+            Node::Feature { .. } => &None,
+        }
     }
 }
