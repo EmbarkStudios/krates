@@ -712,9 +712,10 @@ impl Builder {
 
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
-        enum FeatureEdge {
-            Feature(String),
-            Krate(Kid),
+        #[derive(Hash)]
+        struct FeatureEdge {
+            kid: Kid,
+            feature: Option<String>,
         }
 
         let mut dep_edge_map = HashMap::new();
@@ -748,6 +749,44 @@ impl Builder {
             // Luckily this is trivial due to how we build the graph up, but it
             // would be nicer if the bug was fixed.
             // https://github.com/EmbarkStudios/krates/issues/41
+            // "features": {
+            //     "blocking": [
+            //         "reqwest?/blocking"
+            //     ],
+            //     "json": [
+            //         "reqwest?/json"
+            //     ],
+            //     "multipart": [
+            //         "reqwest?/multipart"
+            //     ],
+            //     "reqwest": [
+            //         "dep:reqwest"
+            //     ],
+            //     "rgb": [
+            //         "dep:rgb"
+            //     ],
+            //     "serde": [
+            //         "dep:serde",
+            //         "rgb?/serde"
+            //     ],
+            //     "ssh": [
+            //         "git/ssh",
+            //         "git/ssh_key_from_memory"
+            //     ],
+            //     "stream": [
+            //         "reqwest?/stream"
+            //     ],
+            //     "zlib": [
+            //         "git/zlib-ng-compat",
+            //         "reqwest?/deflate"
+            //     ]
+            // },
+
+            let mut features = Vec::new();
+
+            let mut feat_stack = rnode.features.clone();
+
+            while let Some(feature) = feat_stack.pop() {}
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -797,7 +836,7 @@ impl Builder {
 
                                             // While it might be nicer to evaluate all the targets for each predicate
                                             // it would lead to weird situations where an expression could evaluate to true
-                                            // (or false) with a combination of platform, that would otherwise by impossible,
+                                            // (or false) with a combination of platform, that would otherwise be impossible,
                                             // eg cfg(all(windows, target_env = "musl")) could evaluate to true
                                             targets
                                                 .iter()
