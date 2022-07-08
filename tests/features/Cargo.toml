@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 reqest = { version = "0.11", package = "reqwest", default-features = false, optional = true, features = [
+    "brotli",
     "rustls-tls",
 ] }
 rgb = { version = "0.8.25", optional = true }

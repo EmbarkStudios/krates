@@ -25,7 +25,7 @@ pub(crate) struct ParsedFeature<'feat> {
 
 impl<'feat> ParsedFeature<'feat> {
     #[inline]
-    fn feat(&self) -> Feature<'feat> {
+    pub(crate) fn feat(&self) -> Feature<'feat> {
         match self.kind {
             FeatureKind::Krate => Feature::Krate(&self.inner[..4]),
             FeatureKind::Weak(ind) => Feature::Weak {

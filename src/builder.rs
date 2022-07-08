@@ -820,39 +820,35 @@ impl Builder {
             //         "stream"
             //     ]
 
-            let mut feat_edges = Vec::new();
             let mut feat_stack = rnode.features.clone();
 
-            while let Some(feature) = feat_stack.pop() {
-                let feat = ParsedFeature::from(&feature);
+            feature_edge_map.insert(
+                pid,
+                rnode
+                    .features
+                    .iter()
+                    .filter_map(|feat| {
+                        // This should never fail as cargo will not generate metadata if
+                        // a feature is mentioned that doesn't exist, but still no
+                        // reason to panic here
+                        let sub_feats: Vec<_> = krate
+                            .features
+                            .get(feature)?
+                            .iter()
+                            .map(|sub_feat| {
+                                let sf = ParsedFeature::from(sub_feat.as_str());
 
-                match feature.feat() {
-                    Feature::Krate(name) => {
-                        // While other features can be additionally toggled, each
-                        // optional crate
-                    }
-                    Feature::Weak {
-                        krate: krate_name,
-                        feature,
-                    } => {
-                        // Weak features will only enable the feature on the
-                        // dependency if the dependency is explicitly enabled
-                        if rnode.features.binary_search(krate_name).is_ok() {}
-                    }
-                    Feature::Strong {
-                        krate: krate_name,
-                        feature,
-                    } => {}
-                    Feature::Simple(feature) => {
-                        // This should never fail as cargo will fail to generate
-                        // metadata if a feature is mentioned that doesn't exist,
-                        // but still no reason to panic here
-                        if let Some(sub_features) = krate.features.get(feature) {
-                            for subf in sub_features {}
-                        }
-                    }
-                }
-            }
+                                match sf.feat() {
+                                    Feature::Krate(krate_name) => get_dep_index(krate_name),
+                                    Feature::Simple(s) => {}
+                                }
+                            })
+                            .collect();
+
+                        (feat.clone(), sub_feats)
+                    })
+                    .collect::<Vec<_>>(),
+            );
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -881,9 +877,9 @@ impl Builder {
                         // https://github.com/EmbarkStudios/krates/issues/41
                         if krate.dependencies.iter().any(|dep| {
                             dep.optional
-                                && dep.kind == dk.kind
-                                && dep.rename.as_deref().unwrap_or(&dep.name) == rdep.name
-                                && !rnode.features.binary_search(&rdep.name)
+                                && dk.kind == dep.kind
+                                && rdep.name == dep.rename.as_deref().unwrap_or(&dep.name)
+                                && rnode.features.binary_search(&rdep.name).is_err()
                         }) {
                             return None;
                         }
@@ -1011,6 +1007,12 @@ impl Builder {
                 }
             }
         }
+
+        // Now that we have all of the actual crate nodes, we can link all of the
+        // features exposed by each crate
+        let mut node_count = 0;
+
+        graph.reserve_nodes(node_count);
 
         Ok(Krates {
             graph,
