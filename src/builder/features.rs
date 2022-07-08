@@ -18,13 +18,14 @@ enum FeatureKind {
     Simple,
 }
 
-pub(crate) struct ParsedFeature {
-    inner: String,
+pub(crate) struct ParsedFeature<'feat> {
+    inner: &'feat str,
     kind: FeatureKind,
 }
 
-impl ParsedFeature {
-    fn feat(&self) -> Feature<'_> {
+impl<'feat> ParsedFeature<'feat> {
+    #[inline]
+    fn feat(&self) -> Feature<'feat> {
         match self.kind {
             FeatureKind::Krate => Feature::Krate(&self.inner[..4]),
             FeatureKind::Weak(ind) => Feature::Weak {
@@ -40,13 +41,14 @@ impl ParsedFeature {
     }
 }
 
-impl From<String> for ParsedFeature {
-    fn from(f: String) -> Self {
+impl<'feat> From<&'feat str> for ParsedFeature<'feat> {
+    #[inline]
+    fn from(f: &'feat str) -> Self {
         let kind = if f.starts_with("dep:") {
             FeatureKind::Krate
-        } else if let Some(ind) = f.index_of("?/") {
+        } else if let Some(ind) = f.find("?/") {
             FeatureKind::Weak(ind)
-        } else if let Some(ind) = f.index_of("/") {
+        } else if let Some(ind) = f.find("/") {
             FeatureKind::Strong(ind)
         } else {
             FeatureKind::Simple

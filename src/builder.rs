@@ -1,5 +1,8 @@
+mod features;
+
 use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
+use features::{Feature, ParsedFeature};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -645,6 +648,8 @@ impl Builder {
         // We use our resolution nodes because cargo_metadata uses
         // non-exhaustive everywhere :p
         struct NodeDep {
+            /// The name of the dependency, which could be different name than the crate itself
+            name: String,
             pkg: Kid,
             dep_kinds: Vec<DepKindInfo>,
         }
@@ -695,17 +700,26 @@ impl Builder {
                             .collect();
 
                         NodeDep {
-                            //name: dn.name,
+                            name: dn.name,
                             pkg: dn.pkg,
                             dep_kinds,
                         }
                     })
                     .collect();
 
+                let mut features = rn.features;
+
+                // Note that cargo metadata _currently_ always outputs these in lexicographic
+                // order, but I don't know if that is actually guaranteed at all
+                // and might just be due to the implementation (eg stored in a Btree),
+                // so we just perform our own sort to guarantee that this is
+                // indeed always sorted since we rely on that attribute
+                features.sort();
+
                 Node {
                     id: rn.id,
                     deps,
-                    features: rn.features,
+                    features,
                 }
             })
             .collect();
@@ -714,8 +728,8 @@ impl Builder {
 
         #[derive(Hash)]
         struct FeatureEdge {
-            kid: Kid,
-            feature: Option<String>,
+            krate_index: usize,
+            feature: String,
         }
 
         let mut dep_edge_map = HashMap::new();
@@ -740,18 +754,32 @@ impl Builder {
                 debug_assert_eq!(rrepr, krepr);
             }
 
+            let get_dep_index = |dep_name: &str| -> usize {
+                let pkg_id = rnode
+                    .deps
+                    .iter()
+                    .find_map(|ndep| {
+                        if ndep.name == dep_name {
+                            Some(&ndep.pkg)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+
+                nodes.binary_search_by(|n| n.id.cmp(pkg_id)).unwrap()
+            };
+
             // Cargo puts out a flat list of the enabled features, but we need
             // to use the declared features on the crate itself to figure out
             // the actual chain of features from one crate to another
-            //
-            // We also need to account for a bug in cargo, where weak dependencies
-            // that aren't explicitly enabled still end up as resolved in the graph.
-            // Luckily this is trivial due to how we build the graph up, but it
-            // would be nicer if the bug was fixed.
-            // https://github.com/EmbarkStudios/krates/issues/41
             // "features": {
             //     "blocking": [
+            //         "simple",
             //         "reqwest?/blocking"
+            //     ],
+            //     "default": [
+            //         "simple"
             //     ],
             //     "json": [
             //         "reqwest?/json"
@@ -769,24 +797,62 @@ impl Builder {
             //         "dep:serde",
             //         "rgb?/serde"
             //     ],
+            //     "simple": [
+            //         "json"
+            //     ],
             //     "ssh": [
             //         "git/ssh",
             //         "git/ssh_key_from_memory"
             //     ],
             //     "stream": [
-            //         "reqwest?/stream"
+            //         "reqwest/stream"
             //     ],
             //     "zlib": [
             //         "git/zlib-ng-compat",
             //         "reqwest?/deflate"
             //     ]
             // },
+            // "features": [
+            //         "blocking",
+            //         "json",
+            //         "reqwest",
+            //         "simple",
+            //         "stream"
+            //     ]
 
-            let mut features = Vec::new();
-
+            let mut feat_edges = Vec::new();
             let mut feat_stack = rnode.features.clone();
 
-            while let Some(feature) = feat_stack.pop() {}
+            while let Some(feature) = feat_stack.pop() {
+                let feat = ParsedFeature::from(&feature);
+
+                match feature.feat() {
+                    Feature::Krate(name) => {
+                        // While other features can be additionally toggled, each
+                        // optional crate
+                    }
+                    Feature::Weak {
+                        krate: krate_name,
+                        feature,
+                    } => {
+                        // Weak features will only enable the feature on the
+                        // dependency if the dependency is explicitly enabled
+                        if rnode.features.binary_search(krate_name).is_ok() {}
+                    }
+                    Feature::Strong {
+                        krate: krate_name,
+                        feature,
+                    } => {}
+                    Feature::Simple(feature) => {
+                        // This should never fail as cargo will fail to generate
+                        // metadata if a feature is mentioned that doesn't exist,
+                        // but still no reason to panic here
+                        if let Some(sub_features) = krate.features.get(feature) {
+                            for subf in sub_features {}
+                        }
+                    }
+                }
+            }
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -806,6 +872,19 @@ impl Builder {
 
                         let mask = mask | mask << if is_in_workspace { 1 } else { 2 };
                         if mask & ignore_kinds == mask {
+                            return None;
+                        }
+
+                        // We also need to account for a bug in cargo, where weak
+                        // dependencies that aren't explicitly enabled still end
+                        // up as resolved in the graph.
+                        // https://github.com/EmbarkStudios/krates/issues/41
+                        if krate.dependencies.iter().any(|dep| {
+                            dep.optional
+                                && dep.kind == dk.kind
+                                && dep.rename.as_deref().unwrap_or(&dep.name) == rdep.name
+                                && !rnode.features.binary_search(&rdep.name)
+                        }) {
                             return None;
                         }
 
@@ -887,7 +966,7 @@ impl Builder {
         }
 
         let mut graph = petgraph::Graph::<crate::Node<N>, E>::new();
-        graph.reserve_nodes(edge_map.len());
+        graph.reserve_nodes(dep_edge_map.len());
 
         let mut edge_count = 0;
 
