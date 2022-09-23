@@ -14,8 +14,8 @@ serde = { version = "1.0.133", optional = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 git = { package = "git2", version = "0.14", default-features = false }
 
-[target.'cfg(windows)'.dependencies]
-audio = { package = "coreaudio-rs", version = "=0.11.1", default-features = false }
+[target.'cfg(target_os = "macos")'.dependencies]
+audio = { package = "coreaudio-rs", version = "=0.11.1", default-features = false, optional = true }
 
 [build-dependencies]
 reqest = { version = "0.11", package = "reqwest", default-features = false, optional = true, features = [
