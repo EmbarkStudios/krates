@@ -49,9 +49,9 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
                             d.dep_kinds.into_iter().map(move |dk| {
                                 (
                                     id.clone(),
-                                    krates::Edge {
+                                    krates::Edge::Dep {
                                         kind: dk.kind.into(),
-                                        cfg: dk.target.map(|f| format!("{}", f)),
+                                        cfg: dk.target.map(|f| f.to_string()),
                                     },
                                 )
                             })
@@ -166,16 +166,22 @@ impl SimpleGraph {
             let mut edges: Vec<_> = pkg
                 .1
                 .iter()
-                .filter_map(|edge| {
+                .filter_map(|(pid, edge)| {
                     if ef(EdgeFilter {
                         source: kid,
-                        target: &edge.0,
-                        kind: edge.1.kind,
-                        cfg: edge.1.cfg.as_deref(),
+                        target: pid,
+                        dep: if let krates::Edge::Dep { kind, cfg } = edge {
+                            Some(EdgeDepFilter {
+                                kind: *kind,
+                                cfg: cfg.as_deref(),
+                            })
+                        } else {
+                            None
+                        },
                     }) {
                         None
                     } else {
-                        Some((&edge.0, &edge.1))
+                        Some((pid, edge))
                     }
                 })
                 .collect();
@@ -217,11 +223,15 @@ impl SimpleGraph {
     }
 }
 
+pub struct EdgeDepFilter<'a> {
+    pub kind: krates::DepKind,
+    pub cfg: Option<&'a str>,
+}
+
 pub struct EdgeFilter<'a> {
     pub source: &'a krates::Kid,
     pub target: &'a krates::Kid,
-    pub kind: krates::DepKind,
-    pub cfg: Option<&'a str>,
+    pub dep: Option<EdgeDepFilter<'a>>,
 }
 
 pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
@@ -233,9 +243,13 @@ pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
 
     use krates::petgraph::dot::Dot;
 
+    let actual = Dot::new(&grafs.actual.graph()).to_string();
+
+    std::fs::write("graph.dot", &actual).unwrap();
+
     similar_asserts::assert_str_eq!(
         Dot::new(&expected),
-        Dot::new(&grafs.actual.graph()),
+        actual,
         "filtered: {:#?}",
         grafs.filtered
     );

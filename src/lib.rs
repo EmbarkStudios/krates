@@ -115,7 +115,7 @@ pub use petgraph;
 pub use semver;
 
 pub use cm::camino::{self, Utf8Path, Utf8PathBuf};
-use petgraph::{graph::NodeIndex, Direction};
+use petgraph::{graph::EdgeIndex, graph::NodeIndex, visit::EdgeRef, Direction};
 
 mod builder;
 mod errors;
@@ -171,6 +171,7 @@ impl fmt::Display for DepKind {
 
 /// A node identifier.
 pub type NodeId = NodeIndex<u32>;
+pub type EdgeId = EdgeIndex<u32>;
 
 /// A node in the crate graph.
 pub enum Node<N> {
@@ -179,7 +180,7 @@ pub enum Node<N> {
         id: Kid,
         /// Associated user data with the node. Must be From<cargo_metadata::Package>
         krate: N,
-        /// Features enabled on the crate
+        /// List of features enabled on the crate, sorted.
         features: Vec<String>,
     },
     Feature {
@@ -196,10 +197,10 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Krate { krate, .. } => {
-                write!(f, "crate {}", krate)
+                write!(f, "crate {krate}")
             }
             Self::Feature { name, .. } => {
-                write!(f, "feature {}", name)
+                write!(f, "feature {name}")
             }
         }
     }
@@ -257,7 +258,7 @@ impl fmt::Display for Edge {
 /// A crate graph. Each unique crate is a node, and each unique dependency
 /// between 2 crates is an edge.
 pub struct Krates<N = cm::Package, E = Edge> {
-    graph: petgraph::Graph<Node<N>, E>,
+    graph: petgraph::Graph<Node<N>, E, petgraph::Directed, u32>,
     workspace_members: Vec<Kid>,
     lock_file: Utf8PathBuf,
     /// We split the graph between crate and feature nodes, but keep the crates
@@ -326,8 +327,6 @@ impl<N, E> Krates<N, E> {
     /// ```
     #[inline]
     pub fn get_deps(&self, id: NodeId) -> impl Iterator<Item = (&Node<N>, &E)> {
-        use petgraph::visit::EdgeRef;
-
         self.graph
             .edges_directed(id, Direction::Outgoing)
             .map(move |edge| {
@@ -355,6 +354,39 @@ impl<N, E> Krates<N, E> {
     #[inline]
     pub fn node_for_kid(&self, kid: &Kid) -> Option<&Node<N>> {
         self.nid_for_kid(kid).map(|nid| &self.graph[nid])
+    }
+
+    #[inline]
+    pub fn get_node(&self, kid: &Kid, feature: Option<&str>) -> Option<(NodeId, &Node<N>)> {
+        self.nid_for_kid(kid).and_then(|nid| {
+            if let Some(feat) = feature {
+                self.graph
+                    .edges_directed(nid, Direction::Incoming)
+                    .find_map(|edge| {
+                        if let Node::Feature { krate_index, name } = &self.graph[edge.source()] {
+                            if *krate_index == nid && name == feat {
+                                return Some((edge.source(), &self.graph[edge.source()]));
+                            }
+                        }
+
+                        None
+                    })
+            } else {
+                Some((nid, &self.graph[nid]))
+            }
+        })
+    }
+
+    /// Gets the features enabled for the specified crate
+    #[inline]
+    pub fn get_enabled_features(&self, kid: &Kid) -> Option<&[String]> {
+        self.node_for_kid(kid).map(|node| {
+            if let Node::Krate { features, .. } = node {
+                features.as_slice()
+            } else {
+                unreachable!()
+            }
+        })
     }
 
     /// Get an iterator over the nodes for the members of the workspace
@@ -444,25 +476,25 @@ where
 }
 
 impl<N, E> std::ops::Index<NodeId> for Krates<N, E> {
-    type Output = Option<N>;
+    type Output = N;
 
     #[inline]
     fn index(&self, id: NodeId) -> &Self::Output {
         match &self.graph[id] {
-            Node::Krate { krate, .. } => &Some(*krate),
-            Node::Feature { .. } => &None,
+            Node::Krate { krate, .. } => krate,
+            Node::Feature { .. } => panic!("indexed outside of crate graph"),
         }
     }
 }
 
 impl<N, E> std::ops::Index<usize> for Krates<N, E> {
-    type Output = Option<N>;
+    type Output = N;
 
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         match &self.graph.raw_nodes()[idx].weight {
-            Node::Krate { krate, .. } => &Some(*krate),
-            Node::Feature { .. } => &None,
+            Node::Krate { krate, .. } => krate,
+            Node::Feature { .. } => panic!("indexed outside of crate graph"),
         }
     }
 }

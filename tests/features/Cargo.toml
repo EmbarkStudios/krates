@@ -1,5 +1,5 @@
 [package]
-name = "features"
+name = "features-galore"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,6 +14,9 @@ serde = { version = "1.0.133", optional = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 git = { package = "git2", version = "0.14", default-features = false }
 
+[target.'cfg(windows)'.dependencies]
+audio = { package = "coreaudio-rs", version = "=0.11.1", default-features = false }
+
 [build-dependencies]
 reqest = { version = "0.11", package = "reqwest", default-features = false, optional = true, features = [
     "cookies",
@@ -23,9 +26,10 @@ reqest = { version = "0.11", package = "reqwest", default-features = false, opti
 default = ["simple"]
 blocking = ["simple", "reqest?/blocking"]
 json = ["reqest?/json"]
+midi = ["audio/core_midi"]
 multipart = ["reqest?/multipart"]
-simple = ["json"]
 serde = ["dep:serde", "rgb?/serde"]
+simple = ["json"]
+ssh = ["git/ssh", "git/ssh_key_from_memory"]
 stream = ["reqest?/stream"]
 zlib = ["git/zlib-ng-compat", "reqest?/deflate"]
-ssh = ["git/ssh", "git/ssh_key_from_memory"]

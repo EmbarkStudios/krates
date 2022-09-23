@@ -25,7 +25,7 @@ fn ignores_non_linux() {
         grafs,
         |_| false,
         |ef| {
-            if let Some(cfg) = ef.cfg {
+            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
                 if cfg.starts_with("cfg(") {
                     let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
 
@@ -72,7 +72,7 @@ fn ignores_non_tier1() {
         grafs,
         |_| false,
         |ef| {
-            if let Some(cfg) = ef.cfg {
+            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
                 if cfg.starts_with("cfg(") {
                     let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
 
@@ -111,7 +111,7 @@ fn ignores_non_wasm() {
         grafs,
         |_| false,
         |ef| {
-            if let Some(cfg) = ef.cfg {
+            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
                 if cfg.starts_with("cfg(") {
                     let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
 
@@ -153,7 +153,7 @@ fn handles_non_builtin() {
         grafs,
         |_| false,
         |ef| {
-            if let Some(cfg) = ef.cfg {
+            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
                 if cfg.starts_with("cfg(") {
                     let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
 

@@ -2,6 +2,16 @@ mod util;
 
 use util::{build, cmp};
 
+macro_rules! matches_kind {
+    ($ef:expr, $($tail:tt)*) => {
+        if let Some(kind) = $ef.dep.map(|d| d.kind) {
+            matches!(kind, $($tail)*)
+        } else {
+            false
+        }
+    }
+}
+
 #[test]
 fn all_the_things() {
     let grafs = build("all-features.json", krates::Builder::new()).unwrap();
@@ -40,7 +50,7 @@ fn filters_dev() {
         cmp(
             grafs,
             |kid| filtered.contains(kid),
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Dev,
+            |ef| util::is_workspace(ef.source) && matches_kind!(ef, krates::DepKind::Dev),
         );
     }
 
@@ -50,7 +60,11 @@ fn filters_dev() {
         kb.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
 
         let grafs = build("all-features.json", kb).unwrap();
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Dev);
+        cmp(
+            grafs,
+            |_| false,
+            |ef| matches_kind!(ef, krates::DepKind::Dev),
+        );
     }
 }
 
@@ -66,7 +80,7 @@ fn filters_build() {
         cmp(
             grafs,
             |_| false,
-            |ef| !util::is_workspace(ef.source) && ef.kind == krates::DepKind::Build,
+            |ef| !util::is_workspace(ef.source) && matches_kind!(ef, krates::DepKind::Build),
         );
     }
 
@@ -80,7 +94,7 @@ fn filters_build() {
         cmp(
             grafs,
             |_| false,
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Build,
+            |ef| util::is_workspace(ef.source) && matches_kind!(ef, krates::DepKind::Build),
         );
     }
 
@@ -91,7 +105,11 @@ fn filters_build() {
 
         let grafs = build("all-features.json", kb).unwrap();
 
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Build);
+        cmp(
+            grafs,
+            |_| false,
+            |ef| matches_kind!(ef, krates::DepKind::Build),
+        );
     }
 }
 
@@ -107,7 +125,7 @@ fn filters_normal() {
         cmp(
             grafs,
             |_| false,
-            |ef| !util::is_workspace(ef.source) && ef.kind == krates::DepKind::Normal,
+            |ef| !util::is_workspace(ef.source) && matches_kind!(ef, krates::DepKind::Normal),
         );
     }
 
@@ -121,7 +139,7 @@ fn filters_normal() {
         cmp(
             grafs,
             |_| false,
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Normal,
+            |ef| util::is_workspace(ef.source) && matches_kind!(ef, krates::DepKind::Normal),
         );
     }
 
@@ -132,7 +150,11 @@ fn filters_normal() {
 
         let grafs = build("all-features.json", kb).unwrap();
 
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Normal);
+        cmp(
+            grafs,
+            |_| false,
+            |ef| matches_kind!(ef, krates::DepKind::Normal),
+        );
     }
 }
 
@@ -150,8 +172,11 @@ fn filters_build_and_dev() {
             grafs,
             |_| false,
             |ef| {
-                !util::is_workspace(ef.source)
-                    && (ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev)
+                if util::is_workspace(ef.source) {
+                    return false;
+                }
+
+                matches_kind!(ef, krates::DepKind::Build | krates::DepKind::Dev)
             },
         );
     }
@@ -168,8 +193,11 @@ fn filters_build_and_dev() {
             grafs,
             |_| false,
             |ef| {
-                util::is_workspace(ef.source)
-                    && (ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev)
+                if !util::is_workspace(ef.source) {
+                    return false;
+                }
+
+                matches_kind!(ef, krates::DepKind::Build | krates::DepKind::Dev)
             },
         );
     }
@@ -185,7 +213,7 @@ fn filters_build_and_dev() {
         cmp(
             grafs,
             |_| false,
-            |ef| ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev,
+            |ef| matches_kind!(ef, krates::DepKind::Build | krates::DepKind::Dev),
         );
     }
 }
