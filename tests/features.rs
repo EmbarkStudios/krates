@@ -1,16 +1,18 @@
 mod util;
 
+macro_rules! feats {
+    ($feats:expr) => {
+        $feats.into_iter().map(|f| f.to_owned())
+    };
+}
+
 /// Ensures weak dependencies are properly pruned if not explicitly pulled in
 /// https://github.com/EmbarkStudios/krates/issues/41
 #[test]
 fn prunes_multiple_weak_features() {
     let mut cmd = krates::Cmd::new();
     cmd.manifest_path("tests/features/Cargo.toml")
-        .features(
-            ["blocking", "json", "multipart", "stream"]
-                .into_iter()
-                .map(|f| f.to_owned()),
-        )
+        .features(feats!(["blocking", "json", "multipart", "stream"]))
         .no_default_features();
 
     let mut builder = krates::Builder::new();
@@ -35,7 +37,7 @@ fn prunes_multiple_weak_features() {
 fn prunes_mixed_dependencies() {
     let mut cmd = krates::Cmd::new();
     cmd.manifest_path("tests/features/Cargo.toml")
-        .features(["zlib".to_owned()]);
+        .features(feats!(["zlib"]));
 
     let mut builder = krates::Builder::new();
     builder.include_targets([("x86_64-unknown-linux-gnu", vec![])]);
@@ -61,7 +63,7 @@ fn handles_features_for_renamed_crates() {
     let mut cmd = krates::Cmd::new();
     cmd.manifest_path("tests/features/Cargo.toml")
         .no_default_features()
-        .features(["midi".to_owned()]);
+        .features(feats!(["audio", "midi"]));
 
     let mut builder = krates::Builder::new();
     builder.include_targets([("aarch64-apple-darwin", vec![])]);
@@ -73,6 +75,21 @@ fn handles_features_for_renamed_crates() {
     assert_features!(md, "coreaudio-sys", ["core_midi"]);
 }
 
+#[test]
+fn ignores_excluded_crates() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/features/Cargo.toml")
+        .no_default_features()
+        .features(feats!(["audio", "midi"]));
+
+    let mut builder = krates::Builder::new();
+    builder.include_targets([("aarch64-apple-darwin", vec![])]);
+    builder.exclude(["coreaudio-rs".parse().unwrap()]);
+    let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    assert_eq!(0, md.krates_by_name("coreaudio-rs").count());
+}
+
 /// Ensures that explicitly toggling on an optional dependency works
 #[test]
 fn handles_explicit_weak_features() {
@@ -80,65 +97,83 @@ fn handles_explicit_weak_features() {
         let mut cmd = krates::Cmd::new();
         cmd.manifest_path("tests/features/Cargo.toml")
             .no_default_features()
-            .features(["reqest".to_owned()]);
+            .features(feats!(["reqest", "tls"]));
 
         let mut builder = krates::Builder::new();
         builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
-        let md: util::Graph = builder.build(cmd, krates::NoneFilter).unwrap();
+        let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
 
-        let dg = krates::petgraph::dot::Dot::new(md.graph()).to_string();
+        // let dg = krates::petgraph::dot::Dot::new(md.graph()).to_string();
 
-        std::fs::write("ohno.dot", dg).unwrap();
+        // std::fs::write("ohno.dot", dg).unwrap();
 
-        // assert_features!(
-        //     md,
-        //     "reqwest",
-        //     [
-        //         "__rustls",
-        //         "__tls",
-        //         "async-compression",
-        //         "brotli",
-        //         "cookie_crate",
-        //         "cookie_store",
-        //         "cookies",
-        //         "hyper-rustls",
-        //         "proc-macro-hack",
-        //         "rustls",
-        //         "rustls-pemfile",
-        //         "rustls-tls",
-        //         "rustls-tls-webpki-roots",
-        //         "tokio-rustls",
-        //         "tokio-util",
-        //         "webpki-roots"
-        //     ]
-        // );
+        assert_features!(
+            md,
+            "reqwest",
+            [
+                "__rustls",
+                "__tls",
+                "async-compression",
+                "brotli",
+                "cookie_crate",
+                "cookie_store",
+                "cookies",
+                "hyper-rustls",
+                "proc-macro-hack",
+                "rustls",
+                "rustls-pemfile",
+                "rustls-tls",
+                "rustls-tls-webpki-roots",
+                "tokio-rustls",
+                "tokio-util",
+                "webpki-roots"
+            ]
+        );
     }
 
-    // {
-    //     let mut cmd = krates::Cmd::new();
-    //     cmd.manifest_path("tests/features/Cargo.toml")
-    //         .no_default_features()
-    //         .features(["reqest".to_owned()]);
+    {
+        let mut cmd = krates::Cmd::new();
+        cmd.manifest_path("tests/features/Cargo.toml")
+            .no_default_features()
+            .features(feats!(["reqest"]));
 
-    //     let mut builder = krates::Builder::new();
-    //     builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
-    //     builder.ignore_kind(krates::DepKind::Normal, krates::Scope::All);
-    //     let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+        let mut builder = krates::Builder::new();
+        builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
+        builder.ignore_kind(krates::DepKind::Normal, krates::Scope::All);
+        let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
 
-    //     assert_features!(
-    //         md,
-    //         "reqwest",
-    //         ["cookie_crate", "cookie_store", "cookies", "proc-macro-hack"]
-    //     );
-    // }
+        assert_features!(
+            md,
+            "reqwest",
+            ["cookie_crate", "cookie_store", "cookies", "proc-macro-hack"]
+        );
+    }
 
-    // let mut cmd = krates::Cmd::new();
-    // cmd.manifest_path("tests/features/Cargo.toml")
-    //     .features(["reqest".to_owned()]);
+    {
+        let mut cmd = krates::Cmd::new();
+        cmd.manifest_path("tests/features/Cargo.toml")
+            .features(feats!(["reqest", "simple"]));
 
-    // let mut builder = krates::Builder::new();
-    // builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
-    // let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+        let mut builder = krates::Builder::new();
+        builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
+        let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
 
-    // assert_features!(md, "reqwest", ["json", "cookies"]);
+        assert_features!(
+            md,
+            "reqwest",
+            [
+                "cookie_crate",
+                "cookie_store",
+                "cookies",
+                "json",
+                "proc-macro-hack",
+                "serde_json"
+            ]
+        );
+    }
 }
+
+/// Ensures that having an optional dependency enabled by one crate doesn't add
+/// an edge from another crate that has a weak dependency on the same crate
+#[test]
+fn ensure_weak_features_dont_add_edges() {}
