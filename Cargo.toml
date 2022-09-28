@@ -25,7 +25,7 @@ targets = ["cfg-expr/targets"]
 # Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.15"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.10"
+cfg-expr = "0.11"
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements
