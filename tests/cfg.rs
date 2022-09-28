@@ -34,7 +34,7 @@ fn ignores_non_linux() {
                             krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
-                            println!("{} matched {}", cfg, ti.triple);
+                            println!("{cfg} matched {}", ti.triple);
                             return false;
                         }
                     }
@@ -81,7 +81,7 @@ fn ignores_non_tier1() {
                             krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
-                            println!("{} matched {}", cfg, ti.triple);
+                            println!("{cfg} matched {}", ti.triple);
                             return false;
                         }
                     }
@@ -120,7 +120,7 @@ fn ignores_non_wasm() {
                             krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
                             _ => false,
                         }) {
-                            println!("{} matched {}", cfg, ti.triple);
+                            println!("{cfg} matched {}", ti.triple);
                             return false;
                         }
                     }
