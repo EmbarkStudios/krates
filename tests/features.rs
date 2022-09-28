@@ -19,10 +19,6 @@ fn prunes_multiple_weak_features() {
     builder.include_targets([("x86_64-unknown-linux-gnu", vec![])]);
     let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
 
-    for name in md.krates().map(|k| &k.name) {
-        println!("{name}");
-    }
-
     // All of the specified features have a weak dependency on reqwest, so it
     // shouldn't be present in the graph
     assert_eq!(0, md.krates_by_name("reqwest").count());
@@ -52,7 +48,13 @@ macro_rules! assert_features {
     ($graph:expr, $name:expr, $features:expr) => {
         let (_, krate) = $graph.krates_by_name($name).next().unwrap();
 
-        assert_eq!($graph.get_enabled_features(&krate.id).unwrap(), $features);
+        let expected_features: std::collections::BTreeSet<_> =
+            $features.into_iter().map(|s| s.to_owned()).collect();
+
+        assert_eq!(
+            $graph.get_enabled_features(&krate.id).unwrap(),
+            &expected_features
+        );
     };
 }
 
@@ -111,22 +113,25 @@ fn handles_explicit_weak_features() {
             md,
             "reqwest",
             [
+                // Rustls
                 "__rustls",
                 "__tls",
-                "async-compression",
-                "brotli",
-                "cookie_crate",
-                "cookie_store",
-                "cookies",
                 "hyper-rustls",
-                "proc-macro-hack",
                 "rustls",
-                "rustls-pemfile",
                 "rustls-tls",
+                "rustls-pemfile",
                 "rustls-tls-webpki-roots",
                 "tokio-rustls",
+                "webpki-roots",
+                // Brotli
+                "async-compression",
+                "brotli",
                 "tokio-util",
-                "webpki-roots"
+                // Cookies
+                "cookies",
+                "cookie_crate",
+                "cookie_store",
+                "proc-macro-hack",
             ]
         );
     }
@@ -139,6 +144,9 @@ fn handles_explicit_weak_features() {
 
         let mut builder = krates::Builder::new();
         builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
+
+        // By filtering out the "normal" crates we're removing the 'brotli'
+        // feature enabled on reqwest
         builder.ignore_kind(krates::DepKind::Normal, krates::Scope::All);
         let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
 
@@ -152,7 +160,9 @@ fn handles_explicit_weak_features() {
     {
         let mut cmd = krates::Cmd::new();
         cmd.manifest_path("tests/features/Cargo.toml")
-            .features(feats!(["reqest", "simple"]));
+            // We explicitly enable reqwest, and use default features, which
+            // should thus pull in json
+            .features(feats!(["reqest"]));
 
         let mut builder = krates::Builder::new();
         builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
@@ -162,12 +172,18 @@ fn handles_explicit_weak_features() {
             md,
             "reqwest",
             [
+                // Cookies
                 "cookie_crate",
                 "cookie_store",
                 "cookies",
-                "json",
                 "proc-macro-hack",
-                "serde_json"
+                // Json
+                "json",
+                "serde_json",
+                // Brotli
+                "async-compression",
+                "brotli",
+                "tokio-util",
             ]
         );
     }
@@ -176,4 +192,29 @@ fn handles_explicit_weak_features() {
 /// Ensures that having an optional dependency enabled by one crate doesn't add
 /// an edge from another crate that has a weak dependency on the same crate
 #[test]
-fn ensure_weak_features_dont_add_edges() {}
+fn ensure_weak_features_dont_add_edges() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/features/Cargo.toml")
+        .no_default_features()
+        .features(feats!(["tls-no-reqwest", "reqest"]));
+
+    let mut builder = krates::Builder::new();
+    builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
+    let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    assert_features!(
+        md,
+        "reqwest",
+        [
+            // Cookies
+            "cookie_crate",
+            "cookie_store",
+            "cookies",
+            "proc-macro-hack",
+            // Brotli
+            "async-compression",
+            "brotli",
+            "tokio-util",
+        ]
+    );
+}

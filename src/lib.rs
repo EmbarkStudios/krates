@@ -128,6 +128,9 @@ pub use pkgspec::PkgSpec;
 /// A crate's unique identifier
 pub type Kid = cargo_metadata::PackageId;
 
+/// The set of features that have been enabled on a crate
+pub type EnabledFeatures = std::collections::BTreeSet<String>;
+
 /// The dependency kind. A crate can depend on the same crate multiple times
 /// with different dependency kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -180,8 +183,8 @@ pub enum Node<N> {
         id: Kid,
         /// Associated user data with the node. Must be From<cargo_metadata::Package>
         krate: N,
-        /// List of features enabled on the crate, sorted.
-        features: Vec<String>,
+        /// List of features enabled on the crate
+        features: EnabledFeatures,
     },
     Feature {
         /// The node index for the crate this feature is for
@@ -379,10 +382,10 @@ impl<N, E> Krates<N, E> {
 
     /// Gets the features enabled for the specified crate
     #[inline]
-    pub fn get_enabled_features(&self, kid: &Kid) -> Option<&[String]> {
+    pub fn get_enabled_features(&self, kid: &Kid) -> Option<&EnabledFeatures> {
         self.node_for_kid(kid).map(|node| {
             if let Node::Krate { features, .. } = node {
-                features.as_slice()
+                features
             } else {
                 unreachable!()
             }

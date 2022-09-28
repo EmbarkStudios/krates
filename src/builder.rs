@@ -638,6 +638,14 @@ impl Builder {
         let ignore_kinds = self.ignore_kinds;
         let targets = self.target_filters;
 
+        // For features, we need to know what the root crates are in the graph,
+        // as the features enabled on those crates are the real source of truth,
+        // as all features of non-root crates can be made inaccurate due to
+        // graph pruning
+        let roots: std::collections::BTreeSet<_> = pid_stack.iter().cloned().collect();
+
+        let is_root_crate = |pid: &cm::PackageId| -> bool { roots.contains(&pid) };
+
         #[derive(Debug)]
         struct DepKindInfo {
             kind: DepKind,
@@ -784,6 +792,7 @@ impl Builder {
             // Cargo puts out a flat list of the enabled features, but we need
             // to use the declared features on the crate itself to figure out
             // the actual chain of features from one crate to another
+            // package features:
             // "features": {
             //   "blocking": [
             //     "simple",
@@ -823,6 +832,7 @@ impl Builder {
             //     "reqwest?/deflate"
             //   ]
             // },
+            // resolved features:
             // "features": [
             //   "blocking",
             //   "json",
@@ -830,84 +840,100 @@ impl Builder {
             //   "simple",
             //   "stream"
             // ]
-            feature_edge_map.insert(
-                pid,
-                rnode
-                    .features
-                    .iter()
-                    .filter_map(|feat| {
-                        // This should never fail as cargo will not generate metadata if
-                        // a feature is mentioned that doesn't exist, but still no
-                        // reason to panic here
-                        let sub_feats: Vec<_> = krate
-                            .features
-                            .get(feat)?
-                            .iter()
-                            .filter_map(|sub_feat| {
-                                let sf = ParsedFeature::from(sub_feat.as_str());
+            let enabled_features: Vec<_> = rnode
+                .features
+                .iter()
+                .filter_map(|feat| {
+                    // This should never fail as cargo will not generate metadata if
+                    // a feature is mentioned that doesn't exist, but still no
+                    // reason to panic here
+                    let sub_feats: Vec<_> = krate
+                        .features
+                        .get(feat)?
+                        .iter()
+                        .filter_map(|sub_feat| {
+                            let sf = ParsedFeature::from(sub_feat.as_str());
 
-                                match sf.feat() {
-                                    Feature::Krate(krate_name) => {
-                                        let kid = get_dep_id(krate_name);
+                            match sf.feat() {
+                                Feature::Krate(krate_name) => {
+                                    let kid = get_dep_id(krate_name);
 
-                                        let real_name = crate_name_from_pid(kid);
+                                    let real_name = crate_name_from_pid(kid);
 
-                                        Some(FeatureEdge {
-                                            kid,
-                                            name: if real_name != krate_name {
-                                                FeatureEdgeName::Rename(krate_name.to_owned())
-                                            } else {
-                                                FeatureEdgeName::Krate
-                                            },
-                                        })
-                                    }
-                                    Feature::Simple(s) => Some(FeatureEdge {
-                                        kid: pid,
-                                        name: FeatureEdgeName::Feature(s.to_owned()),
-                                    }),
-                                    Feature::Strong {
-                                        krate: krate_name,
-                                        feature,
-                                    } => Some(FeatureEdge {
+                                    Some(FeatureEdge {
+                                        kid,
+                                        name: if real_name != krate_name {
+                                            FeatureEdgeName::Rename(krate_name.to_owned())
+                                        } else {
+                                            FeatureEdgeName::Krate
+                                        },
+                                    })
+                                }
+                                Feature::Simple(s) => Some(FeatureEdge {
+                                    kid: pid,
+                                    name: FeatureEdgeName::Feature(s.to_owned()),
+                                }),
+                                Feature::Strong {
+                                    krate: krate_name,
+                                    feature,
+                                } => Some(FeatureEdge {
+                                    kid: get_dep_id(krate_name),
+                                    name: FeatureEdgeName::Feature(feature.to_owned()),
+                                }),
+                                Feature::Weak {
+                                    krate: krate_name,
+                                    feature,
+                                } => rnode.features.iter().any(|kn| kn == krate_name).then(
+                                    || FeatureEdge {
                                         kid: get_dep_id(krate_name),
                                         name: FeatureEdgeName::Feature(feature.to_owned()),
-                                    }),
-                                    Feature::Weak {
-                                        krate: krate_name,
-                                        feature,
-                                    } => rnode.features.iter().any(|kn| kn == krate_name).then(
-                                        || FeatureEdge {
-                                            kid: get_dep_id(krate_name),
-                                            name: FeatureEdgeName::Feature(feature.to_owned()),
-                                        },
-                                    ),
-                                }
-                            })
-                            .collect();
+                                    },
+                                ),
+                            }
+                        })
+                        .collect();
 
-                        Some((feat.clone(), sub_feats))
-                    })
-                    .collect::<Vec<_>>(),
-            );
+                    Some((feat.clone(), sub_feats))
+                })
+                .collect();
 
             #[derive(Debug)]
-            struct KrateEdge<'p> {
+            struct DependencyEdge {
                 dep: Edge,
-                pkg: &'p cm::PackageId,
-                features: Option<Vec<String>>,
+                features: Vec<String>,
                 uses_default_features: bool,
+            }
+
+            #[derive(Debug)]
+            struct KrateDependency<'p> {
+                pkg: &'p cm::PackageId,
+                edges: Vec<DependencyEdge>,
+                features: Vec<String>,
             }
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
             // dependency kinds, or different target configurations, so each one gets its
             // own edge
-            let edges: Vec<_> = rnode
+            let deps: Vec<_> = rnode
                 .deps
                 .iter()
-                .flat_map(|rdep| {
+                .filter_map(|rdep| {
                     let targets = &targets;
-                    rdep.dep_kinds.iter().filter_map(move |dk| {
+                    let pkg = &rdep.pkg;
+
+                    // We also have to take into account that a package
+                    // can rename its own library output, eg.
+                    // ```ini
+                    // [package]
+                    // name = "coreaudio-rs"
+                    //
+                    // [lib]
+                    // name = "coreaudio"
+                    // ```
+                    let maybe_real_name = crate_name_from_pid(pkg);
+                    
+                    let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(move |dk| {
                         let mask = match dk.kind {
                             DepKind::Normal => 0x1,
                             DepKind::Dev => 0x8,
@@ -919,17 +945,6 @@ impl Builder {
                             return None;
                         }
 
-                        // We also have to take into account that a package
-                        // can rename its own library output, eg.
-                        // ```ini
-                        // [package]
-                        // name = "coreaudio-rs"
-                        //
-                        // [lib]
-                        // name = "coreaudio"
-                        // ```
-                        let maybe_real_name = crate_name_from_pid(&rdep.pkg);
-
                         let dep = krate
                             .dependencies
                             .iter()
@@ -940,9 +955,9 @@ impl Builder {
 
                                 // Crates can rename the dependency package themselves
                                 let dep_name = dep.rename.as_deref().unwrap_or(&dep.name);
-                                dep_name == rdep.name || maybe_real_name == dep_name
+                                dep_names_match(dep_name, &rdep.name) || maybe_real_name == dep_name
                             })
-                            .expect("wtf");
+                            .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 
                         // We also need to account for a bug in cargo, where weak
                         // dependencies that aren't explicitly enabled still end
@@ -955,47 +970,13 @@ impl Builder {
                                 .iter()
                                 .any(|feat| *feat == rdep.name || *feat == maybe_real_name)
                             {
-                                println!("skipping {}", rdep.name);
-                                dbg!(&rnode.features);
+                                //println!("skipping {}", rdep.name);
                                 return None;
                             }
                         }
 
-                        if maybe_real_name == "reqwest" {
-                            println!("{:#?} {:#?}", rdep, dep);
-                        }
-
-                        let uses_default_features = dep.uses_default_features;
-                        let pkg = &rdep.pkg;
-                        let features = if dep.features.is_empty() {
-                            None
-                        } else {
-                            Some(dep.features.clone())
-                        };
-
-                        match &dk.cfg {
-                            None => Some(KrateEdge {
-                                dep: Edge::Dep {
-                                    kind: dk.kind,
-                                    cfg: None,
-                                },
-                                pkg,
-                                features,
-                                uses_default_features,
-                            }),
-                            Some(cfg) => {
-                                if include_all_targets {
-                                    return Some(KrateEdge {
-                                        dep: Edge::Dep {
-                                            kind: dk.kind,
-                                            cfg: Some(cfg.clone()),
-                                        },
-                                        pkg,
-                                        features,
-                                        uses_default_features,
-                                    });
-                                }
-
+                        let cfg = if let Some(cfg) = &dk.cfg {
+                            if !include_all_targets {
                                 let matched = if cfg.starts_with("cfg(") {
                                     match cfg_expr::Expression::parse(cfg) {
                                         Ok(expr) => {
@@ -1021,36 +1002,87 @@ impl Builder {
                                     targets.iter().any(|target| target.matches_triple(cfg))
                                 };
 
-                                if matched {
-                                    Some(KrateEdge {
-                                        dep: Edge::Dep {
-                                            kind: dk.kind,
-                                            cfg: Some(cfg.clone()),
-                                        },
-                                        pkg,
-                                        features,
-                                        uses_default_features,
-                                    })
-                                } else {
-                                    None
+                                if !matched {
+                                    return None;
                                 }
                             }
+
+                            Some(cfg.clone())
+                        } else {
+                            None
+                        };
+
+                        Some(DependencyEdge {
+                            dep: Edge::Dep {
+                                kind: dk.kind,
+                                cfg,
+                            },
+                            features: dep.features.clone(),
+                            uses_default_features: dep.uses_default_features,
+                        })
+                    }).collect();
+
+                    // If we pruned all of the edges we can just discard the dependency altogether
+                    if edges.is_empty() {
+                        return None;
+                    }
+
+                    // Given the top level features enabled for the parent crate,
+                    // determine the additional features that may be enabled for
+                    // this dependency in addition to the features that may be
+                    // enabled explicitly on each edge
+                    let mut feature_stack: Vec<_> = rnode.features.iter().map(|s| s.as_str()).collect();
+
+                    let mut features: Vec<String> = Vec::new();
+
+                    while let Some(feat) = feature_stack.pop() {
+                        for sf in &krate.features[feat] {
+                            let pf = ParsedFeature::from(sf.as_str());
+
+                            let (krate, feature) = match pf.feat() {
+                                Feature::Simple(feat) => {
+                                    feature_stack.push(feat);
+                                    continue;
+                                },
+                                Feature::Krate(_krate) => { continue; }
+                                Feature::Strong { krate, feature } => {
+                                    (krate, feature)
+                                }
+                                Feature::Weak { krate, feature } => {
+                                    (krate, feature)
+                                }
+                            };
+
+                            if dep_names_match(krate, &rdep.name) && krate != maybe_real_name {
+                                continue;
+                            }
+
+                            if let Err(i) = features.binary_search_by(|feat| feat.as_str().cmp(feature)) {
+                                features.insert(i, feature.to_owned());
+                            }
                         }
+                    }
+
+                    Some(KrateDependency {
+                        pkg,
+                        edges,
+                        features,
                     })
                 })
                 .collect();
 
-            if krate.name == "features-galore" {
-                dbg!(&edges);
-            }
+            feature_edge_map.insert(
+                pid,
+                enabled_features,
+            );
 
-            for pid in edges.iter().map(|kedge| kedge.pkg) {
+            for pid in deps.iter().map(|dep| dep.pkg) {
                 if !dep_edge_map.contains_key(pid) {
                     pid_stack.push(pid);
                 }
             }
 
-            dep_edge_map.insert(pid, edges);
+            dep_edge_map.insert(pid, deps);
         }
 
         // Sanity check, it's possible the user could exclude all of the
@@ -1072,29 +1104,22 @@ impl Builder {
             if let Some(edges) = dep_edge_map.get(&krate.id) {
                 let id = krate.id.clone();
 
-                // // Since we can prune crates either by kind, target, or user specification,
-                // // the actual set of features might not be the same as those that
-                // // the crate thinks they were, so we build up our own list
-                // let mut features: Vec<String> = Vec::new();
-                // let mut add_feat = |feat: std::borrow::Cow<'static, str>| {
-                //     if let Err(i) =
-                //         actually_enabled_features.binary_search_by(|f| f.as_str().cmp(&feat))
-                //     {
-                //         actually_enabled_features.insert(i, feat.into_owned());
-                //     }
-                // };
+                // If the crate is a root then the features it has enabled are
+                // accurate, however if it is not a root then we need to manually
+                // build up the list of enabled features as each edge is added
+                let features = if is_root_crate(&id) {
+                    let krate_index = nodes.binary_search_by(|n| n.id.cmp(&id)).unwrap();
+                    let rnode = &nodes[krate_index];
 
-                // let features = feature_edge_map
-                //     .get(&krate.id)
-                //     .map(|fe| fe.iter().map(|(feat, _)| feat.clone()).collect())
-                //     .unwrap_or_default();
+                    rnode.features.iter().cloned().collect()
+                } else {
+                    crate::EnabledFeatures::new()
+                };
+
                 let krate = crate::Node::Krate {
                     id,
                     krate: N::from(krate),
-                    // We don't bother settings features until we attach feature
-                    // edges, as those are the _real_ features enabled based upon
-                    // how we've pruned the graph
-                    features: Vec::new(),
+                    features,
                 };
 
                 graph.add_node(krate);
@@ -1168,67 +1193,60 @@ impl Builder {
                 continue;
             };
 
-            let is_reqwest = pid.repr.starts_with("features-galore");
-
-            if let Some(edges) = dep_edge_map.remove(pid) {
+            if let Some(deps) = dep_edge_map.remove(pid) {
                 use std::borrow::Cow;
-
-                if is_reqwest {
-                    dbg!(&edges);
-                }
 
                 // Attach an edge for each crate dependency, note that there might not
                 // actually be a target crate for the edge since crates can be pruned
                 // due to target configuration
-                for kedge in edges {
-                    let target_krate = if let Some(tk) = get(&graph, kedge.pkg, None) {
+                for dep in deps {
+                    let target_krate = if let Some(tk) = get(&graph, dep.pkg, None) {
                         tk
                     } else {
                         continue;
                     };
 
-                    let mut attached = 0;
-                    let mut attach = |feat: Cow<'static, str>| {
-                        let feat_node = match get(&graph, kedge.pkg, Some(&feat)) {
-                            Some(feat_node) => feat_node,
-                            None => {
-                                let feat_node = graph.add_node(crate::Node::Feature {
-                                    krate_index: target_krate,
-                                    name: feat.clone().into_owned(),
-                                });
+                    let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>, feat: Cow<'static, str>| {
+                        let feat_node = if let Some(feat_node) = get(graph, dep.pkg, Some(&feat)) {
+                            feat_node
+                        } else {
+                            let feat_node = graph.add_node(crate::Node::Feature {
+                                krate_index: target_krate,
+                                name: feat.clone().into_owned(),
+                            });
 
-                                if let crate::Node::Krate { features, .. } =
-                                    &mut graph[target_krate]
-                                {
-                                    if let Err(i) =
-                                        features.binary_search_by(|f| f.as_str().cmp(&feat))
-                                    {
-                                        features.insert(i, feat.into_owned());
-                                    }
+                            if let crate::Node::Krate { features, .. } = &mut graph[target_krate]
+                            {
+                                if !features.contains(feat.as_ref()) {
+                                    features.insert(feat.into_owned());
                                 }
-
-                                feat_node
                             }
+
+                            feat_node
                         };
 
                         graph.add_edge(srcid, feat_node, Edge::Feature.into());
-                        attached += 1;
                     };
 
-                    if kedge.uses_default_features {
-                        attach(Cow::Borrowed("default"));
-                    }
+                    // Add the features that were explicitly enabled by the specific
+                    // normal/dev/build dependency
+                    for edge in dep.edges {
+                        if edge.uses_default_features {
+                            attach(&mut graph, Cow::Borrowed("default"));
+                        }
 
-                    if let Some(feats) = kedge.features {
-                        for feat in feats {
+                        for feat in edge.features {
                             if feat != "default" {
-                                attach(Cow::Owned(feat));
+                                attach(&mut graph, Cow::Owned(feat));
                             }
                         }
+
+                        graph.add_edge(srcid, target_krate, E::from(edge.dep));
                     }
 
-                    if attached == 0 {
-                        graph.add_edge(srcid, target_krate, E::from(kedge.dep));
+                    // Add the features that were toggled on via a parent crate feature
+                    for feat in dep.features {
+                        attach(&mut graph, Cow::Owned(feat));
                     }
                 }
             }
@@ -1238,20 +1256,13 @@ impl Builder {
         for (pid, mut features) in feature_edge_map {
             let (kind, mut feature_stack) = if let Some(kind) = get(&graph, pid, None) {
                 if let crate::Node::Krate { features, .. } = &graph[kind] {
-                    (kind, features.clone())
+                    (kind, features.iter().cloned().collect::<Vec<_>>())
                 } else {
                     continue;
                 }
             } else {
                 continue;
             };
-
-            if pid.repr.starts_with("reqwest") {
-                dbg!(&features);
-                if let crate::Node::Krate { features, .. } = &graph[kind] {
-                    dbg!(features);
-                }
-            }
 
             let get_or_insert = |graph: &mut petgraph::Graph<crate::Node<N>, E>,
                                  kid: &Kid,
@@ -1303,7 +1314,7 @@ impl Builder {
 
                 for sub_feat in sub_features {
                     if sub_feat.kid != pid && get(&graph, &sub_feat.kid, None).is_none() {
-                        println!("skipped sub-features {sub_feat:?}, krate not in graph");
+                        //println!("skipped sub-features {sub_feat:?}, krate not in graph");
                         continue;
                     }
 
@@ -1327,10 +1338,8 @@ impl Builder {
                             // Ensure that all of the subfeatures enabled by the parent feature are added to the
                             // flat list of enabled features for the crate
                             if let crate::Node::Krate { features, .. } = &mut graph[kind] {
-                                if let Err(i) =
-                                    features.binary_search_by(|f| f.as_str().cmp(&feat_name))
-                                {
-                                    features.insert(i, feat_name.clone());
+                                if !features.contains(&feat_name) {
+                                    features.insert(feat_name.clone());
                                     feature_stack.push(feat_name);
                                 }
                             }
@@ -1342,47 +1351,6 @@ impl Builder {
                     graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
                 }
             }
-
-            // for (feat, sub_feats) in features {
-
-            //     if let Some(src_id) = get(&graph, pid, Some(&feat)) {
-
-            //         for sf in sub_feats {
-            //             let feat_name = match sf.name {
-            //                 FeatureEdgeName::Feature(feat) => Some(feat),
-            //                 FeatureEdgeName::Rename(kname) => Some(kname),
-            //                 FeatureEdgeName::Krate => None,
-            //             };
-
-            //             let target_id = match get(&graph, sf.kid, feat_name.as_deref()) {
-            //                 Some(target_id) => target_id,
-            //                 None => {
-            //                     let feat_name = feat_name
-            //                         .unwrap_or_else(|| crate_name_from_pid(&sf.kid).to_owned());
-
-            //                     let target_id = graph.add_node(crate::Node::Feature {
-            //                         krate_index: kind,
-            //                         name: feat_name.clone(),
-            //                     });
-
-            //                     // Ensure that all of the subfeatures enabled by the parent feature are added to the
-            //                     // flat list of enabled features for the crate
-            //                     if let crate::Node::Krate { features, .. } = &mut graph[kind] {
-            //                         if let Err(i) = features
-            //                             .binary_search_by(|f| f.as_str().cmp(&feat_name))
-            //                         {
-            //                             features.insert(i, feat_name);
-            //                         }
-            //                     }
-
-            //                     target_id
-            //                 }
-            //             };
-
-            //             graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
-            //         }
-            //     }
-            // }
         }
 
         Ok(Krates {
@@ -1417,6 +1385,21 @@ impl<'a> DecomposedRepr<'a> {
         };
 
         Self { name, version, rev }
+    }
+}
+
+/// When renaming dependencies to something with a `-` in a Cargo.toml file,
+/// the actual resolved name in the metadata will replace the `-` with a `_` so
+/// we need to take that into account when comparing the names as declared in
+/// the crate metadata with the dependencies in the resolved graph
+#[inline]
+fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
+    if krate_dep_name.len() != resolved_name.len() {
+        false
+    } else {
+        krate_dep_name.chars().zip(resolved_name.chars()).all(|(kn, rn)| {
+            kn == rn || kn == '-' && rn == '_'
+        })
     }
 }
 
