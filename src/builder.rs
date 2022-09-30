@@ -752,6 +752,21 @@ impl Builder {
         let mut dep_edge_map = HashMap::new();
         let mut feature_edge_map = HashMap::new();
 
+        #[derive(Debug)]
+        struct DependencyEdge {
+            kind: DepKind,
+            cfg: Option<String>,
+            features: Vec<String>,
+            uses_default_features: bool,
+        }
+
+        #[derive(Debug)]
+        struct KrateDependency<'p> {
+            pkg: &'p cm::PackageId,
+            edges: Vec<DependencyEdge>,
+            features: Vec<String>,
+        }
+
         while let Some(pid) = pid_stack.pop() {
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();
 
@@ -771,11 +786,11 @@ impl Builder {
                 debug_assert_eq!(rrepr, krepr);
             }
 
-            let get_dep_id = |dep_name: &str| -> &Kid {
+            let get_dep_id = |dep_name: &str| -> Option<&Kid> {
                 let kid = rnode.deps.iter().find_map(|ndep| {
                     let pkg_name = crate_name_from_pid(&ndep.pkg);
 
-                    if dep_name == ndep.name || dep_name == pkg_name {
+                    if dep_names_match(dep_name, &ndep.name) || dep_name == pkg_name {
                         Some(&ndep.pkg)
                     } else {
                         None
@@ -783,9 +798,10 @@ impl Builder {
                 });
 
                 if let Some(kid) = kid {
-                    kid
+                    Some(kid)
                 } else {
-                    panic!("failed to find {dep_name}");
+                    //dbg!("failed to find {dep_name} {:#?}", &rnode.deps);
+                    None
                 }
             };
 
@@ -856,8 +872,7 @@ impl Builder {
 
                             match sf.feat() {
                                 Feature::Krate(krate_name) => {
-                                    let kid = get_dep_id(krate_name);
-
+                                    let kid = get_dep_id(krate_name)?;
                                     let real_name = crate_name_from_pid(kid);
 
                                     Some(FeatureEdge {
@@ -877,18 +892,22 @@ impl Builder {
                                     krate: krate_name,
                                     feature,
                                 } => Some(FeatureEdge {
-                                    kid: get_dep_id(krate_name),
+                                    kid: get_dep_id(krate_name)?,
                                     name: FeatureEdgeName::Feature(feature.to_owned()),
                                 }),
                                 Feature::Weak {
                                     krate: krate_name,
                                     feature,
-                                } => rnode.features.iter().any(|kn| kn == krate_name).then(
-                                    || FeatureEdge {
-                                        kid: get_dep_id(krate_name),
-                                        name: FeatureEdgeName::Feature(feature.to_owned()),
-                                    },
-                                ),
+                                } => {
+                                    if rnode.features.iter().any(|kn| kn == krate_name) {
+                                        Some(FeatureEdge {
+                                            kid: get_dep_id(krate_name)?,
+                                            name: FeatureEdgeName::Feature(feature.to_owned()),
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                },
                             }
                         })
                         .collect();
@@ -896,20 +915,6 @@ impl Builder {
                     Some((feat.clone(), sub_feats))
                 })
                 .collect();
-
-            #[derive(Debug)]
-            struct DependencyEdge {
-                dep: Edge,
-                features: Vec<String>,
-                uses_default_features: bool,
-            }
-
-            #[derive(Debug)]
-            struct KrateDependency<'p> {
-                pkg: &'p cm::PackageId,
-                edges: Vec<DependencyEdge>,
-                features: Vec<String>,
-            }
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
@@ -932,6 +937,17 @@ impl Builder {
                     // name = "coreaudio"
                     // ```
                     let maybe_real_name = crate_name_from_pid(pkg);
+
+                    // Dependencies will default to saying "uses_default_features" on edges,
+                    // even if the crate in question doesn't actually have a "default" feature,
+                    // so check that it actually does
+                    let has_default_feature = {
+                        let krate_index = nodes.binary_search_by(|n| n.id.cmp(pkg)).unwrap();
+                        let rnode = &nodes[krate_index];
+
+                        // We've already guaranteed this list is sorted
+                        rnode.features.binary_search_by(|f| f.as_str().cmp("default")).is_ok()
+                    };
                     
                     let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(move |dk| {
                         let mask = match dk.kind {
@@ -1013,12 +1029,10 @@ impl Builder {
                         };
 
                         Some(DependencyEdge {
-                            dep: Edge::Dep {
-                                kind: dk.kind,
-                                cfg,
-                            },
+                            kind: dk.kind,
+                            cfg,
                             features: dep.features.clone(),
-                            uses_default_features: dep.uses_default_features,
+                            uses_default_features: dep.uses_default_features && has_default_feature,
                         })
                     }).collect();
 
@@ -1193,6 +1207,8 @@ impl Builder {
                 continue;
             };
 
+            let is_a = crate_name_from_pid(pid) == "a";
+
             if let Some(deps) = dep_edge_map.remove(pid) {
                 use std::borrow::Cow;
 
@@ -1206,7 +1222,9 @@ impl Builder {
                         continue;
                     };
 
-                    let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>, feat: Cow<'static, str>| {
+                    let dep_name = crate_name_from_pid(dep.pkg);
+
+                    let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>, feat: Cow<'static, str>, edge: Edge| {
                         let feat_node = if let Some(feat_node) = get(graph, dep.pkg, Some(&feat)) {
                             feat_node
                         } else {
@@ -1225,28 +1243,35 @@ impl Builder {
                             feat_node
                         };
 
-                        graph.add_edge(srcid, feat_node, Edge::Feature.into());
+                        graph.add_edge(srcid, feat_node, edge.into());
                     };
 
                     // Add the features that were explicitly enabled by the specific
                     // normal/dev/build dependency
                     for edge in dep.edges {
+                        let attach_direct_edge = !edge.uses_default_features && edge.features.is_empty();
+
                         if edge.uses_default_features {
-                            attach(&mut graph, Cow::Borrowed("default"));
+                            attach(&mut graph, Cow::Borrowed("default"), Edge::DepFeature { kind: edge.kind, cfg: edge.cfg.clone() });
                         }
 
                         for feat in edge.features {
                             if feat != "default" {
-                                attach(&mut graph, Cow::Owned(feat));
+                                attach(&mut graph, Cow::Owned(feat), Edge::DepFeature { kind: edge.kind, cfg: edge.cfg.clone() });
                             }
                         }
 
-                        graph.add_edge(srcid, target_krate, E::from(edge.dep));
+                        if attach_direct_edge {
+                            graph.add_edge(srcid, target_krate, Edge::Dep {
+                                kind: edge.kind,
+                                cfg: edge.cfg,
+                            }.into());
+                        }
                     }
 
                     // Add the features that were toggled on via a parent crate feature
                     for feat in dep.features {
-                        attach(&mut graph, Cow::Owned(feat));
+                        attach(&mut graph, Cow::Owned(feat), Edge::Feature);
                     }
                 }
             }

@@ -234,7 +234,14 @@ pub enum Edge {
         /// A possible cfg() or <target-triple> applied to this dependency
         cfg: Option<String>,
     },
+    /// An edge from one feature to another
     Feature,
+    DepFeature {
+        /// The dependency kind for the edge link
+        kind: DepKind,
+        /// A possible cfg() or <target-triple> applied to this dependency
+        cfg: Option<String>,
+    },
 }
 
 impl fmt::Display for Edge {
@@ -248,10 +255,23 @@ impl fmt::Display for Edge {
                 };
 
                 if let Some(cfg) = cfg {
-                    write!(f, " '{}'", cfg)?;
+                    write!(f, " '{cfg}'")?;
                 }
             }
             Self::Feature => f.write_str("feature")?,
+            Self::DepFeature { kind, cfg } => {
+                f.write_str("feature")?;
+
+                match kind {
+                    DepKind::Normal => {}
+                    DepKind::Build => f.write_str(" (build)")?,
+                    DepKind::Dev => f.write_str(" (dev)")?,
+                };
+
+                if let Some(cfg) = cfg {
+                    write!(f, " '{cfg}'")?;
+                }
+            }
         }
 
         Ok(())
