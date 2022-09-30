@@ -7,7 +7,7 @@ macro_rules! feats {
 }
 
 /// Ensures weak dependencies are properly pruned if not explicitly pulled in
-/// https://github.com/EmbarkStudios/krates/issues/41
+/// <https://github.com/EmbarkStudios/krates/issues/41>
 #[test]
 fn prunes_multiple_weak_features() {
     let mut cmd = krates::Cmd::new();

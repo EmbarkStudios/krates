@@ -37,7 +37,7 @@ impl<'feat> ParsedFeature<'feat> {
                 krate: &self.inner[..ind],
                 feature: &self.inner[ind + 1..],
             },
-            FeatureKind::Simple => Feature::Simple(&self.inner),
+            FeatureKind::Simple => Feature::Simple(self.inner),
         }
     }
 }
@@ -49,7 +49,7 @@ impl<'feat> From<&'feat str> for ParsedFeature<'feat> {
             FeatureKind::Krate
         } else if let Some(ind) = f.find("?/") {
             FeatureKind::Weak(ind)
-        } else if let Some(ind) = f.find("/") {
+        } else if let Some(ind) = f.find('/') {
             FeatureKind::Strong(ind)
         } else {
             FeatureKind::Simple

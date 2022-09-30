@@ -4,11 +4,7 @@ use util::{build, cmp};
 
 macro_rules! matches_kind {
     ($ef:expr, $($tail:tt)*) => {
-        if let Some(kind) = $ef.dep.map(|d| d.kind) {
-            matches!(kind, $($tail)*)
-        } else {
-            false
-        }
+        $ef.dep.map(|d| matches!(d.kind, $($tail)*)).unwrap_or_default()
     }
 }
 

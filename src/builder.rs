@@ -907,7 +907,7 @@ impl Builder {
                                     } else {
                                         None
                                     }
-                                },
+                                }
                             }
                         })
                         .collect();
@@ -948,7 +948,7 @@ impl Builder {
                         // We've already guaranteed this list is sorted
                         rnode.features.binary_search_by(|f| f.as_str().cmp("default")).is_ok()
                     };
-                    
+
                     let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(move |dk| {
                         let mask = match dk.kind {
                             DepKind::Normal => 0x1,
@@ -980,15 +980,12 @@ impl Builder {
                         // up as resolved in the graph.
                         // https://github.com/EmbarkStudios/krates/issues/41
                         // https://github.com/rust-lang/cargo/issues/10801
-                        if dep.optional {
-                            if !rnode
+                        if dep.optional && !rnode
                                 .features
                                 .iter()
-                                .any(|feat| *feat == rdep.name || *feat == maybe_real_name)
-                            {
-                                //println!("skipping {}", rdep.name);
-                                return None;
-                            }
+                                .any(|feat| *feat == rdep.name || *feat == maybe_real_name) {
+                            //println!("skipping {}", rdep.name);
+                            return None;
                         }
 
                         let cfg = if let Some(cfg) = &dk.cfg {
@@ -1059,10 +1056,7 @@ impl Builder {
                                     continue;
                                 },
                                 Feature::Krate(_krate) => { continue; }
-                                Feature::Strong { krate, feature } => {
-                                    (krate, feature)
-                                }
-                                Feature::Weak { krate, feature } => {
+                                Feature::Strong { krate, feature } | Feature::Weak { krate, feature } => {
                                     (krate, feature)
                                 }
                             };
@@ -1085,10 +1079,7 @@ impl Builder {
                 })
                 .collect();
 
-            feature_edge_map.insert(
-                pid,
-                enabled_features,
-            );
+            feature_edge_map.insert(pid, enabled_features);
 
             for pid in deps.iter().map(|dep| dep.pkg) {
                 if !dep_edge_map.contains_key(pid) {
@@ -1207,8 +1198,6 @@ impl Builder {
                 continue;
             };
 
-            let is_a = crate_name_from_pid(pid) == "a";
-
             if let Some(deps) = dep_edge_map.remove(pid) {
                 use std::borrow::Cow;
 
@@ -1222,9 +1211,9 @@ impl Builder {
                         continue;
                     };
 
-                    let dep_name = crate_name_from_pid(dep.pkg);
-
-                    let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>, feat: Cow<'static, str>, edge: Edge| {
+                    let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>,
+                                  feat: Cow<'static, str>,
+                                  edge: Edge| {
                         let feat_node = if let Some(feat_node) = get(graph, dep.pkg, Some(&feat)) {
                             feat_node
                         } else {
@@ -1233,8 +1222,7 @@ impl Builder {
                                 name: feat.clone().into_owned(),
                             });
 
-                            if let crate::Node::Krate { features, .. } = &mut graph[target_krate]
-                            {
+                            if let crate::Node::Krate { features, .. } = &mut graph[target_krate] {
                                 if !features.contains(feat.as_ref()) {
                                     features.insert(feat.into_owned());
                                 }
@@ -1249,23 +1237,43 @@ impl Builder {
                     // Add the features that were explicitly enabled by the specific
                     // normal/dev/build dependency
                     for edge in dep.edges {
-                        let attach_direct_edge = !edge.uses_default_features && edge.features.is_empty();
+                        let attach_direct_edge =
+                            !edge.uses_default_features && edge.features.is_empty();
 
                         if edge.uses_default_features {
-                            attach(&mut graph, Cow::Borrowed("default"), Edge::DepFeature { kind: edge.kind, cfg: edge.cfg.clone() });
+                            attach(
+                                &mut graph,
+                                Cow::Borrowed("default"),
+                                Edge::DepFeature {
+                                    kind: edge.kind,
+                                    cfg: edge.cfg.clone(),
+                                },
+                            );
                         }
 
                         for feat in edge.features {
                             if feat != "default" {
-                                attach(&mut graph, Cow::Owned(feat), Edge::DepFeature { kind: edge.kind, cfg: edge.cfg.clone() });
+                                attach(
+                                    &mut graph,
+                                    Cow::Owned(feat),
+                                    Edge::DepFeature {
+                                        kind: edge.kind,
+                                        cfg: edge.cfg.clone(),
+                                    },
+                                );
                             }
                         }
 
                         if attach_direct_edge {
-                            graph.add_edge(srcid, target_krate, Edge::Dep {
-                                kind: edge.kind,
-                                cfg: edge.cfg,
-                            }.into());
+                            graph.add_edge(
+                                srcid,
+                                target_krate,
+                                Edge::Dep {
+                                    kind: edge.kind,
+                                    cfg: edge.cfg,
+                                }
+                                .into(),
+                            );
                         }
                     }
 
@@ -1338,7 +1346,7 @@ impl Builder {
                 graph.add_edge(src_id, kind, E::from(crate::Edge::Feature));
 
                 for sub_feat in sub_features {
-                    if sub_feat.kid != pid && get(&graph, &sub_feat.kid, None).is_none() {
+                    if sub_feat.kid != pid && get(&graph, sub_feat.kid, None).is_none() {
                         //println!("skipped sub-features {sub_feat:?}, krate not in graph");
                         continue;
                     }
@@ -1349,11 +1357,12 @@ impl Builder {
                         FeatureEdgeName::Krate => None,
                     };
 
-                    let target_id = match get(&graph, sub_feat.kid, feat_name.as_deref()) {
-                        Some(target_id) => target_id,
-                        None => {
+                    let target_id =
+                        if let Some(target_id) = get(&graph, sub_feat.kid, feat_name.as_deref()) {
+                            target_id
+                        } else {
                             let feat_name = feat_name
-                                .unwrap_or_else(|| crate_name_from_pid(&sub_feat.kid).to_owned());
+                                .unwrap_or_else(|| crate_name_from_pid(sub_feat.kid).to_owned());
 
                             let target_id = graph.add_node(crate::Node::Feature {
                                 krate_index: kind,
@@ -1370,8 +1379,7 @@ impl Builder {
                             }
 
                             target_id
-                        }
-                    };
+                        };
 
                     graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
                 }
@@ -1422,9 +1430,10 @@ fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
     if krate_dep_name.len() != resolved_name.len() {
         false
     } else {
-        krate_dep_name.chars().zip(resolved_name.chars()).all(|(kn, rn)| {
-            kn == rn || kn == '-' && rn == '_'
-        })
+        krate_dep_name
+            .chars()
+            .zip(resolved_name.chars())
+            .all(|(kn, rn)| kn == rn || kn == '-' && rn == '_')
     }
 }
 

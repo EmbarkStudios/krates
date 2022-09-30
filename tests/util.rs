@@ -26,10 +26,10 @@ pub struct Grafs {
 
 pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, String> {
     let contents = std::fs::read_to_string(Path::new("tests").join(src))
-        .map_err(|e| format!("failed to load metadata file: {}", e))?;
+        .map_err(|e| format!("failed to load metadata file: {e}"))?;
 
     let md: krates::cm::Metadata = serde_json::from_str(&contents)
-        .map_err(|e| format!("failed to deserialize metadata: {}", e))?;
+        .map_err(|e| format!("failed to deserialize metadata: {e}"))?;
 
     let resolved = md.resolve.as_ref().cloned().unwrap();
 
@@ -68,7 +68,7 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
         .build_with_metadata(md, |f: krates::cm::Package| {
             filtered.push(f.id);
         })
-        .map_err(|e| format!("failed to build graph: {}", e))?;
+        .map_err(|e| format!("failed to build graph: {e}"))?;
 
     filtered.sort();
 
@@ -121,8 +121,8 @@ pub fn make_kid(s: &str) -> krates::Kid {
     let source = i.next();
 
     let source = match name {
-        which @ "a" | which @ "b" | which @ "c" => {
-            format!("(path+file:///home/jake/code/krates/tests/ws/{})", which)
+        which @ ("a" | "b" | "c") => {
+            format!("(path+file:///home/jake/code/krates/tests/ws/{which})")
         }
         _ => source
             .unwrap_or("(registry+https://github.com/rust-lang/crates.io-index)")
@@ -130,7 +130,7 @@ pub fn make_kid(s: &str) -> krates::Kid {
     };
 
     krates::Kid {
-        repr: format!("{} {} {}", name, version, source,),
+        repr: format!("{name} {version} {source}"),
     }
 }
 
