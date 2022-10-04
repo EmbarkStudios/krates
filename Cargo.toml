@@ -32,6 +32,8 @@ petgraph = "0.6"
 semver = "1.0"
 
 [dev-dependencies]
+# Example CLI
+clap = { version = "4.0", features = ["derive"] }
 # Used to print colored diffs in case of test failures
 similar-asserts = "1.1"
 # Used to deserialize test files into metadata we can load
