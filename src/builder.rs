@@ -1061,7 +1061,7 @@ impl Builder {
                                 }
                             };
 
-                            if dep_names_match(krate, &rdep.name) && krate != maybe_real_name {
+                            if !dep_names_match(krate, &rdep.name) && krate != maybe_real_name {
                                 continue;
                             }
 
