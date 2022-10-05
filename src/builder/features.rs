@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Feature<'feat> {
+pub enum Feature<'feat> {
     Krate(&'feat str),
     Weak {
         krate: &'feat str,
@@ -19,14 +19,14 @@ enum FeatureKind {
     Simple,
 }
 
-pub(crate) struct ParsedFeature<'feat> {
+pub struct ParsedFeature<'feat> {
     inner: &'feat str,
     kind: FeatureKind,
 }
 
 impl<'feat> ParsedFeature<'feat> {
     #[inline]
-    pub(crate) fn feat(&self) -> Feature<'feat> {
+    pub fn feat(&self) -> Feature<'feat> {
         match self.kind {
             FeatureKind::Krate => Feature::Krate(&self.inner[4..]),
             FeatureKind::Weak(ind) => Feature::Weak {

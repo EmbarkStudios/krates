@@ -42,7 +42,10 @@ mod builder;
 mod errors;
 mod pkgspec;
 
-pub use builder::{Builder, Cmd, LockOptions, NoneFilter, OnFilter, Scope, Target};
+pub use builder::{
+    features::{Feature, ParsedFeature},
+    Builder, Cmd, LockOptions, NoneFilter, OnFilter, Scope, Target,
+};
 pub use errors::Error;
 pub use pkgspec::PkgSpec;
 

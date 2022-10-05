@@ -1,4 +1,4 @@
-mod features;
+pub(crate) mod features;
 
 use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
