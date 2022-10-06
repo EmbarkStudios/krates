@@ -225,7 +225,7 @@ impl<N, E> Krates<N, E> {
     /// use krates::Krates;
     ///
     /// fn print_krates(krates: &Krates) {
-    ///     for (name, version) in krates.krates().map(|kn| (&kn.krate.name, &kn.krate.version)) {
+    ///     for (name, version) in krates.krates().map(|krate| (&krate.name, &krate.version)) {
     ///         println!("Crate {} @ {}", name, version);
     ///     }
     /// }
@@ -252,7 +252,11 @@ impl<N, E> Krates<N, E> {
     ///
     /// fn count_build_deps(krates: &Krates, pkg: &Kid) -> usize {
     ///     krates.get_deps(krates.nid_for_kid(pkg).unwrap())
-    ///         .filter(|(_, edge)| edge.kind == DepKind::Build)
+    ///         .filter(|(_, edge)| matches!(
+    ///             edge,
+    ///             krates::Edge::Dep { kind: DepKind::Build, .. } |
+    ///             krates::Edge::DepFeature { kind: DepKind::Build, .. }
+    ///         ))
     ///         .count()
     /// }
     /// ```
@@ -362,7 +366,7 @@ where
     ///
     /// fn print(krates: &Krates, name: &str) {
     ///     let req = VersionReq::parse("=0.2").unwrap();
-    ///     for vs in krates.search_matches(name, req.clone()).map(|(_, kn)| &kn.krate.version) {
+    ///     for vs in krates.search_matches(name, req.clone()).map(|(_, krate)| &krate.version) {
     ///         println!("found version {} matching {}!", vs, req);
     ///     }
     /// }
@@ -383,7 +387,7 @@ where
     /// use krates::Krates;
     ///
     /// fn print_all_versions(krates: &Krates, name: &str) {
-    ///     for vs in krates.krates_by_name(name).map(|(_, kn)| &kn.krate.version) {
+    ///     for vs in krates.krates_by_name(name).map(|(_, krate)| &krate.version) {
     ///         println!("found version {}", vs);
     ///     }
     /// }
