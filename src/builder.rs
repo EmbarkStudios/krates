@@ -750,7 +750,7 @@ impl Builder {
         }
 
         let mut dep_edge_map = HashMap::new();
-        let mut feature_edge_map = HashMap::new();
+        let mut feature_edge_map = std::collections::BTreeMap::new();
 
         #[derive(Debug)]
         struct DependencyEdge {
