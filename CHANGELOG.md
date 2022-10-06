@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#42](https://github.com/EmbarkStudios/krates/pull/42) added support for features, adding nodes for each unique future, and linking edges between dependencies and features themselves. This (hopefully) properly takes into account the existing ways of pruning the graph via targets, exclusions etc. It also allows the retrieval of that final feature set via `Krates::get_enabled_features`.
+
+### Fixed
+- [PR#42](https://github.com/EmbarkStudios/krates/pull/42) resolved [#41](https://github.com/EmbarkStudios/krates/issues/41) by properly pruning weak dependencies that were improperly resolved by cargo.
+
 ## [0.11.0] - 2022-07-04
 ### Changed
 - [PR#40](https://github.com/EmbarkStudios/krates/pull/40) updated `cargo_metadata` to 0.15. Thanks [@pinkforest](https://github.com/pinkforest)!
@@ -96,11 +102,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.7.0]: https://github.com/EmbarkStudios/krates/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/EmbarkStudios/krates/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/EmbarkStudios/krates/compare/0.4.2...0.5.0
-[0.4.2]: https://github.com/EmbarkStudios/krates/compare/0.4.1...0.4.2
-[0.4.1]: https://github.com/EmbarkStudios/krates/compare/0.4.0...0.4.1
-[0.4.0]: https://github.com/EmbarkStudios/krates/compare/0.3.1...0.4.0
-[0.3.1]: https://github.com/EmbarkStudios/krates/compare/0.3.0...0.3.1
-[0.3.0]: https://github.com/EmbarkStudios/krates/compare/0.2.0...0.3.0
-[0.2.0]: https://github.com/EmbarkStudios/krates/compare/0.1.1...0.2.0
-[0.1.1]: https://github.com/EmbarkStudios/krates/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/EmbarkStudios/krates/releases/tag/0.1.0
