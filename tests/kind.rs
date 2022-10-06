@@ -1,13 +1,13 @@
 mod util;
 
-use util::{build, cmp};
+use util::build;
 
 #[test]
 fn all_the_things() {
     let grafs = build("all-features.json", krates::Builder::new()).unwrap();
 
     assert!(grafs.filtered.is_empty());
-    cmp(grafs, |_| false, |_| false);
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -22,7 +22,7 @@ fn filters_dev() {
         // This shouldn't actually affect anything, as dev dependencies
         // for non-workspace crates are already not resolved
         assert!(grafs.filtered.is_empty());
-        cmp(grafs, |_| false, |_| false);
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Just workspace crates
@@ -31,17 +31,7 @@ fn filters_dev() {
         kb.ignore_kind(krates::DepKind::Dev, krates::Scope::Workspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        let filtered = [
-            util::make_kid("difference 2.0.0"),
-            util::make_kid("ring 0.16.9"),
-        ];
-
-        cmp(
-            grafs,
-            |kid| filtered.contains(kid),
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Dev,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Both
@@ -49,8 +39,9 @@ fn filters_dev() {
         let mut kb = krates::Builder::new();
         kb.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
 
+        // This will be equivalent to to filtering workspace dev crates
         let grafs = build("all-features.json", kb).unwrap();
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Dev);
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 }
 
@@ -62,12 +53,7 @@ fn filters_build() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::NonWorkspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| !util::is_workspace(ef.source) && ef.kind == krates::DepKind::Build,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Just workspace crates
@@ -76,12 +62,7 @@ fn filters_build() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::Workspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Build,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Both
@@ -90,8 +71,7 @@ fn filters_build() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::All);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Build);
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 }
 
@@ -103,12 +83,7 @@ fn filters_normal() {
         kb.ignore_kind(krates::DepKind::Normal, krates::Scope::NonWorkspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| !util::is_workspace(ef.source) && ef.kind == krates::DepKind::Normal,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Just workspace crates
@@ -117,12 +92,7 @@ fn filters_normal() {
         kb.ignore_kind(krates::DepKind::Normal, krates::Scope::Workspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| util::is_workspace(ef.source) && ef.kind == krates::DepKind::Normal,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Both
@@ -131,8 +101,7 @@ fn filters_normal() {
         kb.ignore_kind(krates::DepKind::Normal, krates::Scope::All);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(grafs, |_| false, |ef| ef.kind == krates::DepKind::Normal);
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 }
 
@@ -145,15 +114,7 @@ fn filters_build_and_dev() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::NonWorkspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| {
-                !util::is_workspace(ef.source)
-                    && (ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev)
-            },
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Just workspace crates
@@ -163,15 +124,7 @@ fn filters_build_and_dev() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::Workspace);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| {
-                util::is_workspace(ef.source)
-                    && (ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev)
-            },
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 
     // Both
@@ -181,12 +134,7 @@ fn filters_build_and_dev() {
         kb.ignore_kind(krates::DepKind::Build, krates::Scope::All);
 
         let grafs = build("all-features.json", kb).unwrap();
-
-        cmp(
-            grafs,
-            |_| false,
-            |ef| ef.kind == krates::DepKind::Build || ef.kind == krates::DepKind::Dev,
-        );
+        insta::assert_snapshot!(grafs.dotgraph());
     }
 }
 
@@ -196,6 +144,5 @@ fn only_b() {
     kb.include_workspace_crates(&["/home/jake/code/krates/tests/ws/b/Cargo.toml"]);
 
     let grafs = build("all-features.json", kb).unwrap();
-
-    cmp(grafs, |kid| kid.repr.starts_with("a "), |_| false);
+    insta::assert_snapshot!(grafs.dotgraph());
 }

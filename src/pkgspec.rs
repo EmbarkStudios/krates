@@ -156,7 +156,7 @@ impl std::str::FromStr for PkgSpec {
                     return Err(Error::InvalidPkgSpec("package spec cannot end with '#'"));
                 }
 
-                let url_no_frag = (&url[..ind]).to_owned();
+                let url_no_frag = url[..ind].to_owned();
 
                 let (name, version) =
                     name_and_or_version(Some(&url[ind + 1..]), Some(&url_no_frag))?;
