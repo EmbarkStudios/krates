@@ -24,6 +24,13 @@ pub struct Grafs {
     pub simple: SimpleGraph,
 }
 
+impl Grafs {
+    #[inline]
+    pub fn dotgraph(&self) -> String {
+        krates::petgraph::dot::Dot::new(self.actual.graph()).to_string()
+    }
+}
+
 pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, String> {
     let contents = std::fs::read_to_string(Path::new("tests").join(src))
         .map_err(|e| format!("failed to load metadata file: {e}"))?;
@@ -232,25 +239,4 @@ pub struct EdgeFilter<'a> {
     pub source: &'a krates::Kid,
     pub target: &'a krates::Kid,
     pub dep: Option<EdgeDepFilter<'a>>,
-}
-
-pub fn cmp<NF: Fn(&krates::Kid) -> bool, EF: Fn(EdgeFilter<'_>) -> bool>(
-    grafs: Grafs,
-    node_filter: NF,
-    edge_filter: EF,
-) {
-    let expected = grafs.simple.build(node_filter, edge_filter);
-
-    use krates::petgraph::dot::Dot;
-
-    let actual = Dot::new(&grafs.actual.graph()).to_string();
-
-    std::fs::write("graph.dot", &actual).unwrap();
-
-    similar_asserts::assert_str_eq!(
-        Dot::new(&expected),
-        actual,
-        "filtered: {:#?}",
-        grafs.filtered
-    );
 }

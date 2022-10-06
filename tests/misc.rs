@@ -25,7 +25,7 @@ fn iter_names() {
     assert_eq!(win38.1.name, "winapi");
     assert_eq!(
         win38.1.version,
-        krates::semver::Version::parse("0.3.8").unwrap()
+        krates::semver::Version::parse("0.3.9").unwrap()
     );
 
     assert!(iter.next().is_none());
@@ -82,7 +82,7 @@ fn iter_matches() {
         assert_eq!(win38.1.name, "winapi");
         assert_eq!(
             win38.1.version,
-            krates::semver::Version::parse("0.3.8").unwrap()
+            krates::semver::Version::parse("0.3.9").unwrap()
         );
 
         assert!(iter.next().is_none());
@@ -110,7 +110,7 @@ fn iter_matches() {
         assert_eq!(win38.1.name, "winapi");
         assert_eq!(
             win38.1.version,
-            krates::semver::Version::parse("0.3.8").unwrap()
+            krates::semver::Version::parse("0.3.9").unwrap()
         );
 
         assert!(iter.next().is_none());

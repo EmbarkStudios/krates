@@ -1,6 +1,6 @@
 mod util;
 
-use util::{build, cmp};
+use util::build;
 
 #[test]
 fn includes() {
@@ -12,8 +12,7 @@ fn includes() {
     ]);
 
     let grafs = build("all-features2.json", kb).unwrap();
-
-    cmp(grafs, |id| id.repr.starts_with("a 0.1.0"), |_| false);
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -27,16 +26,7 @@ fn root() {
     let grafs = build("all-features2.json", kb).unwrap();
 
     assert_eq!(grafs.actual.len(), 1);
-
-    cmp(
-        grafs,
-        |id| {
-            id.repr.starts_with("a 0.1.0")
-                || id.repr.starts_with("b 0.1.0")
-                || id.repr.starts_with("c 0.1.0")
-        },
-        |_| false,
-    );
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -47,8 +37,7 @@ fn workspace_with_root() {
     kb.workspace(true);
 
     let grafs = build("all-features2.json", kb).unwrap();
-
-    cmp(grafs, |_| false, |_| false);
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -58,6 +47,5 @@ fn workspace_with_root_exclude() {
     kb.exclude(std::iter::once("c".parse::<krates::PkgSpec>().unwrap()));
 
     let grafs = build("all-features2.json", kb).unwrap();
-
-    cmp(grafs, |id| id.repr.starts_with("c 0.1.0"), |_| false);
+    insta::assert_snapshot!(grafs.dotgraph());
 }

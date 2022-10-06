@@ -1,7 +1,7 @@
 mod util;
 
 use krates::cfg_expr::targets;
-use util::{build, cmp};
+use util::build;
 
 #[test]
 fn ignores_non_linux() {
@@ -16,38 +16,7 @@ fn ignores_non_linux() {
 
     let grafs = build("all-features.json", kb).unwrap();
 
-    let targets: Vec<_> = targets::ALL_BUILTINS
-        .iter()
-        .filter(|ti| ti.os == Some(targets::Os::linux))
-        .collect();
-
-    cmp(
-        grafs,
-        |_| false,
-        |ef| {
-            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
-                if cfg.starts_with("cfg(") {
-                    let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
-
-                    for ti in &targets {
-                        if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
-                            _ => false,
-                        }) {
-                            println!("{cfg} matched {}", ti.triple);
-                            return false;
-                        }
-                    }
-
-                    true
-                } else {
-                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
-                }
-            } else {
-                false
-            }
-        },
-    );
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -68,33 +37,7 @@ fn ignores_non_tier1() {
 
     let grafs = build("all-features.json", kb).unwrap();
 
-    cmp(
-        grafs,
-        |_| false,
-        |ef| {
-            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
-                if cfg.starts_with("cfg(") {
-                    let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
-
-                    for ti in &targets {
-                        if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
-                            _ => false,
-                        }) {
-                            println!("{cfg} matched {}", ti.triple);
-                            return false;
-                        }
-                    }
-
-                    true
-                } else {
-                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
-                }
-            } else {
-                false
-            }
-        },
-    );
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -107,33 +50,7 @@ fn ignores_non_wasm() {
 
     let grafs = build("all-features.json", kb).unwrap();
 
-    cmp(
-        grafs,
-        |_| false,
-        |ef| {
-            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
-                if cfg.starts_with("cfg(") {
-                    let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
-
-                    for ti in &targets {
-                        if expr.eval(|pred| match pred {
-                            krates::cfg_expr::Predicate::Target(tp) => tp.matches(*ti),
-                            _ => false,
-                        }) {
-                            println!("{cfg} matched {}", ti.triple);
-                            return false;
-                        }
-                    }
-
-                    true
-                } else {
-                    !targets.iter().any(|ti| ti.triple.as_str() == cfg)
-                }
-            } else {
-                false
-            }
-        },
-    );
+    insta::assert_snapshot!(grafs.dotgraph());
 }
 
 #[cfg(feature = "targets")]
@@ -148,25 +65,5 @@ fn handles_non_builtin() {
     kb.include_targets(std::iter::once(("x86_64-xboxone-windows-msvc", vec![])));
 
     let grafs = build("all-features.json", kb).unwrap();
-
-    cmp(
-        grafs,
-        |_| false,
-        |ef| {
-            if let Some(cfg) = ef.dep.and_then(|d| d.cfg) {
-                if cfg.starts_with("cfg(") {
-                    let expr = krates::cfg_expr::Expression::parse(cfg).unwrap();
-
-                    !expr.eval(|pred| match pred {
-                        krates::cfg_expr::Predicate::Target(tp) => tp.matches(&xbox),
-                        _ => false,
-                    })
-                } else {
-                    "x86_64-xboxone-windows-msvc" != cfg
-                }
-            } else {
-                false
-            }
-        },
-    );
+    insta::assert_snapshot!(grafs.dotgraph());
 }

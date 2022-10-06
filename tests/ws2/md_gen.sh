@@ -10,7 +10,5 @@ function cm() {
 pushd "$base"
 
 cm --all-features > ../all-features2.json
-cm --manifest-path a/Cargo.toml --no-default-features > ../a2.json
-cm --manifest-path Cargo.toml --all-features > ../top2.json
 
 popd

@@ -170,31 +170,15 @@ pub enum Edge {
 
 impl fmt::Display for Edge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Dep { kind, cfg } => {
-                match kind {
-                    DepKind::Normal => {}
-                    DepKind::Build => f.write_str("(build)")?,
-                    DepKind::Dev => f.write_str("(dev)")?,
-                };
+        if let Self::DepFeature { kind, cfg } | Self::Dep { kind, cfg } = self {
+            match kind {
+                DepKind::Normal => {}
+                DepKind::Build => f.write_str("(build)")?,
+                DepKind::Dev => f.write_str("(dev)")?,
+            };
 
-                if let Some(cfg) = cfg {
-                    write!(f, " '{cfg}'")?;
-                }
-            }
-            Self::Feature => f.write_str("feature")?,
-            Self::DepFeature { kind, cfg } => {
-                f.write_str("feature")?;
-
-                match kind {
-                    DepKind::Normal => {}
-                    DepKind::Build => f.write_str(" (build)")?,
-                    DepKind::Dev => f.write_str(" (dev)")?,
-                };
-
-                if let Some(cfg) = cfg {
-                    write!(f, " '{cfg}'")?;
-                }
+            if let Some(cfg) = cfg {
+                write!(f, " '{cfg}'")?;
             }
         }
 
