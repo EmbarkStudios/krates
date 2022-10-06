@@ -58,10 +58,6 @@ fn ignores_non_wasm() {
 fn handles_non_builtin() {
     let mut kb = krates::Builder::new();
 
-    use krates::target_lexicon::Triple;
-
-    let xbox: Triple = "x86_64-xboxone-windows-msvc".parse().unwrap();
-
     kb.include_targets(std::iter::once(("x86_64-xboxone-windows-msvc", vec![])));
 
     let grafs = build("all-features.json", kb).unwrap();
