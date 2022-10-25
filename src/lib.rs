@@ -270,6 +270,34 @@ impl<N, E> Krates<N, E> {
             })
     }
 
+    /// Gets the crates that have a direct dependency on the specified node
+    #[inline]
+    pub fn direct_dependents(&self, nid: NodeId) -> Vec<&N> {
+        let graph = self.graph();
+        let mut direct_dependencies = Vec::new();
+        let mut stack = vec![nid];
+        let mut visited = std::collections::BTreeSet::new();
+
+        while let Some(nid) = stack.pop() {
+            for edge in graph.edges_directed(nid, Direction::Incoming) {
+                match &self.graph[edge.source()] {
+                    Node::Krate { krate, .. } => {
+                        if visited.insert(edge.source()) {
+                            direct_dependencies.push(krate);
+                        }
+                    }
+                    Node::Feature { krate_index, .. } => {
+                        if *krate_index == nid {
+                            stack.push(edge.source());
+                        }
+                    }
+                }
+            }
+        }
+
+        direct_dependencies
+    }
+
     /// Get the node identifier for the specified crate identifier
     #[inline]
     pub fn nid_for_kid(&self, kid: &Kid) -> Option<NodeId> {

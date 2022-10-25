@@ -1,3 +1,5 @@
+mod util;
+
 #[test]
 fn iter_names() {
     let contents = std::fs::read_to_string("tests/all-features.json")
@@ -122,4 +124,36 @@ fn iter_matches() {
 
         assert!(iter.next().is_none());
     }
+}
+
+#[test]
+fn direct_dependents() {
+    let mut kb = krates::Builder::new();
+    kb.include_targets(std::iter::once((
+        krates::cfg_expr::targets::get_builtin_target_by_triple("x86_64-unknown-linux-gnu")
+            .unwrap()
+            .triple
+            .clone(),
+        vec![],
+    )));
+
+    let grafs = util::build("direct.json", kb).unwrap();
+
+    let id = grafs
+        .actual
+        .krates()
+        .find(|k| k.0.repr.starts_with("reqwest"))
+        .unwrap();
+
+    let dd = grafs
+        .actual
+        .direct_dependents(grafs.actual.nid_for_kid(&id.0).unwrap())
+        .into_iter()
+        .fold(String::new(), |mut acc, jid| {
+            acc.push_str(&jid.0.repr);
+            acc.push('\n');
+            acc
+        });
+
+    insta::assert_snapshot!(dd);
 }

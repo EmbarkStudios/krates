@@ -2,7 +2,7 @@
 
 use std::{fmt, path::Path};
 
-pub struct JustId(krates::Kid);
+pub struct JustId(pub krates::Kid);
 
 pub type Graph = krates::Krates<JustId>;
 
