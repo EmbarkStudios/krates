@@ -291,10 +291,8 @@ impl<N, E> Krates<N, E> {
                         }
                     }
                     Node::Feature { krate_index, .. } => {
-                        if *krate_index == nid {
-                            if visited.insert(edge.source()) {
-                                stack.push(edge.source());
-                            }
+                        if *krate_index == nid && visited.insert(edge.source()) {
+                            stack.push(edge.source());
                         }
                     }
                 }
