@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.12.1] - 2022-10-25
 ### Added
 - [PR#43](https://github.com/EmbarkStudios/krates/pull/43) and [PR#44](https://github.com/EmbarkStudios/krates/pull/44) added `Krates::direct_dependents` to more easily obtain the crates that directly depend on the specified crate/node, regardless of any features in between those crates.
 
@@ -96,7 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.1...HEAD
+[0.12.1]: https://github.com/EmbarkStudios/krates/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/EmbarkStudios/krates/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/EmbarkStudios/krates/compare/0.10.1...0.11.0
 [0.10.1]: https://github.com/EmbarkStudios/krates/compare/0.10.0...0.10.1
