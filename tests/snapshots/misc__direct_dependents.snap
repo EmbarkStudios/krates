@@ -1,0 +1,7 @@
+---
+source: tests/misc.rs
+expression: dd
+---
+google-cloud-metadata 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)
+google-cloud-auth 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)
+

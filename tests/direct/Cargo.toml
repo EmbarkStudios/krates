@@ -1,0 +1,9 @@
+[package]
+name = "direct"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+google-cloud-pubsub = { version = "0.8", default_features = false, features = ["rustls-tls"] }
+google-cloud-gax = { version = "0.9",  default_features = false, features = ["rustls-tls"] }
+google-cloud-googleapis = "0.6"
