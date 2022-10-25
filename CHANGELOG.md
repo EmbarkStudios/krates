@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#43](https://github.com/EmbarkStudios/krates/pull/43) and [PR#44](https://github.com/EmbarkStudios/krates/pull/44) added `Krates::direct_dependents` to more easily obtain the crates that directly depend on the specified crate/node, regardless of any features in between those crates.
+
 ## [0.12.0] - 2022-10-06
 ### Added
 - [PR#42](https://github.com/EmbarkStudios/krates/pull/42) added support for features, adding nodes for each unique future, and linking edges between dependencies and features themselves. This (hopefully) properly takes into account the existing ways of pruning the graph via targets, exclusions etc. It also allows the retrieval of that final feature set via `Krates::get_enabled_features`.
