@@ -150,7 +150,7 @@ fn direct_dependents() {
         .direct_dependents(grafs.actual.nid_for_kid(&id.0).unwrap())
         .into_iter()
         .fold(String::new(), |mut acc, jid| {
-            acc.push_str(&jid.0.repr);
+            acc.push_str(&jid.krate.0.repr);
             acc.push('\n');
             acc
         });
