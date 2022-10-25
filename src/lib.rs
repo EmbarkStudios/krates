@@ -272,7 +272,7 @@ impl<N, E> Krates<N, E> {
 
     /// Gets the crates that have a direct dependency on the specified node
     #[inline]
-    pub fn direct_dependents(&self, nid: NodeId) -> Vec<&N> {
+    pub fn direct_dependents(&self, nid: NodeId) -> Vec<DirectDependent<'_, N>> {
         let graph = self.graph();
         let mut direct_dependencies = Vec::new();
         let mut stack = vec![nid];
@@ -283,11 +283,15 @@ impl<N, E> Krates<N, E> {
                 match &self.graph[edge.source()] {
                     Node::Krate { krate, .. } => {
                         if visited.insert(edge.source()) {
-                            direct_dependencies.push(krate);
+                            direct_dependencies.push(DirectDependent {
+                                krate,
+                                node_id: edge.source(),
+                                edge_id: edge.id(),
+                            });
                         }
                     }
                     Node::Feature { krate_index, .. } => {
-                        if *krate_index == nid {
+                        if *krate_index == nid && visited.insert(edge.source()) {
                             stack.push(edge.source());
                         }
                     }
@@ -359,6 +363,16 @@ impl<N, E> Krates<N, E> {
             .iter()
             .filter_map(move |pid| self.nid_for_kid(pid).map(|ind| &self.graph[ind]))
     }
+}
+
+/// A crate that has a direct dependency on another crate
+pub struct DirectDependent<'krates, N> {
+    /// The crate in the node
+    pub krate: &'krates N,
+    /// The crate's node id
+    pub node_id: NodeId,
+    /// The edge that links the crate with the dependency
+    pub edge_id: EdgeId,
 }
 
 /// A trait that can be applied to the type stored in the graph nodes to give
