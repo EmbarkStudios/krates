@@ -157,3 +157,12 @@ fn direct_dependents() {
 
     insta::assert_snapshot!(dd);
 }
+
+#[test]
+fn bug_repro() {
+    let kb = krates::Builder::new();
+
+    let grafs = util::build("bug.json", kb).unwrap();
+
+    insta::assert_snapshot!(grafs.dotgraph());
+}
