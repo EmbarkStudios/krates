@@ -949,7 +949,7 @@ impl Builder {
                         rnode.features.binary_search_by(|f| f.as_str().cmp("default")).is_ok()
                     };
 
-                    let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(move |dk| {
+                    let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
                             DepKind::Normal => 0x1,
                             DepKind::Dev => 0x8,
@@ -980,11 +980,13 @@ impl Builder {
                         // up as resolved in the graph.
                         // https://github.com/EmbarkStudios/krates/issues/41
                         // https://github.com/rust-lang/cargo/issues/10801
-                        if dep.optional && !rnode
-                                .features
+                        if dep.optional && !enabled_features
                                 .iter()
-                                .any(|feat| *feat == rdep.name || *feat == maybe_real_name) {
-                            //println!("skipping {}", rdep.name);
+                                .any(|(_feat, sub_feats)| {
+                                    sub_feats.iter().any(|sf| {
+                                        sf.kid == &rdep.pkg
+                                    })
+                                }) {
                             return None;
                         }
 
