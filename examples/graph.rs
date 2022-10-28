@@ -12,6 +12,8 @@ struct Args {
     all_features: bool,
     #[arg(long)]
     no_default_features: bool,
+    #[arg(long)]
+    no_dev: bool,
 }
 
 pub struct Simple {
@@ -54,7 +56,11 @@ fn main() {
         cmd
     };
 
-    let builder = krates::Builder::new();
+    let mut builder = krates::Builder::new();
+    if args.no_dev {
+        builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
+    }
+
     let graph: Graph = builder.build(cmd, krates::NoneFilter).unwrap();
 
     let dot = krates::petgraph::dot::Dot::new(graph.graph()).to_string();
