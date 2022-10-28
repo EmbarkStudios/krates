@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#45](https://github.com/EmbarkStudios/krates/pull/45) fixed a bug where optional dependencies could be pruned if their name differed from the feature that enabled them.
+
+### Added
+- [PR#45](https://github.com/EmbarkStudios/krates/pull/45) added `Krates::direct_dependencies` as a complement to `Krates::direct_dependents`.
+
 ## [0.12.1] - 2022-10-25
 ### Added
 - [PR#43](https://github.com/EmbarkStudios/krates/pull/43) and [PR#44](https://github.com/EmbarkStudios/krates/pull/44) added `Krates::direct_dependents` to more easily obtain the crates that directly depend on the specified crate/node, regardless of any features in between those crates.
