@@ -145,15 +145,47 @@ fn direct_dependents() {
         .find(|k| k.0.repr.starts_with("reqwest"))
         .unwrap();
 
-    let dd = grafs
+    let mut ids: Vec<_> = grafs
         .actual
-        .direct_dependents(grafs.actual.nid_for_kid(&id.0).unwrap())
+        .direct_dependencies(grafs.actual.nid_for_kid(&id.0).unwrap())
         .into_iter()
-        .fold(String::new(), |mut acc, jid| {
-            acc.push_str(&jid.krate.0.repr);
-            acc.push('\n');
-            acc
-        });
+        .map(|jid| jid.krate.0.repr.as_str())
+        .collect();
+
+    ids.sort();
+    let dd = ids.join("\n");
+
+    insta::assert_snapshot!(dd);
+}
+
+#[test]
+fn direct_dependencies() {
+    let mut kb = krates::Builder::new();
+    kb.include_targets(std::iter::once((
+        krates::cfg_expr::targets::get_builtin_target_by_triple("x86_64-unknown-linux-gnu")
+            .unwrap()
+            .triple
+            .clone(),
+        vec![],
+    )));
+
+    let grafs = util::build("direct.json", kb).unwrap();
+
+    let id = grafs
+        .actual
+        .krates()
+        .find(|k| k.0.repr.starts_with("reqwest"))
+        .unwrap();
+
+    let mut ids: Vec<_> = grafs
+        .actual
+        .direct_dependencies(grafs.actual.nid_for_kid(&id.0).unwrap())
+        .into_iter()
+        .map(|jid| jid.krate.0.repr.as_str())
+        .collect();
+
+    ids.sort();
+    let dd = ids.join("\n");
 
     insta::assert_snapshot!(dd);
 }
