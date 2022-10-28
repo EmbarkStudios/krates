@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.12.2] - 2022-10-28
 ### Fixed
 - [PR#45](https://github.com/EmbarkStudios/krates/pull/45) fixed a bug where optional dependencies could be pruned if their name differed from the feature that enabled them.
 
@@ -103,7 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.2...HEAD
+[0.12.2]: https://github.com/EmbarkStudios/krates/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/EmbarkStudios/krates/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/EmbarkStudios/krates/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/EmbarkStudios/krates/compare/0.10.1...0.11.0
