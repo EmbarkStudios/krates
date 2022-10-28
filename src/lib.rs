@@ -270,11 +270,43 @@ impl<N, E> Krates<N, E> {
             })
     }
 
+    /// Gets crates directly depended upon by the specified node
+    #[inline]
+    pub fn direct_dependencies(&self, nid: NodeId) -> Vec<DirectDependency<'_, N>> {
+        let graph = self.graph();
+        let mut direct_dependencies = Vec::new();
+        let mut stack = vec![nid];
+        let mut visited = std::collections::BTreeSet::new();
+
+        while let Some(nid) = stack.pop() {
+            for edge in graph.edges_directed(nid, Direction::Outgoing) {
+                match &self.graph[edge.target()] {
+                    Node::Krate { krate, .. } => {
+                        if visited.insert(edge.target()) {
+                            direct_dependencies.push(DirectDependency {
+                                krate,
+                                node_id: edge.target(),
+                                edge_id: edge.id(),
+                            });
+                        }
+                    }
+                    Node::Feature { .. } => {
+                        if visited.insert(edge.target()) {
+                            stack.push(edge.target());
+                        }
+                    }
+                }
+            }
+        }
+
+        direct_dependencies
+    }
+
     /// Gets the crates that have a direct dependency on the specified node
     #[inline]
     pub fn direct_dependents(&self, nid: NodeId) -> Vec<DirectDependent<'_, N>> {
         let graph = self.graph();
-        let mut direct_dependencies = Vec::new();
+        let mut direct_dependents = Vec::new();
         let mut stack = vec![nid];
         let mut visited = std::collections::BTreeSet::new();
 
@@ -283,7 +315,7 @@ impl<N, E> Krates<N, E> {
                 match &self.graph[edge.source()] {
                     Node::Krate { krate, .. } => {
                         if visited.insert(edge.source()) {
-                            direct_dependencies.push(DirectDependent {
+                            direct_dependents.push(DirectDependent {
                                 krate,
                                 node_id: edge.source(),
                                 edge_id: edge.id(),
@@ -299,7 +331,7 @@ impl<N, E> Krates<N, E> {
             }
         }
 
-        direct_dependencies
+        direct_dependents
     }
 
     /// Get the node identifier for the specified crate identifier
@@ -363,6 +395,16 @@ impl<N, E> Krates<N, E> {
             .iter()
             .filter_map(move |pid| self.nid_for_kid(pid).map(|ind| &self.graph[ind]))
     }
+}
+
+/// A direct dependency of a crate
+pub struct DirectDependency<'krates, N> {
+    /// The crate in the node
+    pub krate: &'krates N,
+    /// The crate's node id
+    pub node_id: NodeId,
+    /// The edge that links the crate with the crate that depends on it
+    pub edge_id: EdgeId,
 }
 
 /// A crate that has a direct dependency on another crate
