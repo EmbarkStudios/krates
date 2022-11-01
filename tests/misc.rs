@@ -191,6 +191,7 @@ fn direct_dependencies() {
 }
 
 #[test]
+#[cfg(feature = "prefer-index")]
 fn bug_repro() {
     let kb = krates::Builder::new();
 
