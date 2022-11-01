@@ -1458,8 +1458,9 @@ fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
     }
 }
 
-/// Due to https://github.com/rust-lang/cargo/issues/11319, we can't actually trust cargo to give us the correct package metadata, so
-/// we instead use the (presumably) correct data from the the index
+/// Due to <https://github.com/rust-lang/cargo/issues/11319>, we can't actually
+/// trust cargo to give us the correct package metadata, so we instead use the
+/// (presumably) correct data from the the index
 #[cfg(feature = "prefer-index")]
 fn fix_features(index: &crates_index::Index, krate: &mut cm::Package) {
     if krate
