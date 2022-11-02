@@ -218,3 +218,18 @@ fn ensure_weak_features_dont_add_edges() {
         ]
     );
 }
+
+/// Ensures we handle cyclic features
+#[test]
+fn handles_cyclic_features() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/features/Cargo.toml")
+        .no_default_features()
+        .features(feats!(["cycle"]));
+
+    let mut builder = krates::Builder::new();
+    builder.include_targets([("x86_64-unknown-linux-musl", vec![])]);
+    let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    assert_features!(md, "features-galore", ["cycle", "midi", "subfeatcycle"]);
+}
