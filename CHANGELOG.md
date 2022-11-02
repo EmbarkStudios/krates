@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#49](https://github.com/EmbarkStudios/krates/pull/49) resolved [#48](https://github.com/EmbarkStudios/krates/issues/48) by not entering into an infinite loop in the presence of cyclic features. Oops.
+
 ## [0.12.3] - 2022-11-01
 ### Fixed
 - [PR#47](https://github.com/EmbarkStudios/krates/pull/47) resolved [#46](https://github.com/EmbarkStudios/krates/issues/46) by both adding the `prefer-index` feature to get the actual correct feature information for a crate from the index, rather than the cargo metadata, as well as silently ignoring features that are resolved, but not available from the package manifest if the feature is not enabled.
