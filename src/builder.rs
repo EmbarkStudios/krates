@@ -1055,6 +1055,10 @@ impl Builder {
                     // enabled explicitly on each edge
                     let mut feature_stack: Vec<_> = rnode.features.iter().map(|s| s.as_str()).collect();
 
+                    // Apparently features can have cycles, so we need to ensure we don't enter an
+                    // infinite loop https://github.com/EmbarkStudios/krates/issues/48
+                    let mut simple_features = std::collections::BTreeSet::new();
+
                     let mut features: Vec<String> = Vec::new();
 
                     while let Some(feat) = feature_stack.pop() {
@@ -1073,7 +1077,9 @@ impl Builder {
 
                             let (krate, feature) = match pf.feat() {
                                 Feature::Simple(feat) => {
-                                    feature_stack.push(feat);
+                                    if simple_features.insert(feat) {
+                                        feature_stack.push(feat);
+                                    }
                                     continue;
                                 },
                                 Feature::Krate(_krate) => { continue; }
