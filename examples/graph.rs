@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(short, long)]
-    manifest_path: String,
+    manifest_path: Option<String>,
     #[arg(long)]
     features: Vec<String>,
     #[arg(long)]
@@ -14,6 +14,8 @@ struct Args {
     no_default_features: bool,
     #[arg(long)]
     no_dev: bool,
+    #[arg(long, conflicts_with = "manifest_path")]
+    json: Option<String>,
 }
 
 pub struct Simple {
@@ -41,27 +43,42 @@ impl fmt::Display for Simple {
 fn main() {
     let args = Args::parse();
 
-    let cmd = {
-        let mut cmd = krates::Cmd::new();
-        if args.all_features {
-            cmd.all_features();
+    let graph: Graph = if let Some(manifest_path) = args.manifest_path {
+        let cmd = {
+            let mut cmd = krates::Cmd::new();
+            if args.all_features {
+                cmd.all_features();
+            }
+            if args.no_default_features {
+                cmd.no_default_features();
+            }
+            if !args.features.is_empty() {
+                cmd.features(args.features);
+            }
+            cmd.manifest_path(manifest_path);
+            cmd
+        };
+
+        let mut builder = krates::Builder::new();
+        if args.no_dev {
+            builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
         }
-        if args.no_default_features {
-            cmd.no_default_features();
+
+        builder.build(cmd, krates::NoneFilter).unwrap()
+    } else if let Some(json) = args.json {
+        let mut builder = krates::Builder::new();
+        if args.no_dev {
+            builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
         }
-        if !args.features.is_empty() {
-            cmd.features(args.features);
-        }
-        cmd.manifest_path(args.manifest_path);
-        cmd
+
+        let json = std::fs::read(json).expect("failed to read json");
+        let md: krates::cm::Metadata =
+            serde_json::from_slice(&json).expect("failed to deserialize metadata from json");
+
+        builder.build_with_metadata(md, krates::NoneFilter).unwrap()
+    } else {
+        panic!("must specify either --manifest-path or --json");
     };
-
-    let mut builder = krates::Builder::new();
-    if args.no_dev {
-        builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
-    }
-
-    let graph: Graph = builder.build(cmd, krates::NoneFilter).unwrap();
 
     let dot = krates::petgraph::dot::Dot::new(graph.graph()).to_string();
 
