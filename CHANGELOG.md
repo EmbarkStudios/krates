@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.12.4] - 2022-11-02
 ### Fixed
 - [PR#49](https://github.com/EmbarkStudios/krates/pull/49) resolved [#48](https://github.com/EmbarkStudios/krates/issues/48) by not entering into an infinite loop in the presence of cyclic features. Oops.
 
@@ -111,7 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.4...HEAD
+[0.12.4]: https://github.com/EmbarkStudios/krates/compare/0.12.3...0.12.4
 [0.12.3]: https://github.com/EmbarkStudios/krates/compare/0.12.2...0.12.3
 [0.12.2]: https://github.com/EmbarkStudios/krates/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/EmbarkStudios/krates/compare/0.12.0...0.12.1
