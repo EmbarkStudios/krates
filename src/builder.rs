@@ -1491,7 +1491,11 @@ fn fix_features(index: &crates_index::Index, krate: &mut cm::Package) {
         });
 
         if let Some(features) = features {
-            krate.features = features.clone();
+            for (ikey, ivalue) in features {
+                if !krate.features.contains_key(ikey) {
+                    krate.features.insert(ikey.clone(), ivalue.clone());
+                }
+            }
 
             // The index entry features might not have the `dep:<crate>`
             // used with weak features if the crate version was
