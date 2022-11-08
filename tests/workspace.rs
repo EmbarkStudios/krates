@@ -6,7 +6,7 @@ use util::build;
 fn includes() {
     let mut kb = krates::Builder::new();
 
-    kb.include_workspace_crates(&[
+    kb.include_workspace_crates([
         "/home/jake/code/krates/tests/ws2/b",
         "/home/jake/code/krates/tests/ws2/c/Cargo.toml",
     ]);

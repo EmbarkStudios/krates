@@ -146,8 +146,8 @@ impl From<Cmd> for cm::MetadataCommand {
         let mut opts = Vec::with_capacity(
             cmd.features.len()
                 + cmd.other_options.len()
-                + if cmd.no_default_features { 1 } else { 0 }
-                + if cmd.all_features { 1 } else { 0 },
+                + usize::from(cmd.no_default_features)
+                + usize::from(cmd.all_features),
         );
 
         if cmd.no_default_features {
@@ -1491,7 +1491,11 @@ fn fix_features(index: &crates_index::Index, krate: &mut cm::Package) {
         });
 
         if let Some(features) = features {
-            krate.features = features.clone();
+            for (ikey, ivalue) in features {
+                if !krate.features.contains_key(ikey) {
+                    krate.features.insert(ikey.clone(), ivalue.clone());
+                }
+            }
 
             // The index entry features might not have the `dep:<crate>`
             // used with weak features if the crate version was
