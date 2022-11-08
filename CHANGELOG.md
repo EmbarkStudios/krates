@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#51](https://github.com/EmbarkStudios/krates/pull/51) resolved [#50](https://github.com/EmbarkStudios/krates/issues/50) by no longer treating the feature set in the index as authoritative, but rather just merging in the keys that were not already located in the feature set from the crate itself. This would mean that features that are present in both but with different sub-features from the index will now be lost, but that can be fixed later if it is actually an issue.
+
 ## [0.12.4] - 2022-11-02
 ### Fixed
 - [PR#49](https://github.com/EmbarkStudios/krates/pull/49) resolved [#48](https://github.com/EmbarkStudios/krates/issues/48) by not entering into an infinite loop in the presence of cyclic features. Oops.
