@@ -141,7 +141,7 @@ fn filters_build_and_dev() {
 #[test]
 fn only_b() {
     let mut kb = krates::Builder::new();
-    kb.include_workspace_crates(&["/home/jake/code/krates/tests/ws/b/Cargo.toml"]);
+    kb.include_workspace_crates(["/home/jake/code/krates/tests/ws/b/Cargo.toml"]);
 
     let grafs = build("all-features.json", kb).unwrap();
     insta::assert_snapshot!(grafs.dotgraph());

@@ -146,8 +146,8 @@ impl From<Cmd> for cm::MetadataCommand {
         let mut opts = Vec::with_capacity(
             cmd.features.len()
                 + cmd.other_options.len()
-                + if cmd.no_default_features { 1 } else { 0 }
-                + if cmd.all_features { 1 } else { 0 },
+                + usize::from(cmd.no_default_features)
+                + usize::from(cmd.all_features),
         );
 
         if cmd.no_default_features {
