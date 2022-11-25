@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.12.6] - 2022-11-25
 ### Changed
 - [PR#52](https://github.com/EmbarkStudios/krates/pull/52) updated cfg-expr to 0.12.
 - [PR#52](https://github.com/EmbarkStudios/krates/pull/52) changed `Krates::search_matches` and `Krates::search_by_name` to use `impl Into<String>` for the name to search, so that the lifetime of it is not paired with the graph itself.
@@ -120,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.5...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.12.6...HEAD
+[0.12.6]: https://github.com/EmbarkStudios/krates/compare/0.12.5...0.12.6
 [0.12.5]: https://github.com/EmbarkStudios/krates/compare/0.12.4...0.12.5
 [0.12.4]: https://github.com/EmbarkStudios/krates/compare/0.12.3...0.12.4
 [0.12.3]: https://github.com/EmbarkStudios/krates/compare/0.12.2...0.12.3
