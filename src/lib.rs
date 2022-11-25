@@ -455,13 +455,24 @@ where
     ///     }
     /// }
     /// ```
-    pub fn search_matches<'k>(
-        &'k self,
-        name: &'k str,
+    pub fn search_matches(
+        &self,
+        name: impl Into<String>,
         req: semver::VersionReq,
-    ) -> impl Iterator<Item = (NodeId, &'k N)> + 'k {
-        self.krates_by_name(name)
-            .filter(move |(_, n)| req.matches(n.version()))
+    ) -> impl Iterator<Item = (NodeId, &N)> {
+        let raw_nodes = &self.graph.raw_nodes()[0..self.krates_end];
+
+        let name = name.into();
+
+        raw_nodes.iter().enumerate().filter_map(move |(id, node)| {
+            if let Node::Krate { krate, .. } = &node.weight {
+                if krate.name() == name && req.matches(krate.version()) {
+                    return Some((NodeId::new(id), krate));
+                }
+            }
+
+            None
+        })
     }
 
     /// Get an iterator over all of the crates in the graph with the given name,
@@ -476,11 +487,10 @@ where
     ///     }
     /// }
     /// ```
-    pub fn krates_by_name<'k>(
-        &'k self,
-        name: &'k str,
-    ) -> impl Iterator<Item = (NodeId, &'k N)> + 'k {
+    pub fn krates_by_name(&self, name: impl Into<String>) -> impl Iterator<Item = (NodeId, &N)> {
         let raw_nodes = &self.graph.raw_nodes()[0..self.krates_end];
+
+        let name = name.into();
 
         raw_nodes.iter().enumerate().filter_map(move |(id, node)| {
             if let Node::Krate { krate, .. } = &node.weight {

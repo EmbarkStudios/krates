@@ -22,13 +22,12 @@ default = []
 prefer-index = ["crates-index"]
 # Adds support for filtering target specific dependencies
 targets = ["cfg-expr/targets"]
-#features = []
 
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.15"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.11"
+cfg-expr = "0.12"
 # Allows inspection of the cargo registry index(ices)
 crates-index = { version = "0.18", optional = true, default-features = false, features = [
     "parallel",

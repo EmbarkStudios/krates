@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#52](https://github.com/EmbarkStudios/krates/pull/52) updated cfg-expr to 0.12.
+- [PR#52](https://github.com/EmbarkStudios/krates/pull/52) changed `Krates::search_matches` and `Krates::search_by_name` to use `impl Into<String>` for the name to search, so that the lifetime of it is not paired with the graph itself.
+
 ## [0.12.5] - 2022-11-08
 ### Fixed
 - [PR#51](https://github.com/EmbarkStudios/krates/pull/51) resolved [#50](https://github.com/EmbarkStudios/krates/issues/50) by no longer treating the feature set in the index as authoritative, but rather just merging in the keys that were not already located in the feature set from the crate itself. This would mean that features that are present in both but with different sub-features from the index will now be lost, but that can be fixed later if it is actually an issue.

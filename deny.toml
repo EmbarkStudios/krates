@@ -16,6 +16,10 @@ copyleft = "deny"
 
 [bans]
 multiple-versions = "deny"
+skip = [
+    # Doesn't matter
+    { name = "hermit-abi" },
+]
 
 [sources]
 unknown-registry = "deny"
