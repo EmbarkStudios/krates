@@ -37,6 +37,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
+        features: ["--all-features", null]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -48,13 +49,9 @@ jobs:
       # fails.
       - run: cargo fetch --manifest-path tests/bug/Cargo.toml
       - name: cargo test build
-        run: cargo build --tests --release
+        run: cargo build --tests --release ${{ matrix.features }}
       - name: cargo test
-        run: cargo test --release
-      - name: cargo test build all-features
-        run: cargo build --tests --release --all-features
-      - name: cargo test all-features
-        run: cargo test --release --all-features
+        run: cargo test --release ${{ matrix.features }}
 
   deny-check:
     name: cargo-deny
