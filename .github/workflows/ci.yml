@@ -43,6 +43,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo fetch --target x86_64-unknown-linux-gnu
+      # When using the sparse index, we need to do this additional fetch so that
+      # the entries we want are in the sparse cache, otherwise the bug_repro test
+      # fails.
+      - run: cargo fetch --manifest-path tests/bug/Cargo.toml
       - name: cargo test build
         run: cargo build --tests --release
       - name: cargo test
