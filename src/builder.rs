@@ -1,5 +1,8 @@
 pub(crate) mod features;
 
+#[cfg(feature = "prefer-index")]
+mod index;
+
 use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
 use features::{Feature, ParsedFeature};
@@ -767,8 +770,8 @@ impl Builder {
             features: Vec<String>,
         }
 
-        #[cfg(feature = "crates-index")]
-        let index = crates_index::Index::new_cargo_default().ok();
+        #[cfg(feature = "prefer-index")]
+        let index = index::open();
 
         while let Some(pid) = pid_stack.pop() {
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();
@@ -803,15 +806,12 @@ impl Builder {
                 if let Some(kid) = kid {
                     Some(kid)
                 } else {
-                    //dbg!("failed to find {dep_name} {:#?}", &rnode.deps);
                     None
                 }
             };
 
             #[cfg(feature = "prefer-index")]
-            if let Some(index) = &index {
-                fix_features(index, krate);
-            }
+            index::fix_features(&index, krate);
 
             // Cargo puts out a flat list of the enabled features, but we need
             // to use the declared features on the crate itself to figure out
@@ -1461,70 +1461,6 @@ fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
             .chars()
             .zip(resolved_name.chars())
             .all(|(kn, rn)| kn == rn || kn == '-' && rn == '_')
-    }
-}
-
-/// Due to <https://github.com/rust-lang/cargo/issues/11319>, we can't actually
-/// trust cargo to give us the correct package metadata, so we instead use the
-/// (presumably) correct data from the the index
-#[cfg(feature = "prefer-index")]
-fn fix_features(index: &crates_index::Index, krate: &mut cm::Package) {
-    if krate
-        .source
-        .as_ref()
-        .map_or(true, |src| !src.is_crates_io())
-    {
-        return;
-    }
-
-    if let Some(entry) = index.crate_(&krate.name) {
-        let features = entry.versions().iter().find_map(|v| {
-            if let Ok(iv) = v.version().parse::<semver::Version>() {
-                if iv == krate.version {
-                    Some(v.features())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        });
-
-        if let Some(features) = features {
-            for (ikey, ivalue) in features {
-                if !krate.features.contains_key(ikey) {
-                    krate.features.insert(ikey.clone(), ivalue.clone());
-                }
-            }
-
-            // The index entry features might not have the `dep:<crate>`
-            // used with weak features if the crate version was
-            // published with cargo <1.60.0 version, so we need to
-            // manually fix that up since we depend on that format
-            let missing_deps: Vec<_> = krate
-                .features
-                .iter()
-                .flat_map(|(_, sf)| sf.iter())
-                .filter_map(|sf| {
-                    let pf = ParsedFeature::from(sf.as_str());
-
-                    if let Feature::Simple(simple) = pf.feat() {
-                        if krate.features.contains_key(simple) {
-                            None
-                        } else {
-                            Some(simple.to_owned())
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            for missing in missing_deps {
-                let dep_feature = format!("dep:{missing}");
-                krate.features.insert(missing, vec![dep_feature]);
-            }
-        }
     }
 }
 

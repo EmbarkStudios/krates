@@ -9,7 +9,6 @@ allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
     "MIT",
-    "MPL-2.0",
     "Unicode-DFS-2016",
 ]
 copyleft = "deny"
@@ -19,6 +18,8 @@ multiple-versions = "deny"
 skip = [
     # Doesn't matter
     { name = "hermit-abi" },
+    # dev only but still sigh
+    { name = "windows-sys", version = "=0.42.0" },
 ]
 
 [sources]

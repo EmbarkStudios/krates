@@ -27,9 +27,9 @@ targets = ["cfg-expr/targets"]
 # Used for acquiring and/or deserializing `cargo metadata` output
 cargo_metadata = "0.15"
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.12"
+cfg-expr = "0.15"
 # Allows inspection of the cargo registry index(ices)
-crates-index = { version = "0.18", optional = true, default-features = false, features = [
+crates-index = { version = "0.19", optional = true, default-features = false, features = [
     "parallel",
 ] }
 # Used to create and traverse graph structures
