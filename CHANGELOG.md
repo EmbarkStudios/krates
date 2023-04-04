@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#53](https://github.com/EmbarkStudios/krates/pull/53) updated `cfg-expr` to 0.14 and `crates-index` to 0.19.
+
 ## [0.12.6] - 2022-11-25
 ### Changed
 - [PR#52](https://github.com/EmbarkStudios/krates/pull/52) updated cfg-expr to 0.12.
