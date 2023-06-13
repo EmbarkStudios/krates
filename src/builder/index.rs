@@ -5,6 +5,18 @@ pub(super) struct ComboIndex {
 
 impl ComboIndex {
     #[inline]
+    pub(super) fn open(allow_git: bool) -> Self {
+        Self {
+            git: if allow_git {
+                crates_index::Index::new_cargo_default().ok()
+            } else {
+                None
+            },
+            http: crates_index::SparseIndex::from_url("sparse+https://index.crates.io/").ok(),
+        }
+    }
+
+    #[inline]
     fn krate(&self, name: &str) -> Option<crates_index::Crate> {
         // Attempt http first, as this will be the default in future cargo versions
         // and using it when it is not the defaul indicates the user has opted in
@@ -12,14 +24,6 @@ impl ComboIndex {
             .as_ref()
             .and_then(|h| h.crate_from_cache(name).ok())
             .or_else(|| self.git.as_ref().and_then(|g| g.crate_(name)))
-    }
-}
-
-#[inline]
-pub(super) fn open() -> ComboIndex {
-    ComboIndex {
-        git: crates_index::Index::new_cargo_default().ok(),
-        http: crates_index::SparseIndex::from_url("sparse+https://index.crates.io/").ok(),
     }
 }
 

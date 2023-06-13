@@ -18,8 +18,10 @@ multiple-versions = "deny"
 skip = [
     # Doesn't matter
     { name = "hermit-abi" },
+]
+skip-tree = [
     # dev only but still sigh
-    { name = "windows-sys", version = "=0.42.0" },
+    { name = "windows-sys", version = "<0.48.0" },
 ]
 
 [sources]

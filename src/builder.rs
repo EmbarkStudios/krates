@@ -310,8 +310,10 @@ pub struct Builder {
     target_filters: Vec<TargetFilter>,
     workspace_filters: Vec<PathBuf>,
     exclude: Vec<crate::PkgSpec>,
-    workspace: bool,
     ignore_kinds: u32,
+    workspace: bool,
+    #[cfg(feature = "prefer-index")]
+    allow_git_index: bool,
 }
 
 impl Builder {
@@ -485,6 +487,18 @@ impl Builder {
                 inner: triple.into(),
                 features,
             }));
+        self
+    }
+
+    /// Allow use of the crates.io git index.
+    ///
+    /// As of cargo 1.70.0, the git index for crates.io is no longer the default,
+    /// in favor of the _much_ faster spare HTTP index, it is highly recommended
+    /// to only set this option to true if you for some reason can't use the
+    /// HTTP index
+    #[cfg(feature = "prefer-index")]
+    pub fn allow_git_index(&mut self, allow: bool) -> &mut Self {
+        self.allow_git_index = allow;
         self
     }
 
@@ -771,7 +785,7 @@ impl Builder {
         }
 
         #[cfg(feature = "prefer-index")]
-        let index = index::open();
+        let index = index::ComboIndex::open(self.allow_git_index);
 
         while let Some(pid) = pid_stack.pop() {
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();

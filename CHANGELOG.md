@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#54](https://github.com/EmbarkStudios/krates/pull/54) fixed an issue where the crates.io index was unconditionally opened, and synced, if the `prefer-index` feature was enabled, causing long stalls if using the crates.io sparse index instead.
+
 ## [0.13.0] - 2023-04-04
 ### Changed
 - [PR#53](https://github.com/EmbarkStudios/krates/pull/53) updated `cfg-expr` to 0.14 and `crates-index` to 0.19.
