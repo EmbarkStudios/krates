@@ -233,3 +233,68 @@ fn handles_cyclic_features() {
 
     assert_features!(md, "features-galore", ["cycle", "midi", "subfeatcycle"]);
 }
+
+/// Tests validating <https://github.com/EmbarkStudios/krates/issues/46>
+#[cfg(feature = "prefer-index")]
+mod prefer_index {
+    fn confirm_index_snapshot(builder: krates::Builder) {
+        let mut cmd = krates::Cmd::new();
+        cmd.manifest_path("tests/bug/Cargo.toml");
+
+        let md: krates::Krates = builder.build(cmd, krates::NoneFilter).unwrap();
+
+        assert_features!(md, "conv", ["default", "std"]);
+    }
+
+    /// Validates an external index implementation can fix features
+    #[test]
+    #[cfg(not(feature = "with-crates-index"))]
+    fn uses_external_index_impl() {
+        use krates::index::{self, FeaturesMap};
+        struct Custom(FeaturesMap);
+
+        impl index::CratesIoIndex for Custom {
+            fn index_krate_features(
+                &self,
+                name: &str,
+                version: &semver::Version,
+                on_features: &mut dyn FnMut(Option<&FeaturesMap>),
+            ) {
+                if name == "conv" && version == &semver::Version::new(0, 3, 3) {
+                    on_features(Some(&self.0))
+                } else {
+                    on_features(None)
+                }
+            }
+        }
+
+        let mut fm = FeaturesMap::new();
+        fm.insert("default".into(), vec!["std".into()]);
+        fm.insert("std".into(), vec!["custom_derive/std".into()]);
+
+        let mut b = krates::Builder::new();
+        b.with_crates_io_index(Box::new(Custom(fm)));
+        confirm_index_snapshot(b);
+    }
+
+    /// Validates we can use the sparse index to fix features
+    #[test]
+    #[cfg(feature = "with-crates-index")]
+    fn uses_sparse_index() {
+        let mut b = krates::Builder::new();
+        b.with_crates_io_index(None, krates::index::IndexKind::Sparse)
+            .unwrap();
+        confirm_index_snapshot(b);
+    }
+
+    /// Validates we can use the sparse index to fix features
+    #[test]
+    #[ignore = "incredibly slow if git index is missing/outdated"]
+    #[cfg(feature = "with-crates-index")]
+    fn uses_git_index() {
+        let mut b = krates::Builder::new();
+        b.with_crates_io_index(None, krates::index::IndexKind::Git)
+            .unwrap();
+        confirm_index_snapshot(b);
+    }
+}

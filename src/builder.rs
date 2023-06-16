@@ -1,7 +1,7 @@
 pub(crate) mod features;
 
 #[cfg(feature = "prefer-index")]
-mod index;
+pub mod index;
 
 use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
@@ -313,7 +313,7 @@ pub struct Builder {
     ignore_kinds: u32,
     workspace: bool,
     #[cfg(feature = "prefer-index")]
-    allow_git_index: bool,
+    crates_io_index: Option<Box<dyn index::CratesIoIndex>>,
 }
 
 impl Builder {
@@ -490,16 +490,41 @@ impl Builder {
         self
     }
 
-    /// Allow use of the crates.io git index.
+    /// Specifies an implementation that can be used to query the crates.io
+    /// index to ensure that the features are all correct
     ///
-    /// As of cargo 1.70.0, the git index for crates.io is no longer the default,
-    /// in favor of the _much_ faster spare HTTP index, it is highly recommended
-    /// to only set this option to true if you for some reason can't use the
-    /// HTTP index
-    #[cfg(feature = "prefer-index")]
-    pub fn allow_git_index(&mut self, allow: bool) -> &mut Self {
-        self.allow_git_index = allow;
+    /// This method _must_ be called with an implementation if not using
+    /// the `with-crates-index` feature
+    #[cfg(all(feature = "prefer-index", not(feature = "with-crates-index")))]
+    pub fn with_crates_io_index(
+        &mut self,
+        crates_io_index: Box<dyn index::CratesIoIndex>,
+    ) -> &mut Self {
+        self.crates_io_index = Some(crates_io_index);
         self
+    }
+
+    /// Configures the index implementation to use `crates-index`
+    ///
+    /// As of 1.70.0 the cargo default is to use the HTTP sparse index, which is
+    /// vastly faster than the old crates.io git index, and is the recommended
+    /// one to use if you are using 1.70.0+.
+    ///
+    /// This method allows overriding the location of your `CARGO_HOME`, but note
+    /// that no fetching from the remote index is performed by this library, so
+    /// it is your responsibility to have called `cargo fetch` or similar to have
+    /// an up to date index cache at the location provided
+    #[cfg(all(feature = "prefer-index", feature = "with-crates-index"))]
+    pub fn with_crates_io_index(
+        &mut self,
+        cargo_home: Option<&Path>,
+        index_kind: index::IndexKind,
+    ) -> Result<&mut Self, Error> {
+        self.crates_io_index = Some(match index_kind {
+            index::IndexKind::Sparse => Box::new(index::sparse(cargo_home)?),
+            index::IndexKind::Git => Box::new(index::git(cargo_home)?),
+        });
+        Ok(self)
     }
 
     /// Builds a [`Krates`] graph using metadata that be retrieved via the
@@ -601,8 +626,14 @@ impl Builder {
     {
         let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
+        #[cfg(feature = "prefer-index")]
+        let index = self.crates_io_index.ok_or(Error::NoIndexImplementation)?;
+
         let mut packages = md.packages;
         packages.sort_by(|a, b| a.id.cmp(&b.id));
+
+        #[cfg(feature = "prefer-index")]
+        index.prepare_cache_entries(packages.iter().map(|pkg| pkg.name.clone()).collect());
 
         let mut workspace_members = md.workspace_members;
         workspace_members.sort();
@@ -784,9 +815,6 @@ impl Builder {
             features: Vec<String>,
         }
 
-        #[cfg(feature = "prefer-index")]
-        let index = index::ComboIndex::open(self.allow_git_index);
-
         while let Some(pid) = pid_stack.pop() {
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();
 
@@ -825,7 +853,7 @@ impl Builder {
             };
 
             #[cfg(feature = "prefer-index")]
-            index::fix_features(&index, krate);
+            index::fix_features(index.as_ref(), krate);
 
             // Cargo puts out a flat list of the enabled features, but we need
             // to use the declared features on the crate itself to figure out

@@ -19,7 +19,9 @@ exclude = [".github", "tests"]
 [features]
 default = []
 # Uses the index as the source of truth for what features are available for a crate
-prefer-index = ["crates-index"]
+prefer-index = []
+# Uses crates-index to read the index rather than rely on a user-provided implementation
+with-crates-index = ["prefer-index", "crates-index"]
 # Adds support for filtering target specific dependencies
 targets = ["cfg-expr/targets"]
 
@@ -29,9 +31,7 @@ cargo_metadata = "0.15"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Allows inspection of the cargo registry index(ices)
-crates-index = { version = "0.19", optional = true, default-features = false, features = [
-    "parallel",
-] }
+crates-index = { version = "0.19", optional = true, default-features = false }
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements
