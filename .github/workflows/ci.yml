@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        features: ["--all-features", null]
+        features: ["--all-features", "--features prefer-index", null]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -48,7 +48,6 @@ jobs:
       # the entries we want are in the sparse cache, otherwise the bug_repro test
       # fails.
       - run: cargo fetch --manifest-path tests/bug/Cargo.toml
-        if: matrix.features == '--all-features'
       - name: cargo test build
         run: cargo build --tests --release ${{ matrix.features }}
       - name: cargo test

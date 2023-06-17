@@ -42,6 +42,8 @@ mod builder;
 mod errors;
 mod pkgspec;
 
+#[cfg(feature = "prefer-index")]
+pub use builder::index;
 pub use builder::{
     features::{Feature, ParsedFeature},
     Builder, Cmd, LockOptions, NoneFilter, OnFilter, Scope, Target,

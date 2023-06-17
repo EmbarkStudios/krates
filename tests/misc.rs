@@ -191,9 +191,11 @@ fn direct_dependencies() {
 }
 
 #[test]
-#[cfg(feature = "prefer-index")]
+#[cfg(feature = "with-crates-index")]
 fn bug_repro() {
-    let kb = krates::Builder::new();
+    let mut kb = krates::Builder::new();
+    kb.with_crates_io_index(None, krates::index::IndexKind::Sparse)
+        .unwrap();
 
     let grafs = util::build("bug.json", kb).unwrap();
 
