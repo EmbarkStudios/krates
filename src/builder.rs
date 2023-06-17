@@ -627,13 +627,15 @@ impl Builder {
         let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
         #[cfg(feature = "prefer-index")]
-        let index = self.crates_io_index.ok_or(Error::NoIndexImplementation)?;
+        let index = self.crates_io_index;
 
         let mut packages = md.packages;
         packages.sort_by(|a, b| a.id.cmp(&b.id));
 
         #[cfg(feature = "prefer-index")]
-        index.prepare_cache_entries(packages.iter().map(|pkg| pkg.name.clone()).collect());
+        if let Some(index) = &index {
+            index.prepare_cache_entries(packages.iter().map(|pkg| pkg.name.clone()).collect());
+        }
 
         let mut workspace_members = md.workspace_members;
         workspace_members.sort();
@@ -853,7 +855,9 @@ impl Builder {
             };
 
             #[cfg(feature = "prefer-index")]
-            index::fix_features(index.as_ref(), krate);
+            if let Some(index) = &index {
+                index::fix_features(index.as_ref(), krate);
+            }
 
             // Cargo puts out a flat list of the enabled features, but we need
             // to use the declared features on the crate itself to figure out
