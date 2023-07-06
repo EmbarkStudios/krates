@@ -93,11 +93,10 @@ impl<TIndex: CratesIoIndex> CratesIoIndex for CachingIndex<TIndex> {
     }
 }
 
-#[cfg(feature = "with-crates-index")]
+#[cfg(feature = "with-index-impl")]
 mod external {
     use super::*;
-    use crates_index as ci;
-    use std::path::Path;
+    use tame_index as ti;
 
     pub fn sparse(cargo_home: Option<&Path>) -> Result<CachingIndex<Index>, crate::Error> {
         let sparse = if let Some(cargo_home) = cargo_home {
@@ -169,7 +168,7 @@ mod external {
     }
 }
 
-#[cfg(feature = "with-crates-index")]
+#[cfg(feature = "with-index-impl")]
 pub use external::*;
 
 /// Due to <https://github.com/rust-lang/cargo/issues/11319>, we can't actually
