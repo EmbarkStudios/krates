@@ -313,7 +313,7 @@ pub struct Builder {
     ignore_kinds: u32,
     workspace: bool,
     #[cfg(feature = "prefer-index")]
-    crates_io_index: Option<Box<dyn index::CratesIoIndex>>,
+    crates_io_index: Option<tame_index::index::ComboIndexCache>,
 }
 
 impl Builder {
@@ -490,21 +490,7 @@ impl Builder {
         self
     }
 
-    /// Specifies an implementation that can be used to query the crates.io
-    /// index to ensure that the features are all correct
-    ///
-    /// This method _must_ be called with an implementation if not using
-    /// the `with-crates-index` feature
-    #[cfg(all(feature = "prefer-index", not(feature = "with-crates-index")))]
-    pub fn with_crates_io_index(
-        &mut self,
-        crates_io_index: Box<dyn index::CratesIoIndex>,
-    ) -> &mut Self {
-        self.crates_io_index = Some(crates_io_index);
-        self
-    }
-
-    /// Configures the index implementation to use `crates-index`
+    /// Configures the index implementation`
     ///
     /// As of 1.70.0 the cargo default is to use the HTTP sparse index, which is
     /// vastly faster than the old crates.io git index, and is the recommended
@@ -514,16 +500,22 @@ impl Builder {
     /// that no fetching from the remote index is performed by this library, so
     /// it is your responsibility to have called `cargo fetch` or similar to have
     /// an up to date index cache at the location provided
-    #[cfg(all(feature = "prefer-index", feature = "with-crates-index"))]
+    #[cfg(feature = "prefer-index")]
     pub fn with_crates_io_index(
         &mut self,
-        cargo_home: Option<&Path>,
+        cargo_home: Option<tame_index::PathBuf>,
         index_kind: index::IndexKind,
     ) -> Result<&mut Self, Error> {
-        self.crates_io_index = Some(match index_kind {
-            index::IndexKind::Sparse => Box::new(index::sparse(cargo_home)?),
-            index::IndexKind::Git => Box::new(index::git(cargo_home)?),
-        });
+        let url = match index_kind {
+            index::IndexKind::Sparse => tame_index::IndexUrl::CratesIoSparse,
+            index::IndexKind::Git => tame_index::IndexUrl::CratesIoGit,
+        };
+
+        let index = tame_index::index::ComboIndexCache::new(
+            tame_index::IndexLocation::new(url).with_root(cargo_home),
+        )?;
+
+        self.crates_io_index = Some(index);
         Ok(self)
     }
 
@@ -626,16 +618,15 @@ impl Builder {
     {
         let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
-        #[cfg(feature = "prefer-index")]
-        let index = self.crates_io_index;
-
         let mut packages = md.packages;
         packages.sort_by(|a, b| a.id.cmp(&b.id));
 
+        // Load all the cache entries from disk for all the possible _unique_
+        // crates in the graph so that we don't need to access disk again
         #[cfg(feature = "prefer-index")]
-        if let Some(index) = &index {
-            index.prepare_cache_entries(packages.iter().map(|pkg| pkg.name.clone()).collect());
-        }
+        let index = self.crates_io_index.map(|index| {
+            index::CachingIndex::new(index, packages.iter().map(|pkg| pkg.name.clone()).collect())
+        });
 
         let mut workspace_members = md.workspace_members;
         workspace_members.sort();
@@ -856,7 +847,7 @@ impl Builder {
 
             #[cfg(feature = "prefer-index")]
             if let Some(index) = &index {
-                index::fix_features(index.as_ref(), krate);
+                index::fix_features(index, krate);
             }
 
             // Cargo puts out a flat list of the enabled features, but we need
