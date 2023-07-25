@@ -193,7 +193,7 @@ impl fmt::Display for Edge {
 pub struct Krates<N = cm::Package, E = Edge> {
     graph: petgraph::Graph<Node<N>, E, petgraph::Directed, u32>,
     workspace_members: Vec<Kid>,
-    lock_file: Utf8PathBuf,
+    workspace_root: Utf8PathBuf,
     /// We split the graph between crate and feature nodes, but keep the crates
     /// grouped together in the front since most queries are against them
     krates_end: usize,
@@ -207,11 +207,10 @@ impl<N, E> Krates<N, E> {
         self.krates_end
     }
 
-    /// Path to the Cargo.lock file for the crate or workspace where the graph
-    /// metadata was acquired from
+    /// Path to the root of the workspace where the graph metadata was acquired from
     #[inline]
-    pub fn lock_path(&self) -> &Utf8Path {
-        &self.lock_file
+    pub fn workspace_root(&self) -> &Utf8Path {
+        &self.workspace_root
     }
 
     /// Get access to the raw petgraph

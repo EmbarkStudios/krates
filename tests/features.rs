@@ -250,8 +250,7 @@ mod prefer_index {
     #[test]
     fn uses_sparse_index() {
         let mut b = krates::Builder::new();
-        b.with_crates_io_index(None, krates::index::IndexKind::Sparse)
-            .unwrap();
+        b = b.with_crates_io_index(None, None, None).unwrap();
         confirm_index_snapshot(b);
     }
 
@@ -260,8 +259,7 @@ mod prefer_index {
     #[ignore = "incredibly slow if git index is missing/outdated"]
     fn uses_git_index() {
         let mut b = krates::Builder::new();
-        b.with_crates_io_index(None, krates::index::IndexKind::Git)
-            .unwrap();
+        b = b.with_crates_io_index(None, None, Some("1.69.0")).unwrap();
         confirm_index_snapshot(b);
     }
 }

@@ -26,7 +26,7 @@ targets = ["cfg-expr/targets"]
 
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = "0.15"
+cargo_metadata = "0.17"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Allows inspection of the cargo registry index(ices)

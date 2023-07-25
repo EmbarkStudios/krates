@@ -3,16 +3,10 @@ use tame_index::index::ComboIndexCache;
 
 pub type FeaturesMap = BTreeMap<String, Vec<String>>;
 
-#[derive(Copy, Clone)]
-pub enum IndexKind {
-    Sparse,
-    Git,
-}
-
 #[derive(Clone)]
 pub struct IndexKrateVersion {
     pub version: semver::Version,
-    pub features: std::sync::Arc<FeaturesMap>,
+    pub features: FeaturesMap,
 }
 
 #[derive(Clone)]
@@ -35,9 +29,16 @@ impl CachingIndex {
                 let versions = krate
                     .versions
                     .into_iter()
-                    .map(|kv| IndexKrateVersion {
-                        version: kv.version,
-                        features: kv.features,
+                    .map(|kv| {
+                        // The index (currently) can have both features, and
+                        // features2, the features method gives us an iterator
+                        // over both
+                        let features = kv.features().map(|(k, v)| (k.clone(), v.clone())).collect();
+
+                        IndexKrateVersion {
+                            version: kv.version,
+                            features,
+                        }
                     })
                     .collect();
 
@@ -56,7 +57,7 @@ impl CachingIndex {
             ik.as_ref().and_then(|ik| {
                 ik.versions
                     .iter()
-                    .find_map(|ikv| (&ikv.version == version).then_some(ikv.features.as_ref()))
+                    .find_map(|ikv| (&ikv.version == version).then_some(&ikv.features))
             })
         })
     }

@@ -490,29 +490,31 @@ impl Builder {
         self
     }
 
-    /// Configures the index implementation`
-    ///
-    /// As of 1.70.0 the cargo default is to use the HTTP sparse index, which is
-    /// vastly faster than the old crates.io git index, and is the recommended
-    /// one to use if you are using 1.70.0+.
+    /// Configures the index implementation
     ///
     /// This method allows overriding the location of your `CARGO_HOME`, but note
     /// that no fetching from the remote index is performed by this library, so
     /// it is your responsibility to have called `cargo fetch` or similar to have
     /// an up to date index cache at the location provided
+    ///
+    /// This method takes into account the local environment to open the correct
+    /// crates.io registry, or replacement registry if the user has configured that
+    ///
+    /// You can force the usage of the git registry (if not overridden in the
+    /// local environment) by specifying `Some("1.69.0")` or lower semver as the
+    /// sparse registry was not made the default until `1.70.0`
     #[cfg(feature = "prefer-index")]
     pub fn with_crates_io_index(
-        &mut self,
+        mut self,
+        config_root: Option<tame_index::PathBuf>,
         cargo_home: Option<tame_index::PathBuf>,
-        index_kind: index::IndexKind,
-    ) -> Result<&mut Self, Error> {
-        let url = match index_kind {
-            index::IndexKind::Sparse => tame_index::IndexUrl::CratesIoSparse,
-            index::IndexKind::Git => tame_index::IndexUrl::CratesIoGit,
-        };
+        cargo_version: Option<&str>,
+    ) -> Result<Self, Error> {
+        let crates_io =
+            tame_index::IndexUrl::crates_io(config_root, cargo_home.as_deref(), cargo_version)?;
 
         let index = tame_index::index::ComboIndexCache::new(
-            tame_index::IndexLocation::new(url).with_root(cargo_home),
+            tame_index::IndexLocation::new(crates_io).with_root(cargo_home),
         )?;
 
         self.crates_io_index = Some(index);
@@ -1453,7 +1455,7 @@ impl Builder {
         Ok(Krates {
             graph,
             workspace_members,
-            lock_file: md.workspace_root.join("Cargo.lock"),
+            workspace_root: md.workspace_root,
             krates_end,
         })
     }
