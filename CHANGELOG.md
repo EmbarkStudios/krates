@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.14.0] - 2023-07-25
 ### Changed
 - [PR#55](https://github.com/EmbarkStudios/krates/pull/55) and [PR#56](https://github.com/EmbarkStudios/krates/pull/56) replaced `crates-index` with `tame-index`
 - [PR#56](https://github.com/EmbarkStudios/krates/pull/56) changed `Krates::lock_path` -> `Krates::workspace_root`, which can then be joined with `Cargo.lock` to get the same path, but workspace root is more generally useful.
@@ -136,7 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.13.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.14.0...HEAD
+[0.14.0]: https://github.com/EmbarkStudios/krates/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/EmbarkStudios/krates/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/EmbarkStudios/krates/compare/0.12.6...0.13.0
 [0.12.6]: https://github.com/EmbarkStudios/krates/compare/0.12.5...0.12.6
