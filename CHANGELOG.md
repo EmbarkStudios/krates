@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#55](https://github.com/EmbarkStudios/krates/pull/55) and [PR#56](https://github.com/EmbarkStudios/krates/pull/56) replaced `crates-index` with `tame-index`
+- [PR#56](https://github.com/EmbarkStudios/krates/pull/56) changed `Krates::lock_path` -> `Krates::workspace_root`, which can then be joined with `Cargo.lock` to get the same path, but workspace root is more generally useful.
+
 ## [0.13.1] - 2023-06-13
 ### Fixed
 - [PR#54](https://github.com/EmbarkStudios/krates/pull/54) fixed an issue where the crates.io index was unconditionally opened, and synced, if the `prefer-index` feature was enabled, causing long stalls if using the crates.io sparse index instead.
