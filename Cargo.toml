@@ -30,7 +30,7 @@ cargo_metadata = "0.17"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Allows inspection of the cargo registry index(ices)
-tame-index = { version = "0.1", optional = true, default-features = false }
+tame-index = { version = "0.2", optional = true, default-features = false }
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements
@@ -44,6 +44,3 @@ insta = "1.21"
 similar-asserts = "1.1"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
-
-[patch.crates-io]
-tame-index = { path = "../tame-index" }
