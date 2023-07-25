@@ -13,12 +13,9 @@ pub enum Error {
     /// Due to how the graph was built, all possible root nodes were actually
     /// filtered out, leaving an empty graph
     NoRootKrates,
-    /// The `prefer-index` feature was enabled but [`Builder::with_crates_io_index`]
-    /// was not called
+    /// An error occurred trying to open or read the crates.io index
     #[cfg(feature = "prefer-index")]
-    NoIndexImplementation,
-    #[cfg(feature = "with-crates-index")]
-    CratesIndex(crates_index::Error),
+    Index(tame_index::Error),
 }
 
 impl fmt::Display for Error {
@@ -29,9 +26,7 @@ impl fmt::Display for Error {
             Self::InvalidPkgSpec(err) => write!(f, "package spec was invalid: {err}"),
             Self::NoRootKrates => f.write_str("no root crates available"),
             #[cfg(feature = "prefer-index")]
-            Self::NoIndexImplementation => f.write_str("Builder::with_crates_io_index must be called if the `prefer-index` feature is enabled"),
-            #[cfg(feature = "with-crates-index")]
-            Self::CratesIndex(err) => write!(f, "{err}"),
+            Self::Index(err) => write!(f, "{err}"),
         }
     }
 }
@@ -53,9 +48,9 @@ impl From<CMErr> for Error {
     }
 }
 
-#[cfg(feature = "with-crates-index")]
-impl From<crates_index::Error> for Error {
-    fn from(e: crates_index::Error) -> Self {
-        Error::CratesIndex(e)
+#[cfg(feature = "prefer-index")]
+impl From<tame_index::Error> for Error {
+    fn from(e: tame_index::Error) -> Self {
+        Error::Index(e)
     }
 }

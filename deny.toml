@@ -22,6 +22,8 @@ skip = [
 skip-tree = [
     # dev only but still sigh
     { name = "windows-sys", version = "<0.48.0" },
+    # petgraph uses an older indexmap
+    { name = "indexmap", version = "=1.9.3" },
 ]
 
 [sources]

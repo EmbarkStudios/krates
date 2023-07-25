@@ -15,23 +15,22 @@ homepage = "https://github.com/EmbarkStudios/krates"
 keywords = ["cargo", "metadata", "graph"]
 categories = ["visualization"]
 exclude = [".github", "tests"]
+rust-version = "1.65.0"
 
 [features]
 default = []
 # Uses the index as the source of truth for what features are available for a crate
-prefer-index = []
-# Uses crates-index to read the index rather than rely on a user-provided implementation
-with-crates-index = ["prefer-index", "crates-index"]
+prefer-index = ["dep:tame-index"]
 # Adds support for filtering target specific dependencies
 targets = ["cfg-expr/targets"]
 
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = "0.15"
+cargo_metadata = "0.17"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Allows inspection of the cargo registry index(ices)
-crates-index = { version = "0.19", optional = true, default-features = false }
+tame-index = { version = "0.2", optional = true, default-features = false }
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements

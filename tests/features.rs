@@ -246,55 +246,20 @@ mod prefer_index {
         assert_features!(md, "conv", ["default", "std"]);
     }
 
-    /// Validates an external index implementation can fix features
-    #[test]
-    #[cfg(not(feature = "with-crates-index"))]
-    fn uses_external_index_impl() {
-        use krates::index::{self, FeaturesMap};
-        struct Custom(FeaturesMap);
-
-        impl index::CratesIoIndex for Custom {
-            fn index_krate_features(
-                &self,
-                name: &str,
-                version: &semver::Version,
-                on_features: &mut dyn FnMut(Option<&FeaturesMap>),
-            ) {
-                if name == "conv" && version == &semver::Version::new(0, 3, 3) {
-                    on_features(Some(&self.0))
-                } else {
-                    on_features(None)
-                }
-            }
-        }
-
-        let mut fm = FeaturesMap::new();
-        fm.insert("default".into(), vec!["std".into()]);
-        fm.insert("std".into(), vec!["custom_derive/std".into()]);
-
-        let mut b = krates::Builder::new();
-        b.with_crates_io_index(Box::new(Custom(fm)));
-        confirm_index_snapshot(b);
-    }
-
     /// Validates we can use the sparse index to fix features
     #[test]
-    #[cfg(feature = "with-crates-index")]
     fn uses_sparse_index() {
         let mut b = krates::Builder::new();
-        b.with_crates_io_index(None, krates::index::IndexKind::Sparse)
-            .unwrap();
+        b = b.with_crates_io_index(None, None, None).unwrap();
         confirm_index_snapshot(b);
     }
 
     /// Validates we can use the sparse index to fix features
     #[test]
     #[ignore = "incredibly slow if git index is missing/outdated"]
-    #[cfg(feature = "with-crates-index")]
     fn uses_git_index() {
         let mut b = krates::Builder::new();
-        b.with_crates_io_index(None, krates::index::IndexKind::Git)
-            .unwrap();
+        b = b.with_crates_io_index(None, None, Some("1.69.0")).unwrap();
         confirm_index_snapshot(b);
     }
 }
