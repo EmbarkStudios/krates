@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#57](https://github.com/EmbarkStudios/krates/pull/57) bumped `tame-index` to `0.4`.
+
 ## [0.14.0] - 2023-07-25
 ### Changed
 - [PR#55](https://github.com/EmbarkStudios/krates/pull/55) and [PR#56](https://github.com/EmbarkStudios/krates/pull/56) replaced `crates-index` with `tame-index`
