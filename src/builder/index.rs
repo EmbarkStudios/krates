@@ -29,16 +29,19 @@ impl CachingIndex {
                 let versions = krate
                     .versions
                     .into_iter()
-                    .map(|kv| {
+                    .filter_map(|kv| {
                         // The index (currently) can have both features, and
                         // features2, the features method gives us an iterator
                         // over both
-                        let features = kv.features().map(|(k, v)| (k.clone(), v.clone())).collect();
-
-                        IndexKrateVersion {
-                            version: kv.version,
-                            features,
-                        }
+                        kv.version.parse::<semver::Version>().ok().map(|version| {
+                            IndexKrateVersion {
+                                version,
+                                features: kv
+                                    .features()
+                                    .map(|(k, v)| (k.clone(), v.clone()))
+                                    .collect(),
+                            }
+                        })
                     })
                     .collect();
 
