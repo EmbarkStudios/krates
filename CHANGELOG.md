@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.15.0] - 2023-08-23
 ### Changed
 - [PR#58](https://github.com/EmbarkStudios/krates/pull/58) removed the `prefer-index` feature, which brought in `tame-index`, in favor of just letting the user provide a callback that can be used to gather index information, freeing this crate from dependency issues and allowing downstream crates more flexibility.
 
@@ -144,7 +145,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.14.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/EmbarkStudios/krates/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/EmbarkStudios/krates/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/EmbarkStudios/krates/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/EmbarkStudios/krates/compare/0.13.0...0.13.1
