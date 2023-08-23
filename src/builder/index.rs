@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
-use tame_index::index::ComboIndexCache;
+
+pub type BuildIndexCache =
+    Box<dyn FnOnce(BTreeSet<String>) -> BTreeMap<String, Option<IndexKrate>>>;
 
 pub type FeaturesMap = BTreeMap<String, Vec<String>>;
 
@@ -19,40 +21,12 @@ pub struct CachingIndex {
 }
 
 impl CachingIndex {
-    /// Creates a caching index around the specified index
-    pub fn new(inner: ComboIndexCache, krates: BTreeSet<String>) -> Self {
-        let mut cache = BTreeMap::new();
-        for name in krates {
-            let read = || -> Option<IndexKrate> {
-                let name = name.as_str().try_into().ok()?;
-                let krate = inner.cached_krate(name).ok()??;
-                let versions = krate
-                    .versions
-                    .into_iter()
-                    .filter_map(|kv| {
-                        // The index (currently) can have both features, and
-                        // features2, the features method gives us an iterator
-                        // over both
-                        kv.version.parse::<semver::Version>().ok().map(|version| {
-                            IndexKrateVersion {
-                                version,
-                                features: kv
-                                    .features()
-                                    .map(|(k, v)| (k.clone(), v.clone()))
-                                    .collect(),
-                            }
-                        })
-                    })
-                    .collect();
-
-                Some(IndexKrate { versions })
-            };
-
-            let krate = read();
-            cache.insert(name, krate);
+    /// Creates a caching index for information provided by the user
+    #[inline]
+    pub fn new(build: BuildIndexCache, krates: BTreeSet<String>) -> Self {
+        Self {
+            cache: build(krates),
         }
-
-        Self { cache }
     }
 
     fn index_krate_features(&self, name: &str, version: &semver::Version) -> Option<&FeaturesMap> {

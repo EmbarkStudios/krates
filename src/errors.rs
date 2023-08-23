@@ -13,9 +13,6 @@ pub enum Error {
     /// Due to how the graph was built, all possible root nodes were actually
     /// filtered out, leaving an empty graph
     NoRootKrates,
-    /// An error occurred trying to open or read the crates.io index
-    #[cfg(feature = "prefer-index")]
-    Index(tame_index::Error),
 }
 
 impl fmt::Display for Error {
@@ -25,8 +22,6 @@ impl fmt::Display for Error {
             Self::Metadata(err) => write!(f, "{err}"),
             Self::InvalidPkgSpec(err) => write!(f, "package spec was invalid: {err}"),
             Self::NoRootKrates => f.write_str("no root crates available"),
-            #[cfg(feature = "prefer-index")]
-            Self::Index(err) => write!(f, "{err}"),
         }
     }
 }
@@ -35,8 +30,6 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Metadata(err) => Some(err),
-            #[cfg(feature = "with-crates-index")]
-            Self::CratesIndex(err) => Some(err),
             _ => None,
         }
     }
@@ -45,12 +38,5 @@ impl std::error::Error for Error {
 impl From<CMErr> for Error {
     fn from(e: CMErr) -> Self {
         Error::Metadata(e)
-    }
-}
-
-#[cfg(feature = "prefer-index")]
-impl From<tame_index::Error> for Error {
-    fn from(e: tame_index::Error) -> Self {
-        Error::Index(e)
     }
 }

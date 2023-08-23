@@ -1,6 +1,5 @@
 pub(crate) mod features;
 
-#[cfg(feature = "prefer-index")]
 pub mod index;
 
 use crate::{DepKind, Edge, Error, Kid, Krates};
@@ -312,8 +311,7 @@ pub struct Builder {
     exclude: Vec<crate::PkgSpec>,
     ignore_kinds: u32,
     workspace: bool,
-    #[cfg(feature = "prefer-index")]
-    crates_io_index: Option<tame_index::index::ComboIndexCache>,
+    crates_io_index: Option<index::BuildIndexCache>,
 }
 
 impl Builder {
@@ -503,22 +501,10 @@ impl Builder {
     /// You can force the usage of the git registry (if not overridden in the
     /// local environment) by specifying `Some("1.69.0")` or lower semver as the
     /// sparse registry was not made the default until `1.70.0`
-    #[cfg(feature = "prefer-index")]
-    pub fn with_crates_io_index(
-        mut self,
-        config_root: Option<tame_index::PathBuf>,
-        cargo_home: Option<tame_index::PathBuf>,
-        cargo_version: Option<&str>,
-    ) -> Result<Self, Error> {
-        let crates_io =
-            tame_index::IndexUrl::crates_io(config_root, cargo_home.as_deref(), cargo_version)?;
-
-        let index = tame_index::index::ComboIndexCache::new(
-            tame_index::IndexLocation::new(crates_io).with_root(cargo_home),
-        )?;
-
-        self.crates_io_index = Some(index);
-        Ok(self)
+    #[inline]
+    pub fn with_crates_io_index(&mut self, index_cache_build: index::BuildIndexCache) -> &mut Self {
+        self.crates_io_index = Some(index_cache_build);
+        self
     }
 
     /// Builds a [`Krates`] graph using metadata that be retrieved via the
@@ -625,7 +611,6 @@ impl Builder {
 
         // Load all the cache entries from disk for all the possible _unique_
         // crates in the graph so that we don't need to access disk again
-        #[cfg(feature = "prefer-index")]
         let index = self.crates_io_index.map(|index| {
             index::CachingIndex::new(index, packages.iter().map(|pkg| pkg.name.clone()).collect())
         });
@@ -847,7 +832,6 @@ impl Builder {
                 }
             };
 
-            #[cfg(feature = "prefer-index")]
             if let Some(index) = &index {
                 index::fix_features(index, krate);
             }

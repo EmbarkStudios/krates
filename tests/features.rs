@@ -235,7 +235,6 @@ fn handles_cyclic_features() {
 }
 
 /// Tests validating <https://github.com/EmbarkStudios/krates/issues/46>
-#[cfg(feature = "prefer-index")]
 mod prefer_index {
     fn confirm_index_snapshot(builder: krates::Builder) {
         let mut cmd = krates::Cmd::new();
@@ -250,16 +249,48 @@ mod prefer_index {
     #[test]
     fn uses_sparse_index() {
         let mut b = krates::Builder::new();
-        b = b.with_crates_io_index(None, None, None).unwrap();
-        confirm_index_snapshot(b);
-    }
 
-    /// Validates we can use the sparse index to fix features
-    #[test]
-    #[ignore = "incredibly slow if git index is missing/outdated"]
-    fn uses_git_index() {
-        let mut b = krates::Builder::new();
-        b = b.with_crates_io_index(None, None, Some("1.69.0")).unwrap();
+        let cache_index = |krates: std::collections::BTreeSet<String>| {
+            let index = tame_index::index::ComboIndexCache::new(tame_index::IndexLocation::new(
+                tame_index::IndexUrl::CratesIoSparse,
+            ))
+            .unwrap();
+
+            let mut cache = std::collections::BTreeMap::new();
+            for name in krates {
+                let read = || -> Option<krates::index::IndexKrate> {
+                    let name = name.as_str().try_into().ok()?;
+                    let krate = index.cached_krate(name).ok()??;
+                    let versions = krate
+                        .versions
+                        .into_iter()
+                        .filter_map(|kv| {
+                            // The index (currently) can have both features, and
+                            // features2, the features method gives us an iterator
+                            // over both
+                            kv.version.parse::<semver::Version>().ok().map(|version| {
+                                krates::index::IndexKrateVersion {
+                                    version,
+                                    features: kv
+                                        .features()
+                                        .map(|(k, v)| (k.clone(), v.clone()))
+                                        .collect(),
+                                }
+                            })
+                        })
+                        .collect();
+
+                    Some(krates::index::IndexKrate { versions })
+                };
+
+                let krate = read();
+                cache.insert(name, krate);
+            }
+
+            cache
+        };
+
+        b.with_crates_io_index(Box::new(cache_index));
         confirm_index_snapshot(b);
     }
 }
