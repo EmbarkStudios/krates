@@ -891,8 +891,8 @@ impl Builder {
                 .features
                 .iter()
                 .filter_map(|feat| {
-                    // This _should_ never fail in normal cases, however if the
-                    // `prefer-index` feature is not enabled, it's possible for
+                    // This _should_ never fail in normal cases, however if we
+                    // aren't provided with an index implementation it's possible for
                     // the resolved features to mention features that aren't in
                     // the actual crate manifest
                     let sub_feats: Vec<_> = krate
@@ -1086,7 +1086,7 @@ impl Builder {
 
                     while let Some(feat) = feature_stack.pop() {
                         // This _should_ never fail in normal cases, however if the
-                        // `prefer-index` feature is not enabled, it's possible for
+                        // an index implementation is not provided, it's possible for
                         // the resolved features to mention features that aren't in
                         // the actual crate manifest
                         let fs = if let Some(fs) = krate.features.get(feat) {
