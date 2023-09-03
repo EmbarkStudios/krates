@@ -52,7 +52,9 @@ pub(super) fn fix_features(index: &CachingIndex, krate: &mut cargo_metadata::Pac
         return;
     }
 
-    let Some(features) = index.index_krate_features(&krate.name, &krate.version) else { return; };
+    let Some(features) = index.index_krate_features(&krate.name, &krate.version) else {
+        return;
+    };
 
     for (ikey, ivalue) in features {
         if !krate.features.contains_key(ikey) {

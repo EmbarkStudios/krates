@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#59](https://github.com/EmbarkStudios/krates/pull/59) added `Krates::krates_filtered`, allowing filtering of crates based upon their edge kinds.
+
 ## [0.15.0] - 2023-08-23
 ### Changed
 - [PR#58](https://github.com/EmbarkStudios/krates/pull/58) removed the `prefer-index` feature, which brought in `tame-index`, in favor of just letting the user provide a callback that can be used to gather index information, freeing this crate from dependency issues and allowing downstream crates more flexibility.

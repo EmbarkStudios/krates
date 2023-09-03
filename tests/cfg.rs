@@ -23,7 +23,7 @@ fn ignores_non_linux() {
 fn ignores_non_tier1() {
     let mut kb = krates::Builder::new();
 
-    let targets = vec![
+    let targets = [
         targets::get_builtin_target_by_triple("i686-pc-windows-gnu").unwrap(),
         targets::get_builtin_target_by_triple("i686-pc-windows-msvc").unwrap(),
         targets::get_builtin_target_by_triple("i686-unknown-linux-gnu").unwrap(),
@@ -44,7 +44,7 @@ fn ignores_non_tier1() {
 fn ignores_non_wasm() {
     let mut kb = krates::Builder::new();
 
-    let targets = vec![targets::get_builtin_target_by_triple("wasm32-unknown-unknown").unwrap()];
+    let targets = [targets::get_builtin_target_by_triple("wasm32-unknown-unknown").unwrap()];
 
     kb.include_targets(targets.iter().map(|ti| (ti.triple.clone(), vec![])));
 
