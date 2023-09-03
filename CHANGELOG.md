@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.15.1] - 2023-09-03
 ### Added
 - [PR#59](https://github.com/EmbarkStudios/krates/pull/59) added `Krates::krates_filtered`, allowing filtering of crates based upon their edge kinds.
 
@@ -148,7 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.1...HEAD
+[0.15.1]: https://github.com/EmbarkStudios/krates/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/EmbarkStudios/krates/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/EmbarkStudios/krates/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/EmbarkStudios/krates/compare/0.13.1...0.14.0
