@@ -146,3 +146,44 @@ fn only_b() {
     let grafs = build("all-features.json", kb).unwrap();
     insta::assert_snapshot!(grafs.dotgraph());
 }
+
+#[test]
+fn filters_after_build() {
+    {
+        let mut kb = krates::Builder::new();
+        kb.ignore_kind(krates::DepKind::Dev, krates::Scope::NonWorkspace);
+
+        let grafs = build("all-features.json", kb).unwrap();
+
+        let filtered = grafs.actual.krates_filtered(krates::DepKind::Dev);
+
+        let mut kb = krates::Builder::new();
+        kb.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
+
+        let grafs = build("all-features.json", kb).unwrap();
+
+        let expected = format!("{:#?}", grafs.actual.krates().collect::<Vec<_>>());
+        let actual = format!("{filtered:#?}");
+
+        similar_asserts::assert_eq!(expected, actual);
+    }
+
+    {
+        let mut kb = krates::Builder::new();
+        kb.ignore_kind(krates::DepKind::Build, krates::Scope::NonWorkspace);
+
+        let grafs = build("all-features.json", kb).unwrap();
+
+        let filtered = grafs.actual.krates_filtered(krates::DepKind::Build);
+
+        let mut kb = krates::Builder::new();
+        kb.ignore_kind(krates::DepKind::Build, krates::Scope::All);
+
+        let grafs = build("all-features.json", kb).unwrap();
+
+        let expected = format!("{:#?}", grafs.actual.krates().collect::<Vec<_>>());
+        let actual = format!("{filtered:#?}");
+
+        similar_asserts::assert_eq!(expected, actual);
+    }
+}

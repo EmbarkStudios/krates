@@ -2,6 +2,7 @@
 
 use std::{fmt, path::Path};
 
+#[derive(Debug, PartialEq)]
 pub struct JustId(pub krates::Kid);
 
 pub type Graph = krates::Krates<JustId>;

@@ -311,7 +311,7 @@ impl<N, E> Krates<N, E> {
 
         while let Some(nid) = stack.pop() {
             for edge in graph.edges_directed(nid, Direction::Incoming) {
-                match &self.graph[edge.source()] {
+                match &graph[edge.source()] {
                     Node::Krate { krate, .. } => {
                         if visited.insert(edge.source()) {
                             direct_dependents.push(DirectDependent {
@@ -432,6 +432,66 @@ impl KrateDetails for cm::Package {
 
     fn version(&self) -> &semver::Version {
         &self.version
+    }
+}
+
+impl<N> Krates<N, Edge>
+where
+    N: std::fmt::Debug,
+{
+    /// Removes all of the crates that are only referenced via the specified
+    /// dependency kind.
+    ///
+    /// This gives the same output as if the graph had been built by using
+    /// [`ignore_kind`](crate::Builder::ignore_kind) with [`Scope::all`](crate::Scope::All)
+    pub fn krates_filtered(&self, filter: DepKind) -> Vec<&N> {
+        let graph = self.graph();
+        let mut filtered: std::collections::BTreeMap<_, _> = self
+            .workspace_members()
+            .filter_map(|n| {
+                let Node::Krate { id, krate, .. } = n else {
+                    return None;
+                };
+                Some((id, krate))
+            })
+            .collect();
+        let mut stack: Vec<_> = self
+            .workspace_members
+            .iter()
+            .filter_map(|pid| self.nid_for_kid(pid))
+            .collect();
+        let mut visited = std::collections::BTreeSet::new();
+
+        while let Some(nid) = stack.pop() {
+            for edge in graph.edges_directed(nid, Direction::Outgoing) {
+                match edge.weight() {
+                    Edge::Dep { kind, .. } | Edge::DepFeature { kind, .. } => {
+                        if *kind == filter {
+                            continue;
+                        }
+                    }
+                    Edge::Feature => {}
+                };
+
+                match &graph[edge.target()] {
+                    Node::Krate { id, krate, .. } => {
+                        if visited.insert(edge.target()) {
+                            stack.push(edge.target());
+                            filtered.insert(id, krate);
+                        }
+                    }
+                    Node::Feature { .. } => {
+                        if visited.insert(edge.target()) {
+                            stack.push(edge.target());
+                        }
+                    }
+                }
+            }
+
+            visited.insert(nid);
+        }
+
+        filtered.into_values().collect()
     }
 }
 
