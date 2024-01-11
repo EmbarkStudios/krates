@@ -147,7 +147,7 @@ fn direct_dependents() {
 
     let mut ids: Vec<_> = grafs
         .actual
-        .direct_dependencies(grafs.actual.nid_for_kid(&id.0).unwrap())
+        .direct_dependents(grafs.actual.nid_for_kid(&id.0).unwrap())
         .into_iter()
         .map(|jid| jid.krate.0.repr.as_str())
         .collect();
