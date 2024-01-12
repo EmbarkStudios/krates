@@ -3,10 +3,10 @@ source: tests/cfg.rs
 expression: grafs.dotgraph()
 ---
 digraph {
-    0 [ label = "crate a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)" ]
-    1 [ label = "crate b 0.1.0 (path+file:///home/jake/code/krates/tests/ws/b)" ]
+    0 [ label = "crate a 0.1.0 (path+file:///krates/tests/ws/a)" ]
+    1 [ label = "crate b 0.1.0 (path+file:///krates/tests/ws/b)" ]
     2 [ label = "crate bitflags 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)" ]
-    3 [ label = "crate c 0.1.0 (path+file:///home/jake/code/krates/tests/ws/c)" ]
+    3 [ label = "crate c 0.1.0 (path+file:///krates/tests/ws/c)" ]
     4 [ label = "crate cc 1.0.73 (git+https://github.com/alexcrichton/cc-rs#53fb72c87e5769a299f1886ead831901b9c775d6)" ]
     5 [ label = "crate cc 1.0.73 (registry+https://github.com/rust-lang/crates.io-index)" ]
     6 [ label = "crate cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" ]
