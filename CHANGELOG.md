@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#61](https://github.com/EmbarkStudios/krates/pull/61) resolved [#60](https://github.com/EmbarkStudios/krates/issues/60) by refactoring the building of the crate graph to do its own crate and feature resolution to properly handle pruning based on the user's desires.
+
 ## [0.15.1] - 2023-09-03
 ### Added
 - [PR#59](https://github.com/EmbarkStudios/krates/pull/59) added `Krates::krates_filtered`, allowing filtering of crates based upon their edge kinds.
