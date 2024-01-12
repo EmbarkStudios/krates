@@ -701,9 +701,15 @@ impl Builder {
         impl Node {
             #[inline]
             fn feature_index(&self, feat: &str) -> usize {
-                self.features
-                    .binary_search_by(|f| f.as_str().cmp(feat))
-                    .unwrap()
+                match self.features.binary_search_by(|f| f.as_str().cmp(feat)) {
+                    Ok(i) => i,
+                    Err(_i) => {
+                        unreachable!(
+                            "unable to locate {feat} for crate {} features({:?})",
+                            self.id, self.features
+                        );
+                    }
+                }
             }
 
             #[inline]
@@ -1069,12 +1075,14 @@ impl Builder {
                         }
                     };
 
-                    let Some(ndep) = rnode
-                        .deps
-                        .iter()
-                        .find(|rdep| dep_names_match(krate_name, &rdep.name))
-                    else {
-                        unreachable!("unable to find dependency {krate_name} for {pid}");
+                    let Some(ndep) = rnode.deps.iter().find(|rdep| {
+                        dep_names_match(krate_name, &rdep.name)
+                            || crate_name_from_pid(&rdep.pkg) == krate_name
+                    }) else {
+                        unreachable!(
+                            "unable to find dependency {krate_name} for {pid} {:#?}",
+                            rnode.deps
+                        );
                     };
 
                     let rdep_node = get_rnode(&ndep.pkg);
