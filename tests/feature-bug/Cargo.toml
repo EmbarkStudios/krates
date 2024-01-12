@@ -1,6 +1,6 @@
 [workspace.dependencies]
-ndarray-linalg = { path = "ndarray-linalg" }
-lax = { path = "lax" }
+ndarray-linalg = "0.16"
+lax = "0.16"
 
 workspace.members = ["lax", "ndarray-linalg", "sub-crate"]
 
