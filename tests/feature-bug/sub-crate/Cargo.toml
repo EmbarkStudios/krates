@@ -1,0 +1,16 @@
+[package]
+name = "sub-crate"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+simple = ["dep:ndarray-linalg"]
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ndarray-linalg = { workspace = true, default-features = false, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ndarray-linalg = { workspace = true, default-features = false, features = [
+    "netlib",
+], optional = true }

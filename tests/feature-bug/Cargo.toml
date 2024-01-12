@@ -1,0 +1,18 @@
+[workspace.dependencies]
+ndarray-linalg = { path = "ndarray-linalg" }
+lax = { path = "lax" }
+
+workspace.members = ["lax", "ndarray-linalg", "sub-crate"]
+
+[package]
+name = "feature-bug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sub-crate = { path = "sub-crate", version = "0.1", default-features = false, features = [
+    "simple",
+] }
+
+[dev-dependencies]
+ndarray-linalg = { workspace = true, features = ["intel-mkl-static"] }

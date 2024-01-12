@@ -234,6 +234,23 @@ fn handles_cyclic_features() {
     assert_features!(md, "features-galore", ["cycle", "midi", "subfeatcycle"]);
 }
 
+/// Ensures that features only brought in by eg dev-dependencies are not used if
+/// dev-dependencies are ignored
+/// <https://github.com/EmbarkStudios/krates/issues/60>
+#[test]
+fn ignores_features_for_ignored_kinds() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/feature-bug/Cargo.toml")
+        .all_features();
+
+    let mut builder = krates::Builder::new();
+    builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
+    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
+    insta::assert_snapshot!(dotgraph);
+}
+
 /// Tests validating <https://github.com/EmbarkStudios/krates/issues/46>
 mod prefer_index {
     fn confirm_index_snapshot(builder: krates::Builder) {
