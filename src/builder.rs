@@ -6,7 +6,7 @@ use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
 use features::{Feature, ParsedFeature};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::{Path, PathBuf},
 };
 
@@ -604,6 +604,8 @@ impl Builder {
         E: From<Edge>,
         F: OnFilter,
     {
+        use cm::PackageId;
+
         let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
         let mut packages = md.packages;
@@ -618,61 +620,59 @@ impl Builder {
         let mut workspace_members = md.workspace_members;
         workspace_members.sort();
 
-        let mut pid_stack = Vec::with_capacity(workspace_members.len());
+        let roots = {
+            let mut roots = BTreeSet::new();
 
-        // Only include workspaces members the user wants if they have specified
-        // any, this is to take into account scenarios where you have a large
-        // workspace, but only want to get the crates used by a subset of the
-        // workspace
-        if self.workspace_filters.is_empty() {
-            // If the resolve graph specifies a root, it means the user
-            // specified a particular crate in a workspace, so we'll only use
-            // that single root for the entire graph rather than a root for each
-            // workspace member crate
-            if !self.workspace {
-                if let Some(root) = &resolved.root {
-                    pid_stack.push(root);
+            // Only include workspaces members the user wants if they have specified
+            // any, this is to take into account scenarios where you have a large
+            // workspace, but only want to get the crates used by a subset of the
+            // workspace
+            if self.workspace_filters.is_empty() {
+                // If the resolve graph specifies a root, it means the user
+                // specified a particular crate in a workspace, so we'll only use
+                // that single root for the entire graph rather than a root for each
+                // workspace member crate
+                if !self.workspace {
+                    if let Some(root) = &resolved.root {
+                        roots.insert(root);
+                    }
                 }
-            }
 
-            if pid_stack.is_empty() {
-                pid_stack.extend(workspace_members.iter());
-            }
-        } else {
-            // If the filters only contain 1 path, and it is the path to a
-            // workspace toml, then we disregard the filters
-            if self.workspace_filters.len() == 1
-                && Some(md.workspace_root.as_ref()) == self.workspace_filters[0].parent()
-            {
-                pid_stack.extend(workspace_members.iter());
+                if roots.is_empty() {
+                    roots.extend(workspace_members.iter());
+                }
             } else {
-                for wm in &workspace_members {
-                    if let Ok(i) = packages.binary_search_by(|pkg| pkg.id.cmp(wm)) {
-                        if self
-                            .workspace_filters
-                            .iter()
-                            .any(|wf| wf == &packages[i].manifest_path)
-                        {
-                            pid_stack.push(wm);
+                // If the filters only contain 1 path, and it is the path to a
+                // workspace toml, then we disregard the filters
+                if self.workspace_filters.len() == 1
+                    && Some(md.workspace_root.as_ref()) == self.workspace_filters[0].parent()
+                {
+                    roots.extend(workspace_members.iter());
+                } else {
+                    for wm in &workspace_members {
+                        if let Ok(i) = packages.binary_search_by(|pkg| pkg.id.cmp(wm)) {
+                            if self
+                                .workspace_filters
+                                .iter()
+                                .any(|wf| wf == &packages[i].manifest_path)
+                            {
+                                roots.insert(wm);
+                            }
                         }
                     }
                 }
             }
-        }
+
+            roots
+        };
+
+        let is_root_crate = |pid: &PackageId| -> bool { roots.contains(&pid) };
 
         let exclude = self.exclude;
 
         let include_all_targets = self.target_filters.is_empty();
         let ignore_kinds = self.ignore_kinds;
         let targets = self.target_filters;
-
-        // For features, we need to know what the root crates are in the graph,
-        // as the features enabled on those crates are the real source of truth,
-        // as all features of non-root crates can be made inaccurate due to
-        // graph pruning
-        let roots: std::collections::BTreeSet<_> = pid_stack.iter().cloned().collect();
-
-        let is_root_crate = |pid: &cm::PackageId| -> bool { roots.contains(&pid) };
 
         #[derive(Debug)]
         struct DepKindInfo {
@@ -695,6 +695,21 @@ impl Builder {
             id: Kid,
             deps: Vec<NodeDep>,
             features: Vec<String>,
+            has_default_feature: bool,
+        }
+
+        impl Node {
+            #[inline]
+            fn feature_index(&self, feat: &str) -> usize {
+                self.features
+                    .binary_search_by(|f| f.as_str().cmp(feat))
+                    .unwrap()
+            }
+
+            #[inline]
+            fn feature(&self, index: usize) -> &str {
+                self.features[index].as_str()
+            }
         }
 
         let mut nodes: Vec<_> = resolved
@@ -747,16 +762,70 @@ impl Builder {
                 // guarantee that this is indeed always sorted since we rely on
                 // that attribute
                 features.sort();
+                let has_default_feature = features
+                    .binary_search_by(|f| f.as_str().cmp("default"))
+                    .is_ok();
 
                 Node {
                     id: rn.id,
                     deps,
                     features,
+                    has_default_feature,
                 }
             })
             .collect();
 
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
+
+        #[inline]
+        fn crate_name_from_pid(pid: &PackageId) -> &str {
+            let name_end = pid.repr.find(' ').unwrap();
+            &pid.repr[..name_end]
+        }
+
+        let mut dep_edge_map = HashMap::new();
+        let mut feature_edge_map = BTreeMap::new();
+
+        // The stack of pid + features that are visited until we've reached every
+        // unique leaf.
+        //
+        // This is rooted on the root packages + enabled features as returned by
+        // cargo metadata, but we (no longer) use the rest of the output as is,
+        // as we can prune edges based on cfg/build kind, or even exclude packages
+        // entirely, and thus have to basically re-resolve the crates + features
+        // to avoid adding nodes/edges that shouldn't exist based on the caller's
+        // configuration (eg. https://github.com/EmbarkStudios/krates/issues/60)
+        let mut visit_stack = Vec::with_capacity(roots.len());
+
+        for root in &roots {
+            let krate_index = nodes.binary_search_by(|n| n.id.cmp(root)).unwrap();
+            let rnode = &nodes[krate_index];
+
+            visit_stack.push((*root, None));
+
+            for feat in 0..rnode.features.len() {
+                visit_stack.push((*root, Some(feat)));
+            }
+        }
+
+        #[derive(Debug)]
+        struct DependencyEdge {
+            kind: DepKind,
+            cfg: Option<String>,
+            features: Vec<usize>,
+        }
+
+        #[derive(Debug)]
+        struct PackageNode<'p> {
+            is_root: bool,
+            deps: BTreeMap<&'p PackageId, KrateDependency>,
+        }
+
+        #[derive(Debug)]
+        struct KrateDependency {
+            edges: Vec<DependencyEdge>,
+            features: BTreeSet<usize>,
+        }
 
         #[derive(Debug)]
         enum FeatureEdgeName {
@@ -771,31 +840,39 @@ impl Builder {
             name: FeatureEdgeName,
         }
 
-        #[inline]
-        fn crate_name_from_pid(pid: &cm::PackageId) -> &str {
-            let name_end = pid.repr.find(' ').unwrap();
-            &pid.repr[..name_end]
-        }
-
-        let mut dep_edge_map = HashMap::new();
-        let mut feature_edge_map = std::collections::BTreeMap::new();
-
         #[derive(Debug)]
-        struct DependencyEdge {
-            kind: DepKind,
-            cfg: Option<String>,
-            features: Vec<String>,
-            uses_default_features: bool,
+        struct KrateFeatures<'p> {
+            /// The inner DAG of features, note these are _all_ resolved features,
+            /// but might not be actually be present in the final graph if they
+            /// reference pruned krates
+            graph: Vec<(String, Vec<FeatureEdge<'p>>)>,
+            /// The actual set of features enabled by 1 or more parent krates
+            actual: BTreeSet<usize>,
+            /// Weakly referenced features
+            pending_weak: BTreeMap<&'p PackageId, BTreeSet<usize>>,
+            filled_non_optional: bool,
         }
 
-        #[derive(Debug)]
-        struct KrateDependency<'p> {
-            pkg: &'p cm::PackageId,
-            edges: Vec<DependencyEdge>,
-            features: Vec<String>,
-        }
+        let check = |map: &BTreeMap<&PackageId, KrateFeatures<'_>>,
+                     pid: &PackageId,
+                     feature: Option<usize>| {
+            map.get(pid).map_or(false, |pn| {
+                if let Some(feat) = feature {
+                    pn.actual.contains(&feat)
+                } else {
+                    pn.filled_non_optional
+                }
+            })
+        };
 
-        while let Some(pid) = pid_stack.pop() {
+        let get_rnode =
+            |pid: &PackageId| &nodes[nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap()];
+
+        while let Some((pid, feature)) = visit_stack.pop() {
+            if check(&feature_edge_map, pid, feature) {
+                continue;
+            }
+
             let is_in_workspace = workspace_members.binary_search(pid).is_ok();
 
             let krate_index = nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap();
@@ -815,7 +892,7 @@ impl Builder {
             }
 
             let get_dep_id = |dep_name: &str| -> Option<&Kid> {
-                let kid = rnode.deps.iter().find_map(|ndep| {
+                rnode.deps.iter().find_map(|ndep| {
                     let pkg_name = crate_name_from_pid(&ndep.pkg);
 
                     if dep_names_match(dep_name, &ndep.name) || dep_name == pkg_name {
@@ -823,165 +900,241 @@ impl Builder {
                     } else {
                         None
                     }
-                });
-
-                if let Some(kid) = kid {
-                    Some(kid)
-                } else {
-                    None
-                }
+                })
             };
 
-            if let Some(index) = &index {
-                index::fix_features(index, krate);
-            }
+            let krate_features = feature_edge_map.entry(pid).or_insert_with(|| {
+                if let Some(index) = &index {
+                    index::fix_features(index, krate);
+                }
 
-            // Cargo puts out a flat list of the enabled features, but we need
-            // to use the declared features on the crate itself to figure out
-            // the actual chain of features from one crate to another
-            // package features:
-            // "features": {
-            //   "blocking": [
-            //     "simple",
-            //     "reqwest?/blocking"
-            //   ],
-            //   "default": [
-            //     "simple"
-            //   ],
-            //   "json": [
-            //     "reqwest?/json"
-            //   ],
-            //   "multipart": [
-            //     "reqwest?/multipart"
-            //   ],
-            //   "reqwest": [
-            //     "dep:reqwest"
-            //   ],
-            //   "rgb": [
-            //     "dep:rgb"
-            //   ],
-            //   "serde": [
-            //     "dep:serde",
-            //     "rgb?/serde"
-            //   ],
-            //   "simple": [
-            //     "json"
-            //   ],
-            //   "ssh": [
-            //     "git/ssh",
-            //     "git/ssh_key_from_memory"
-            //   ],
-            //   "stream": [
-            //     "reqwest/stream"
-            //   ],
-            //   "zlib": [
-            //     "git/zlib-ng-compat",
-            //     "reqwest?/deflate"
-            //   ]
-            // },
-            // resolved features:
-            // "features": [
-            //   "blocking",
-            //   "json",
-            //   "reqwest",
-            //   "simple",
-            //   "stream"
-            // ]
-            let enabled_features: Vec<_> = rnode
-                .features
-                .iter()
-                .filter_map(|feat| {
-                    // This _should_ never fail in normal cases, however if we
-                    // aren't provided with an index implementation it's possible for
-                    // the resolved features to mention features that aren't in
-                    // the actual crate manifest
-                    let sub_feats: Vec<_> = krate
-                        .features
-                        .get(feat)?
-                        .iter()
-                        .filter_map(|sub_feat| {
-                            let sf = ParsedFeature::from(sub_feat.as_str());
+                // Cargo puts out a flat list of the enabled features, but we need
+                // to use the declared features on the crate itself to figure out
+                // the actual chain of features from one crate to another
+                // package features:
+                // "features": {
+                //   "blocking": [
+                //     "simple",
+                //     "reqwest?/blocking"
+                //   ],
+                //   "default": [
+                //     "simple"
+                //   ],
+                //   "json": [
+                //     "reqwest?/json"
+                //   ],
+                //   "multipart": [
+                //     "reqwest?/multipart"
+                //   ],
+                //   "reqwest": [
+                //     "dep:reqwest"
+                //   ],
+                //   "rgb": [
+                //     "dep:rgb"
+                //   ],
+                //   "serde": [
+                //     "dep:serde",
+                //     "rgb?/serde"
+                //   ],
+                //   "simple": [
+                //     "json"
+                //   ],
+                //   "ssh": [
+                //     "git/ssh",
+                //     "git/ssh_key_from_memory"
+                //   ],
+                //   "stream": [
+                //     "reqwest/stream"
+                //   ],
+                //   "zlib": [
+                //     "git/zlib-ng-compat",
+                //     "reqwest?/deflate"
+                //   ]
+                // },
+                // resolved features:
+                // "features": [
+                //   "blocking",
+                //   "json",
+                //   "reqwest",
+                //   "simple",
+                //   "stream"
+                // ]
+                let graph: Vec<_> = rnode
+                    .features
+                    .iter()
+                    .filter_map(|feat| {
+                        // This _should_ never fail in normal cases, however if we
+                        // aren't provided with an index implementation it's possible for
+                        // the resolved features to mention features that aren't in
+                        // the actual crate manifest
+                        let sub_feats: Vec<_> = krate
+                            .features
+                            .get(feat)?
+                            .iter()
+                            .filter_map(|sub_feat| {
+                                let sf = ParsedFeature::from(sub_feat.as_str());
 
-                            match sf.feat() {
-                                Feature::Krate(krate_name) => {
-                                    let kid = get_dep_id(krate_name)?;
-                                    let real_name = crate_name_from_pid(kid);
+                                match sf.feat() {
+                                    Feature::Krate(krate_name) => {
+                                        let kid = get_dep_id(krate_name)?;
+                                        let real_name = crate_name_from_pid(kid);
 
-                                    Some(FeatureEdge {
-                                        kid,
-                                        name: if real_name != krate_name {
-                                            FeatureEdgeName::Rename(krate_name.to_owned())
-                                        } else {
-                                            FeatureEdgeName::Krate
-                                        },
-                                    })
-                                }
-                                Feature::Simple(s) => Some(FeatureEdge {
-                                    kid: pid,
-                                    name: FeatureEdgeName::Feature(s.to_owned()),
-                                }),
-                                Feature::Strong {
-                                    krate: krate_name,
-                                    feature,
-                                } => Some(FeatureEdge {
-                                    kid: get_dep_id(krate_name)?,
-                                    name: FeatureEdgeName::Feature(feature.to_owned()),
-                                }),
-                                Feature::Weak {
-                                    krate: krate_name,
-                                    feature,
-                                } => {
-                                    if rnode.features.iter().any(|kn| kn == krate_name) {
                                         Some(FeatureEdge {
-                                            kid: get_dep_id(krate_name)?,
-                                            name: FeatureEdgeName::Feature(feature.to_owned()),
+                                            kid,
+                                            name: if real_name != krate_name {
+                                                FeatureEdgeName::Rename(krate_name.to_owned())
+                                            } else {
+                                                FeatureEdgeName::Krate
+                                            },
                                         })
-                                    } else {
-                                        None
+                                    }
+                                    Feature::Simple(s) => Some(FeatureEdge {
+                                        kid: pid,
+                                        name: FeatureEdgeName::Feature(s.to_owned()),
+                                    }),
+                                    Feature::Strong {
+                                        krate: krate_name,
+                                        feature,
+                                    } => Some(FeatureEdge {
+                                        kid: get_dep_id(krate_name)?,
+                                        name: FeatureEdgeName::Feature(feature.to_owned()),
+                                    }),
+                                    Feature::Weak {
+                                        krate: krate_name,
+                                        feature,
+                                    } => {
+                                        if rnode.features.iter().any(|kn| kn == krate_name) {
+                                            Some(FeatureEdge {
+                                                kid: get_dep_id(krate_name)?,
+                                                name: FeatureEdgeName::Feature(feature.to_owned()),
+                                            })
+                                        } else {
+                                            None
+                                        }
                                     }
                                 }
-                            }
-                        })
-                        .collect();
+                            })
+                            .collect();
 
-                    Some((feat.clone(), sub_feats))
-                })
-                .collect();
+                        Some((feat.clone(), sub_feats))
+                    })
+                    .collect();
+
+                KrateFeatures {
+                    graph,
+                    actual: BTreeSet::new(),
+                    pending_weak: BTreeMap::new(),
+                    filled_non_optional: false,
+                }
+            });
+
+            let pn = dep_edge_map.entry(pid).or_insert_with(|| PackageNode {
+                is_root: is_root_crate(pid),
+                deps: BTreeMap::new(),
+            });
+
+            let mut deps = BTreeMap::<&PackageId, (&NodeDep, Option<BTreeSet<usize>>)>::new();
+
+            if let Some(feature) = feature {
+                if !krate_features.actual.insert(feature) {
+                    unreachable!();
+                }
+
+                if !krate_features.filled_non_optional {
+                    visit_stack.push((pid, None));
+                }
+
+                // This _should_ never fail in normal cases, however if the
+                // an index implementation is not provided, it's possible for
+                // the resolved features to mention features that aren't in
+                // the actual crate manifest
+                let fs = if let Some(fs) = krate.features.get(rnode.feature(feature)) {
+                    fs
+                } else {
+                    // TODO: Show the user a warning, or just fail?
+                    continue;
+                };
+
+                for sf in fs {
+                    let pf = ParsedFeature::from(sf.as_str());
+
+                    let (krate_name, feature) = match pf.feat() {
+                        Feature::Simple(feat) => {
+                            visit_stack.push((pid, Some(rnode.feature_index(feat))));
+                            continue;
+                        }
+                        Feature::Krate(krate) => (krate, None),
+                        Feature::Strong { krate, feature } | Feature::Weak { krate, feature } => {
+                            (krate, Some(feature))
+                        }
+                    };
+
+                    let Some(ndep) = rnode
+                        .deps
+                        .iter()
+                        .find(|rdep| dep_names_match(krate_name, &rdep.name))
+                    else {
+                        unreachable!("unable to find dependency {krate_name} for {pid}");
+                    };
+
+                    let rdep_node = get_rnode(&ndep.pkg);
+                    let is_weak = matches!(pf.feat(), Feature::Weak { .. });
+
+                    if is_weak && !pn.deps.contains_key(&ndep.pkg) {
+                        let feature = rdep_node.feature_index(feature.unwrap());
+                        krate_features
+                            .pending_weak
+                            .entry(&ndep.pkg)
+                            .or_default()
+                            .insert(feature);
+                        continue;
+                    } else if let Some(mut pending) = krate_features.pending_weak.remove(&ndep.pkg)
+                    {
+                        deps.entry(&ndep.pkg)
+                            .or_insert_with(|| (ndep, Some(BTreeSet::new())))
+                            .1
+                            .as_mut()
+                            .unwrap()
+                            .append(&mut pending);
+                    }
+
+                    let feats = deps
+                        .entry(&ndep.pkg)
+                        .or_insert_with(|| (ndep, Some(BTreeSet::new())))
+                        .1
+                        .as_mut()
+                        .unwrap();
+
+                    if let Some(feature) = feature {
+                        feats.insert(rdep_node.feature_index(feature));
+                    }
+                }
+            } else {
+                krate_features.filled_non_optional = true;
+                deps.extend(rnode.deps.iter().map(|ndep| (&ndep.pkg, (ndep, None))));
+            }
+
+            let targets = &targets;
 
             // Though each unique dependency can only be resolved once, it's possible
             // for the crate to list the same dependency multiple times, with different
             // dependency kinds, or different target configurations, so each one gets its
             // own edge
-            let deps: Vec<_> = rnode
-                .deps
-                .iter()
-                .filter_map(|rdep| {
-                    let targets = &targets;
-                    let pkg = &rdep.pkg;
+            for (pkg, (rdep, mut features)) in deps {
+                let rdep_node = get_rnode(pkg);
 
-                    // We also have to take into account that a package
-                    // can rename its own library output, eg.
-                    // ```ini
-                    // [package]
-                    // name = "coreaudio-rs"
-                    //
-                    // [lib]
-                    // name = "coreaudio"
-                    // ```
-                    let maybe_real_name = crate_name_from_pid(pkg);
+                #[derive(Debug)]
+                struct Edge<'d> {
+                    kind: DepKind,
+                    cfg: Option<&'d str>,
+                    features: &'d [String],
+                    uses_default_features: bool,
+                }
 
-                    // Dependencies will default to saying "uses_default_features" on edges,
-                    // even if the crate in question doesn't actually have a "default" feature,
-                    // so check that it actually does
-                    let has_default_feature = {
-                        let krate_index = nodes.binary_search_by(|n| n.id.cmp(pkg)).unwrap();
-                        let rnode = &nodes[krate_index];
+                let maybe_real_name = crate_name_from_pid(pkg);
+                let strong = features.is_some();
 
-                        // We've already guaranteed this list is sorted
-                        rnode.features.binary_search_by(|f| f.as_str().cmp("default")).is_ok()
-                    };
-
-                    let edges: Vec<_> = rdep.dep_kinds.iter().filter_map(|dk| {
+                let edges = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
                             DepKind::Normal => 0x1,
                             DepKind::Dev => 0x8,
@@ -1007,22 +1160,26 @@ impl Builder {
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 
+                        if dep.optional && !strong {
+                            return None;
+                        }
+
                         // We also need to account for a bug in cargo, where weak
                         // dependencies that aren't explicitly enabled still end
                         // up as resolved in the graph.
                         // https://github.com/EmbarkStudios/krates/issues/41
                         // https://github.com/rust-lang/cargo/issues/10801
-                        if dep.optional && !enabled_features
-                                .iter()
-                                .any(|(_feat, sub_feats)| {
-                                    sub_feats.iter().any(|sf| {
-                                        sf.kid == &rdep.pkg
-                                    })
-                                }) {
-                            return None;
-                        }
+                        // if dep.optional && !enabled_features
+                        //         .iter()
+                        //         .any(|(_feat, sub_feats)| {
+                        //             sub_feats.iter().any(|sf| {
+                        //                 sf.kid == &rdep.pkg
+                        //             })
+                        //         }) {
+                        //     return None;
+                        // }
 
-                        let cfg = if let Some(cfg) = &dk.cfg {
+                        let cfg = if let Some(cfg) = dk.cfg.as_deref() {
                             if !include_all_targets {
                                 let matched = if cfg.starts_with("cfg(") {
                                     match cfg_expr::Expression::parse(cfg) {
@@ -1054,90 +1211,74 @@ impl Builder {
                                 }
                             }
 
-                            Some(cfg.clone())
+                            Some(cfg)
                         } else {
                             None
                         };
 
-                        Some(DependencyEdge {
+                        Some(Edge {
                             kind: dk.kind,
                             cfg,
-                            features: dep.features.clone(),
-                            uses_default_features: dep.uses_default_features && has_default_feature,
+                            features: &dep.features,
+                            // Dependencies will default to saying "uses_default_features" on edges,
+                            // even if the crate in question doesn't actually have a "default" feature,
+                            // so check that it actually does
+                            uses_default_features: dep.uses_default_features && rdep_node.has_default_feature,
                         })
-                    }).collect();
+                    });
 
-                    // If we pruned all of the edges we can just discard the dependency altogether
-                    if edges.is_empty() {
-                        return None;
-                    }
+                // Don't add the dependency unless we have at least one edge, otherwise
+                // we could include optional dependencies that are only weakly referenced
+                let mut edges = edges.peekable();
+                if edges.peek().is_none() {
+                    continue;
+                }
 
-                    // Given the top level features enabled for the parent crate,
-                    // determine the additional features that may be enabled for
-                    // this dependency in addition to the features that may be
-                    // enabled explicitly on each edge
-                    let mut feature_stack: Vec<_> = rnode.features.iter().map(|s| s.as_str()).collect();
+                let dep = pn.deps.entry(pkg).or_insert_with(|| KrateDependency {
+                    edges: Vec::new(),
+                    features: BTreeSet::new(),
+                });
 
-                    // Apparently features can have cycles, so we need to ensure we don't enter an
-                    // infinite loop https://github.com/EmbarkStudios/krates/issues/48
-                    let mut simple_features = std::collections::BTreeSet::new();
+                let mut visit_dep = Some((pkg, None));
 
-                    let mut features: Vec<String> = Vec::new();
-
-                    while let Some(feat) = feature_stack.pop() {
-                        // This _should_ never fail in normal cases, however if the
-                        // an index implementation is not provided, it's possible for
-                        // the resolved features to mention features that aren't in
-                        // the actual crate manifest
-                        let fs = if let Some(fs) = krate.features.get(feat) {
-                            fs
-                        } else {
-                            // TODO: Show the user a warning, or just fail?
-                            continue;
-                        };
-                        for sf in fs {
-                            let pf = ParsedFeature::from(sf.as_str());
-
-                            let (krate, feature) = match pf.feat() {
-                                Feature::Simple(feat) => {
-                                    if simple_features.insert(feat) {
-                                        feature_stack.push(feat);
-                                    }
-                                    continue;
-                                },
-                                Feature::Krate(_krate) => { continue; }
-                                Feature::Strong { krate, feature } | Feature::Weak { krate, feature } => {
-                                    (krate, feature)
-                                }
-                            };
-
-                            if !dep_names_match(krate, &rdep.name) && krate != maybe_real_name {
-                                continue;
-                            }
-
-                            if let Err(i) = features.binary_search_by(|feat| feat.as_str().cmp(feature)) {
-                                features.insert(i, feature.to_owned());
-                            }
+                for edge in edges {
+                    if let Some(features) = features.take() {
+                        visit_stack.extend(visit_dep.take());
+                        for feat in features {
+                            visit_stack.push((pkg, Some(feat)));
+                            dep.features.insert(feat);
                         }
                     }
 
-                    Some(KrateDependency {
-                        pkg,
-                        edges,
-                        features,
-                    })
-                })
-                .collect();
+                    if !dep
+                        .edges
+                        .iter()
+                        .any(|d| d.kind == edge.kind && d.cfg.as_deref() == edge.cfg)
+                    {
+                        visit_stack.extend(visit_dep.take());
 
-            feature_edge_map.insert(pid, enabled_features);
+                        let mut features = Vec::new();
+                        for feat in edge
+                            .features
+                            .iter()
+                            .map(|f| f.as_str())
+                            .chain(edge.uses_default_features.then_some("default"))
+                        {
+                            let feat_index = rdep_node.feature_index(feat);
+                            visit_stack.push((pkg, Some(feat_index)));
+                            features.push(feat_index);
+                        }
 
-            for pid in deps.iter().map(|dep| dep.pkg) {
-                if !dep_edge_map.contains_key(pid) {
-                    pid_stack.push(pid);
+                        let edge = DependencyEdge {
+                            kind: edge.kind,
+                            cfg: edge.cfg.map(|s| s.into()),
+                            features,
+                        };
+
+                        dep.edges.push(edge);
+                    }
                 }
             }
-
-            dep_edge_map.insert(pid, deps);
         }
 
         // Sanity check, it's possible the user could exclude all of the
@@ -1156,19 +1297,21 @@ impl Builder {
         // so that we can easily binary search for the crates based on their
         // package id with just the graph and no ancillary tables
         for krate in packages {
-            if let Some(edges) = dep_edge_map.get(&krate.id) {
+            if let Some(pn) = dep_edge_map.get(&krate.id) {
                 let id = krate.id.clone();
+                let rnode = get_rnode(&id);
 
                 // If the crate is a root then the features it has enabled are
                 // accurate, however if it is not a root then we need to manually
                 // build up the list of enabled features as each edge is added
-                let features = if is_root_crate(&id) {
-                    let krate_index = nodes.binary_search_by(|n| n.id.cmp(&id)).unwrap();
-                    let rnode = &nodes[krate_index];
-
+                let features = if pn.is_root {
                     rnode.features.iter().cloned().collect()
                 } else {
-                    crate::EnabledFeatures::new()
+                    feature_edge_map[&id]
+                        .actual
+                        .iter()
+                        .map(|k| rnode.feature(*k).to_owned())
+                        .collect()
                 };
 
                 let krate = crate::Node::Krate {
@@ -1178,7 +1321,7 @@ impl Builder {
                 };
 
                 graph.add_node(krate);
-                edge_count += edges.len();
+                edge_count += pn.deps.len();
             } else {
                 on_filter.filtered(krate);
             }
@@ -1228,10 +1371,23 @@ impl Builder {
         // features exposed by each crate
         let (node_count, edge_count) =
             feature_edge_map
-                .values()
-                .fold((0usize, 0usize), |(nc, ec), feats| {
-                    let nc = nc + feats.len() * 2;
-                    let ec = ec + feats.iter().map(|(_, sf)| sf.len()).sum::<usize>();
+                .iter()
+                .fold((0usize, 0usize), |(nc, ec), (pid, feats)| {
+                    let nc = nc + feats.actual.len() * 2;
+                    let krate_index = nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap();
+                    let rnode = &nodes[krate_index];
+
+                    let ec = ec
+                        + feats
+                            .graph
+                            .iter()
+                            .filter_map(|(name, sf)| {
+                                feats
+                                    .actual
+                                    .contains(&rnode.feature_index(name))
+                                    .then_some(sf.len())
+                            })
+                            .sum::<usize>();
 
                     (nc, ec)
                 });
@@ -1248,70 +1404,66 @@ impl Builder {
                 continue;
             };
 
-            if let Some(deps) = dep_edge_map.remove(pid) {
-                use std::borrow::Cow;
-
+            if let Some(pn) = dep_edge_map.remove(pid) {
                 // Attach an edge for each crate dependency, note that there might not
                 // actually be a target crate for the edge since crates can be pruned
                 // due to target configuration
-                for dep in deps {
-                    let target_krate = if let Some(tk) = get(&graph, dep.pkg, None) {
+                for (dep_id, dep) in pn.deps {
+                    let target_krate = if let Some(tk) = get(&graph, dep_id, None) {
                         tk
                     } else {
                         continue;
                     };
 
                     let attach = |graph: &mut petgraph::Graph<crate::Node<N>, E>,
-                                  feat: Cow<'static, str>,
+                                  feat: String,
                                   edge: Edge| {
-                        let feat_node = if let Some(feat_node) = get(graph, dep.pkg, Some(&feat)) {
+                        let feat_node = if let Some(feat_node) = get(graph, dep_id, Some(&feat)) {
                             feat_node
                         } else {
-                            let feat_node = graph.add_node(crate::Node::Feature {
+                            graph.add_node(crate::Node::Feature {
                                 krate_index: target_krate,
-                                name: feat.clone().into_owned(),
-                            });
-
-                            if let crate::Node::Krate { features, .. } = &mut graph[target_krate] {
-                                if !features.contains(feat.as_ref()) {
-                                    features.insert(feat.into_owned());
-                                }
-                            }
-
-                            feat_node
+                                name: feat,
+                            })
                         };
 
                         graph.add_edge(srcid, feat_node, edge.into());
                     };
 
+                    let rnode = get_rnode(dep_id);
+
                     // Add the features that were explicitly enabled by the specific
                     // normal/dev/build dependency
                     for edge in dep.edges {
-                        let attach_direct_edge =
-                            !edge.uses_default_features && edge.features.is_empty();
+                        // let attach_direct_edge =
+                        //     !edge.uses_default_features && edge.features.is_empty();
 
-                        if edge.uses_default_features {
+                        // if edge.uses_default_features {
+                        //     attach(
+                        //         &mut graph,
+                        //         "default".to_owned(),
+                        //         Edge::DepFeature {
+                        //             kind: edge.kind,
+                        //             cfg: edge.cfg.clone(),
+                        //         },
+                        //     );
+                        // }
+
+                        let attach_direct_edge = edge.features.is_empty();
+
+                        for feat in edge.features {
+                            let feat = rnode.feature(feat);
+                            // if feat == "default" {
+                            //     continue;
+                            // }
                             attach(
                                 &mut graph,
-                                Cow::Borrowed("default"),
+                                feat.to_owned(),
                                 Edge::DepFeature {
                                     kind: edge.kind,
                                     cfg: edge.cfg.clone(),
                                 },
                             );
-                        }
-
-                        for feat in edge.features {
-                            if feat != "default" {
-                                attach(
-                                    &mut graph,
-                                    Cow::Owned(feat),
-                                    Edge::DepFeature {
-                                        kind: edge.kind,
-                                        cfg: edge.cfg.clone(),
-                                    },
-                                );
-                            }
                         }
 
                         if attach_direct_edge {
@@ -1329,14 +1481,15 @@ impl Builder {
 
                     // Add the features that were toggled on via a parent crate feature
                     for feat in dep.features {
-                        attach(&mut graph, Cow::Owned(feat), Edge::Feature);
+                        let feat = rnode.feature(feat);
+                        attach(&mut graph, feat.to_owned(), Edge::Feature);
                     }
                 }
             }
         }
 
         // Now attach edges between all of features and their parent crate
-        for (pid, mut features) in feature_edge_map {
+        for (pid, features) in feature_edge_map {
             let (kind, mut feature_stack) = if let Some(kind) = get(&graph, pid, None) {
                 if let crate::Node::Krate { features, .. } = &graph[kind] {
                     (kind, features.iter().cloned().collect::<Vec<_>>())
@@ -1377,6 +1530,8 @@ impl Builder {
                 })
             };
 
+            let mut enabled = features.graph;
+
             // Since we can prune crates either by kind, target, or user specification,
             // the actual set of features might not be the same as those that
             // the crate thinks they were, so we use the top level features that
@@ -1384,8 +1539,8 @@ impl Builder {
             // the sub features
             while let Some(feat) = feature_stack.pop() {
                 let (_parent, sub_features) =
-                    if let Some(i) = features.iter().position(|(k, _)| *k == feat) {
-                        features.swap_remove(i)
+                    if let Some(i) = enabled.iter().position(|(k, _)| *k == feat) {
+                        enabled.swap_remove(i)
                     } else {
                         continue;
                     };
@@ -1397,7 +1552,6 @@ impl Builder {
 
                 for sub_feat in sub_features {
                     if sub_feat.kid != pid && get(&graph, sub_feat.kid, None).is_none() {
-                        //println!("skipped sub-features {sub_feat:?}, krate not in graph");
                         continue;
                     }
 

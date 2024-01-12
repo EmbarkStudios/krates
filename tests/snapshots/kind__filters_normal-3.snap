@@ -3,9 +3,9 @@ source: tests/kind.rs
 expression: grafs.dotgraph()
 ---
 digraph {
-    0 [ label = "crate a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)" ]
-    1 [ label = "crate b 0.1.0 (path+file:///home/jake/code/krates/tests/ws/b)" ]
-    2 [ label = "crate c 0.1.0 (path+file:///home/jake/code/krates/tests/ws/c)" ]
+    0 [ label = "crate a 0.1.0 (path+file:///krates/tests/ws/a)" ]
+    1 [ label = "crate b 0.1.0 (path+file:///krates/tests/ws/b)" ]
+    2 [ label = "crate c 0.1.0 (path+file:///krates/tests/ws/c)" ]
     3 [ label = "crate cc 1.0.73 (git+https://github.com/alexcrichton/cc-rs#53fb72c87e5769a299f1886ead831901b9c775d6)" ]
     4 [ label = "crate cc 1.0.73 (registry+https://github.com/rust-lang/crates.io-index)" ]
     5 [ label = "crate difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" ]
@@ -16,9 +16,9 @@ digraph {
     10 [ label = "feature leftpad" ]
     11 [ label = "feature leftier-strings" ]
     12 [ label = "feature lazy_static" ]
-    13 [ label = "feature alloc" ]
+    13 [ label = "feature once_cell" ]
     14 [ label = "feature dev_urandom_fallback" ]
-    15 [ label = "feature once_cell" ]
+    15 [ label = "feature alloc" ]
     0 -> 7 [ label = "(dev)" ]
     0 -> 7 [ label = "(build) 'cfg(target_os = \"linux\")'" ]
     1 -> 8 [ label = "(dev) 'cfg(target_arch = \"x86_64\")'" ]
@@ -32,12 +32,12 @@ digraph {
     7 -> 2 [ label = "" ]
     7 -> 10 [ label = "" ]
     9 -> 5 [ label = "" ]
-    8 -> 6 [ label = "" ]
-    8 -> 13 [ label = "" ]
-    8 -> 14 [ label = "" ]
-    14 -> 6 [ label = "" ]
-    14 -> 15 [ label = "" ]
-    15 -> 6 [ label = "" ]
     13 -> 6 [ label = "" ]
+    14 -> 6 [ label = "" ]
+    14 -> 13 [ label = "" ]
+    8 -> 6 [ label = "" ]
+    8 -> 15 [ label = "" ]
+    8 -> 14 [ label = "" ]
+    15 -> 6 [ label = "" ]
 }
 

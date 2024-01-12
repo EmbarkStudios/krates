@@ -15,7 +15,33 @@ impl From<krates::cm::Package> for JustId {
 
 impl fmt::Display for JustId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0.repr)
+        if let Some((prefix, path)) = self.0.repr.split_once("(path+file://") {
+            let path = &path[..path.len() - 1];
+            let path = std::path::Path::new(path);
+
+            fn push(f: &mut fmt::Formatter<'_>, path: &std::path::Path) {
+                let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
+                    return;
+                };
+                if file_name != "krates" {
+                    let Some(parent) = path.parent() else {
+                        return;
+                    };
+                    push(f, parent);
+                }
+
+                f.write_str("/").unwrap();
+                f.write_str(file_name).unwrap();
+            }
+
+            f.write_str(prefix)?;
+            f.write_str("(path+file://")?;
+            push(f, path);
+            f.write_str(")")?;
+            Ok(())
+        } else {
+            f.write_str(&self.0.repr)
+        }
     }
 }
 
