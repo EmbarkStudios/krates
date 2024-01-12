@@ -1,6 +1,6 @@
 [package]
 name = "krates"
-version = "0.15.1"
+version = "0.15.2"
 description = "Create graphs of crates gathered from cargo metadata"
 authors = [
     "Embark <opensource@embark-studios.com>",

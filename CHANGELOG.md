@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.15.2] - 2024-01-12
 ### Fixed
 - [PR#61](https://github.com/EmbarkStudios/krates/pull/61) resolved [#60](https://github.com/EmbarkStudios/krates/issues/60) by refactoring the building of the crate graph to do its own crate and feature resolution to properly handle pruning based on the user's desires.
 
@@ -152,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.2...HEAD
+[0.15.2]: https://github.com/EmbarkStudios/krates/compare/0.15.1...0.15.2
 [0.15.1]: https://github.com/EmbarkStudios/krates/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/EmbarkStudios/krates/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/EmbarkStudios/krates/compare/0.14.0...0.14.1
