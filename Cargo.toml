@@ -24,7 +24,7 @@ targets = ["cfg-expr/targets"]
 
 [dependencies]
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = "0.17"
+cargo_metadata = "0.18"
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Used to create and traverse graph structures
@@ -41,4 +41,10 @@ similar-asserts = "1.1"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 # index metadata retrieval
-tame-index = "0.5"
+tame-index = "0.9"
+
+[profile.dev.package.insta]
+opt-level = 3
+
+[profile.dev.package.similar]
+opt-level = 3

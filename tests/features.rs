@@ -273,11 +273,14 @@ mod prefer_index {
             ))
             .unwrap();
 
+            let lock_opt = tame_index::utils::flock::LockOptions::cargo_package_lock(None).unwrap();
+            let lock = lock_opt.lock(|_p| None).unwrap();
+
             let mut cache = std::collections::BTreeMap::new();
             for name in krates {
                 let read = || -> Option<krates::index::IndexKrate> {
                     let name = name.as_str().try_into().ok()?;
-                    let krate = index.cached_krate(name).ok()??;
+                    let krate = index.cached_krate(name, &lock).ok()??;
                     let versions = krate
                         .versions
                         .into_iter()

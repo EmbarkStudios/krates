@@ -279,7 +279,7 @@ impl<N, E> Krates<N, E> {
 
         while let Some(nid) = stack.pop() {
             for edge in graph.edges_directed(nid, Direction::Outgoing) {
-                match &self.graph[edge.target()] {
+                match &graph[edge.target()] {
                     Node::Krate { krate, .. } => {
                         if visited.insert(edge.target()) {
                             direct_dependencies.push(DirectDependency {
