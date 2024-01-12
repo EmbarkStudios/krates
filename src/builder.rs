@@ -699,18 +699,14 @@ impl Builder {
         }
 
         impl Node {
+            #[inline]
             fn feature_index(&self, feat: &str) -> usize {
-                match self.features.binary_search_by(|f| f.as_str().cmp(feat)) {
-                    Ok(i) => i,
-                    Err(_) => {
-                        panic!(
-                            "unable to locate feature {feat} for {} in {:?}",
-                            self.id, self.features
-                        );
-                    }
-                }
+                self.features
+                    .binary_search_by(|f| f.as_str().cmp(feat))
+                    .unwrap()
             }
 
+            #[inline]
             fn feature(&self, index: usize) -> &str {
                 self.features[index].as_str()
             }
