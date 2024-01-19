@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.16.0] - 2024-01-19
 ### Fixed
 - [PR#65](https://github.com/EmbarkStudios/krates/pull/65) resolved [#64](https://github.com/EmbarkStudios/krates/issues/64) by adding support for the newly stabilized (currently nightly only) package id format.
 
@@ -163,7 +164,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.15.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.0...HEAD
+[0.16.0]: https://github.com/EmbarkStudios/krates/compare/0.15.3...0.16.0
 [0.15.3]: https://github.com/EmbarkStudios/krates/compare/0.15.2...0.15.3
 [0.15.2]: https://github.com/EmbarkStudios/krates/compare/0.15.1...0.15.2
 [0.15.1]: https://github.com/EmbarkStudios/krates/compare/0.15.0...0.15.1
