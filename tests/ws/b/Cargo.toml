@@ -15,3 +15,6 @@ wasm-bindgen-futures = "0.4.6"
 
 [target.'cfg(all(target_vendor = "xboxone"))'.dependencies]
 wasm-bindgen-futures = "0.4.6"
+
+[build-dependencies]
+cc = { git = "https://github.com/alexcrichton/cc-rs", rev = "34d4ce4" }

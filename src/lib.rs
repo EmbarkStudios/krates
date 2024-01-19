@@ -76,22 +76,6 @@ impl Kid {
         let (s, e) = self.components[2];
         &self.repr[s..e]
     }
-
-    #[inline]
-    pub fn rev(&self) -> Option<&str> {
-        let src = self.source();
-        if src.starts_with("git+") {
-            // In old style ids the rev with always be available, but new ones
-            // only have it if the rev field was actually set, which is unfortunate
-            if let Some((_, rev)) = src.split_once('#') {
-                Some(rev)
-            } else {
-                src.split_once("?rev=").map(|(_, r)| r)
-            }
-        } else {
-            None
-        }
-    }
 }
 
 #[allow(clippy::fallible_impl_from)]
@@ -106,7 +90,10 @@ impl From<cargo_metadata::PackageId> for Kid {
                 // Note we skip the open and close parentheses as they are superfluous
                 // as every source has them, as well as not being present in the new
                 // stabilized format
-                let source = (version.1 + 2, repr.len() - 1);
+                //
+                // Note that we also chop off the commit id, it is not present in
+                // the stabilized format and is not used for package identification anyways
+                let source = (version.1 + 2, repr.rfind('#').unwrap_or(repr.len() - 1));
 
                 [name, version, source]
             } else {
@@ -766,17 +753,18 @@ mod tests {
     #[test]
     fn converts_package_ids() {
         let ids = [
-            ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", "registry+https://github.com/rust-lang/crates.io-index", None),
-            ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832", Some("3900e8aedc5801e42c1bb747cfd025615bf3b832")),
-            ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", "path+file:///home/jake/code/ark/components/allocator", None),
-            ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2", None),
-            ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2", None),
-            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923", Some("b2e7622942e52a28ffa85cdaf48e28e982bb6923")),
-            ("a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)", "a", "0.1.0", "path+file:///home/jake/code/krates/tests/ws/a", None),
-            ("bindgen 0.59.2 (registry+https://github.com/rust-lang/crates.io-index)", "bindgen", "0.59.2", "registry+https://github.com/rust-lang/crates.io-index", None),
+            ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", "registry+https://github.com/rust-lang/crates.io-index"),
+            ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832"),
+            ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", "path+file:///home/jake/code/ark/components/allocator"),
+            ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2"),
+            ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2"),
+            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?branch=master"),
+            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?rev=b2e7622#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?rev=b2e7622"),
+            ("a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)", "a", "0.1.0", "path+file:///home/jake/code/krates/tests/ws/a"),
+            ("bindgen 0.59.2 (registry+https://github.com/rust-lang/crates.io-index)", "bindgen", "0.59.2", "registry+https://github.com/rust-lang/crates.io-index"),
         ];
 
-        for (repr, name, version, source, rev) in ids {
+        for (repr, name, version, source) in ids {
             let kid = super::Kid::from(cargo_metadata::PackageId {
                 repr: repr.to_owned(),
             });
@@ -784,7 +772,6 @@ mod tests {
             assert_eq!(kid.name(), name);
             assert_eq!(kid.version(), version);
             assert_eq!(kid.source(), source);
-            assert_eq!(kid.rev(), rev);
         }
     }
 }

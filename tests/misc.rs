@@ -27,7 +27,7 @@ fn iter_names() {
     assert_eq!(win38.krate.name, "winapi");
     assert_eq!(
         win38.krate.version,
-        krates::semver::Version::parse("0.3.9").unwrap()
+        krates::semver::Version::parse("0.3.8").unwrap()
     );
 
     assert!(iter.next().is_none());
@@ -84,7 +84,7 @@ fn iter_matches() {
         assert_eq!(win38.krate.name, "winapi");
         assert_eq!(
             win38.krate.version,
-            krates::semver::Version::parse("0.3.9").unwrap()
+            krates::semver::Version::parse("0.3.8").unwrap()
         );
 
         assert!(iter.next().is_none());
@@ -112,7 +112,7 @@ fn iter_matches() {
         assert_eq!(win38.krate.name, "winapi");
         assert_eq!(
             win38.krate.version,
-            krates::semver::Version::parse("0.3.9").unwrap()
+            krates::semver::Version::parse("0.3.8").unwrap()
         );
 
         assert!(iter.next().is_none());
@@ -200,4 +200,14 @@ fn bug_repro() {
     let grafs = util::build("bug.json", kb).unwrap();
 
     insta::assert_snapshot!(grafs.dotgraph());
+}
+
+/// Validates that there is no difference between the OG "opaque" package id
+/// format and the newly stabilized one
+#[test]
+fn opaque_matches_stable() {
+    let opaque = util::build("all-features.json", krates::Builder::new()).unwrap();
+    let stable = util::build("all-features-stable.json", krates::Builder::new()).unwrap();
+
+    similar_asserts::assert_eq!(opaque.dotgraph(), stable.dotgraph());
 }
