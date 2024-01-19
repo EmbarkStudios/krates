@@ -23,36 +23,18 @@ impl PkgSpec {
             }
         }
 
-        match self.url {
-            Some(ref u) => {
-                // Get the url from the identifier to avoid pointless
-                // allocations.
-                if let Some(mut url) = krate.id.repr.splitn(3, ' ').nth(2) {
-                    // Strip off the the enclosing parens
-                    url = &url[1..url.len() - 1];
+        let Some((url, src)) = self
+            .url
+            .as_ref()
+            .zip(krate.source.as_ref().map(|s| s.repr.as_str()))
+        else {
+            return true;
+        };
 
-                    // Strip off the leading <source>+
-                    if let Some(ind) = url.find('+') {
-                        url = &url[ind + 1..];
-                    }
+        let begin = src.find('+').map_or(0, |i| i + 1);
+        let end = src.find('?').or_else(|| src.find('#')).unwrap_or(src.len());
 
-                    // Strip off any fragments
-                    if let Some(ind) = url.rfind('#') {
-                        url = &url[..ind];
-                    }
-
-                    // Strip off any query parts
-                    if let Some(ind) = url.rfind('?') {
-                        url = &url[..ind];
-                    }
-
-                    u == url
-                } else {
-                    false
-                }
-            }
-            None => true,
-        }
+        url == &src[begin..end]
     }
 }
 

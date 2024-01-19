@@ -46,13 +46,13 @@ fn prunes_mixed_dependencies() {
 
 macro_rules! assert_features {
     ($graph:expr, $name:expr, $features:expr) => {
-        let (_, krate) = $graph.krates_by_name($name).next().unwrap();
+        let krates::KrateMatch { kid, .. } = $graph.krates_by_name($name).next().unwrap();
 
         let expected_features: std::collections::BTreeSet<_> =
             $features.into_iter().map(|s| s.to_owned()).collect();
 
         assert_eq!(
-            $graph.get_enabled_features(&krate.id).unwrap(),
+            $graph.get_enabled_features(kid).unwrap(),
             &expected_features
         );
     };

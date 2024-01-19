@@ -28,7 +28,7 @@ pub type Graph = krates::Krates<Simple>;
 impl From<krates::cm::Package> for Simple {
     fn from(pkg: krates::cm::Package) -> Self {
         Self {
-            id: pkg.id,
+            id: pkg.id.into(),
             //features: pkg.fee
         }
     }
