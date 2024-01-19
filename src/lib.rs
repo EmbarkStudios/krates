@@ -53,24 +53,28 @@ use std::fmt;
 /// A crate's unique identifier
 #[derive(Clone, Default)]
 pub struct Kid {
+    /// The full package id string as supplied by cargo
     pub repr: String,
-    // The subslices for each component in name -> version -> source order
+    /// The subslices for each component in name -> version -> source order
     components: [(usize, usize); 3],
 }
 
 impl Kid {
+    /// Gets the name of the package
     #[inline]
     pub fn name(&self) -> &str {
         let (s, e) = self.components[0];
         &self.repr[s..e]
     }
 
+    /// Gets the semver of the package
     #[inline]
     pub fn version(&self) -> &str {
         let (s, e) = self.components[1];
         &self.repr[s..e]
     }
 
+    /// Gets the source url of the package
     #[inline]
     pub fn source(&self) -> &str {
         let (s, e) = self.components[2];
