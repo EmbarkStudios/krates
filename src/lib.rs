@@ -51,7 +51,7 @@ pub use pkgspec::PkgSpec;
 use std::fmt;
 
 /// A crate's unique identifier
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Kid {
     pub repr: String,
     // The subslices for each component in name -> version -> source order
@@ -144,15 +144,6 @@ impl fmt::Debug for Kid {
 impl fmt::Display for Kid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.repr)
-    }
-}
-
-impl Default for Kid {
-    fn default() -> Self {
-        Self {
-            repr: String::new(),
-            components: [(0, 0), (0, 0), (0, 0)],
-        }
     }
 }
 
