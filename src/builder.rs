@@ -732,18 +732,10 @@ impl Builder {
             .map(|rn| {
                 let id = Kid::from(rn.id);
                 if let Err(i) = packages.binary_search_by(|(pid, _)| pid.cmp(&id)) {
-                    // In the case of git dependencies, the package ids may not line up exactly, due to the
-                    // user facing id containing the revision specifier (eg ?branch=master), whereas the id used to
-                    // reference it as a dependency in other parts of the graph only use the fully resolved
-                    // id with the #<rev>
-                    let probable = &packages[i];
-
-                    let prepr = DecomposedRepr::build(&probable.0.repr);
-                    let drepr = DecomposedRepr::build(&id.repr);
-
-                    if prepr != drepr {
-                        panic!("Unable to find dependency {id} in list of packages");
-                    }
+                    unreachable!(
+                        "oh no, it looks we couldn't find '{id}', maybe it is this? {:#?}",
+                        &packages[i]
+                    );
                 }
 
                 let deps = rn
@@ -898,13 +890,6 @@ impl Builder {
             if exclude.iter().any(|exc| exc.matches(krate)) {
                 continue;
             }
-
-            // #[cfg(debug_assertions)]
-            // {
-            //     let rrepr = DecomposedRepr::build(&rnode.id);
-            //     let krepr = DecomposedRepr::build(&krate.id);
-            //     debug_assert_eq!(rrepr, krepr);
-            // }
 
             let get_dep_id = |dep_name: &str| -> Option<&Kid> {
                 rnode.deps.iter().find_map(|ndep| {
@@ -1178,21 +1163,6 @@ impl Builder {
                             return None;
                         }
 
-                        // We also need to account for a bug in cargo, where weak
-                        // dependencies that aren't explicitly enabled still end
-                        // up as resolved in the graph.
-                        // https://github.com/EmbarkStudios/krates/issues/41
-                        // https://github.com/rust-lang/cargo/issues/10801
-                        // if dep.optional && !enabled_features
-                        //         .iter()
-                        //         .any(|(_feat, sub_feats)| {
-                        //             sub_feats.iter().any(|sf| {
-                        //                 sf.kid == &rdep.pkg
-                        //             })
-                        //         }) {
-                        //     return None;
-                        // }
-
                         let cfg = if let Some(cfg) = dk.cfg.as_deref() {
                             if !include_all_targets {
                                 let matched = if cfg.starts_with("cfg(") {
@@ -1448,27 +1418,10 @@ impl Builder {
                     // Add the features that were explicitly enabled by the specific
                     // normal/dev/build dependency
                     for edge in dep.edges {
-                        // let attach_direct_edge =
-                        //     !edge.uses_default_features && edge.features.is_empty();
-
-                        // if edge.uses_default_features {
-                        //     attach(
-                        //         &mut graph,
-                        //         "default".to_owned(),
-                        //         Edge::DepFeature {
-                        //             kind: edge.kind,
-                        //             cfg: edge.cfg.clone(),
-                        //         },
-                        //     );
-                        // }
-
                         let attach_direct_edge = edge.features.is_empty();
 
                         for feat in edge.features {
                             let feat = rnode.feature(feat);
-                            // if feat == "default" {
-                            //     continue;
-                            // }
                             attach(
                                 &mut graph,
                                 feat.to_owned(),
@@ -1612,64 +1565,6 @@ impl Builder {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-struct DecomposedRepr<'a> {
-    name: &'a str,
-    version: &'a str,
-    rev: Option<&'a str>,
-}
-
-impl<'a> DecomposedRepr<'a> {
-    fn build(repr: &'a str) -> Self {
-        // The new nightly repr will never contain spaces
-        if repr.contains(' ') {
-            let mut riter = repr.split(' ');
-
-            let name = riter.next().unwrap();
-            let version = riter.next().unwrap();
-            let src = riter.next().unwrap();
-
-            let rev = if src.starts_with("(git+") {
-                src.find('#').map(|i| &src[i + 1..])
-            } else {
-                None
-            };
-
-            Self { name, version, rev }
-        } else {
-            let (kind, rest) = repr.split_once('+').unwrap();
-
-            // Get the last path component for non-registry ids, it will be name
-            // of the package if the name isn't explicitly specified at the end
-            let maybe_name = (kind != "registry").then(|| {
-                rest.rsplit_once('/')
-                    .and_then(|(_, pe)| {
-                        pe.split_once(if kind == "git" { '?' } else { '#' })
-                            .map(|n| n.0)
-                    })
-                    .unwrap()
-            });
-
-            let (name, version) = {
-                let name_and_version = rest.rsplit_once('#').unwrap().1;
-
-                name_and_version
-                    .split_once('@')
-                    .unwrap_or_else(|| (maybe_name.unwrap(), name_and_version))
-            };
-
-            let rev = if kind == "git" {
-                rest.split_once("?rev=")
-                    .and_then(|(_, rev)| rev.split_once('#').map(|(r, _)| r))
-            } else {
-                None
-            };
-
-            Self { name, version, rev }
-        }
-    }
-}
-
 /// When renaming dependencies to something with a `-` in a Cargo.toml file,
 /// the actual resolved name in the metadata will replace the `-` with a `_` so
 /// we need to take that into account when comparing the names as declared in
@@ -1683,38 +1578,5 @@ fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
             .chars()
             .zip(resolved_name.chars())
             .all(|(kn, rn)| kn == rn || kn == '-' && rn == '_')
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    /// Validates that the nightly 1.77.0+ change to package ids can be decomposed
-    #[test]
-    fn decompose_nightly() {
-        let ids = [
-            ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", None),
-            ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", Some("3900e8aedc5801e42c1bb747cfd025615bf3b832")),
-            ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", None),
-            ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", None),
-            ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", None),
-        ];
-
-        for (repr, name, version, rev) in ids {
-            let repr = DecomposedRepr::build(repr);
-
-            assert_eq!(repr.name, name);
-            assert_eq!(repr.version, version);
-            assert_eq!(repr.rev, rev);
-        }
-    }
-
-    #[test]
-    fn decompose_matches() {
-        assert_eq!(
-            DecomposedRepr::build("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)"),
-            DecomposedRepr::build("fuser 0.4.1 (git+https://github.com/cberner/fuser#b2e7622942e52a28ffa85cdaf48e28e982bb6923)")
-        );
     }
 }
