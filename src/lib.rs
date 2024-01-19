@@ -48,9 +48,144 @@ pub use builder::{
 };
 pub use errors::Error;
 pub use pkgspec::PkgSpec;
+use std::fmt;
 
 /// A crate's unique identifier
-pub type Kid = cargo_metadata::PackageId;
+#[derive(Clone, Default)]
+pub struct Kid {
+    /// The full package id string as supplied by cargo
+    pub repr: String,
+    /// The subslices for each component in name -> version -> source order
+    components: [(usize, usize); 3],
+}
+
+impl Kid {
+    /// Gets the name of the package
+    #[inline]
+    pub fn name(&self) -> &str {
+        let (s, e) = self.components[0];
+        &self.repr[s..e]
+    }
+
+    /// Gets the semver of the package
+    #[inline]
+    pub fn version(&self) -> &str {
+        let (s, e) = self.components[1];
+        &self.repr[s..e]
+    }
+
+    /// Gets the source url of the package
+    #[inline]
+    pub fn source(&self) -> &str {
+        let (s, e) = self.components[2];
+        &self.repr[s..e]
+    }
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl From<cargo_metadata::PackageId> for Kid {
+    fn from(pid: cargo_metadata::PackageId) -> Self {
+        let repr = pid.repr;
+
+        let gen = || {
+            let components = if repr.contains(' ') {
+                let name = (0, repr.find(' ')?);
+                let version = (name.1 + 1, repr[name.1 + 1..].find(' ')? + name.1 + 1);
+                // Note we skip the open and close parentheses as they are superfluous
+                // as every source has them, as well as not being present in the new
+                // stabilized format
+                //
+                // Note that we also chop off the commit id, it is not present in
+                // the stabilized format and is not used for package identification anyways
+                let source = (version.1 + 2, repr.rfind('#').unwrap_or(repr.len() - 1));
+
+                [name, version, source]
+            } else {
+                let vmn = repr.rfind('#')?;
+                let (name, version) = if let Some(split) = repr[vmn..].find('@') {
+                    ((vmn + 1, vmn + split), (vmn + split + 1, repr.len()))
+                } else {
+                    let begin = repr.rfind('/')? + 1;
+                    let end = if repr.starts_with("git+") {
+                        repr[begin..].find('?')? + begin
+                    } else {
+                        vmn
+                    };
+
+                    ((begin, end), (vmn + 1, repr.len()))
+                };
+
+                [name, version, (0, vmn)]
+            };
+
+            Some(components)
+        };
+
+        if let Some(components) = gen() {
+            Self { repr, components }
+        } else {
+            panic!("unable to parse package id '{repr}'");
+        }
+    }
+}
+
+impl fmt::Debug for Kid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ds = f.debug_struct("Kid");
+
+        ds.field("name", &self.name())
+            .field("version", &self.version());
+
+        let src = self.source();
+        if src != "registry+https://github.com/rust-lang/crates.io-index" {
+            ds.field("source", &src);
+        }
+
+        ds.finish()
+    }
+}
+
+impl fmt::Display for Kid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.repr)
+    }
+}
+
+impl std::hash::Hash for Kid {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write(self.repr.as_bytes());
+    }
+}
+
+impl Ord for Kid {
+    fn cmp(&self, o: &Self) -> std::cmp::Ordering {
+        let a = &self.repr;
+        let b = &o.repr;
+
+        for (ar, br) in self.components.into_iter().zip(o.components.into_iter()) {
+            let ord = a[ar.0..ar.1].cmp(&b[br.0..br.1]);
+            if ord != std::cmp::Ordering::Equal {
+                return ord;
+            }
+        }
+
+        std::cmp::Ordering::Equal
+    }
+}
+
+impl PartialOrd for Kid {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for Kid {}
+
+impl PartialEq for Kid {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
 
 /// The set of features that have been enabled on a crate
 pub type EnabledFeatures = std::collections::BTreeSet<String>;
@@ -83,8 +218,6 @@ impl PartialEq<DK> for DepKind {
         )
     }
 }
-
-use std::fmt;
 
 impl fmt::Display for DepKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -509,8 +642,8 @@ where
     ///
     /// fn print(krates: &Krates, name: &str) {
     ///     let req = VersionReq::parse("=0.2").unwrap();
-    ///     for vs in krates.search_matches(name, req.clone()).map(|(_, krate)| &krate.version) {
-    ///         println!("found version {} matching {}!", vs, req);
+    ///     for vs in krates.search_matches(name, req.clone()).map(|km| &km.krate.version) {
+    ///         println!("found version {vs} matching {req}!");
     ///     }
     /// }
     /// ```
@@ -518,20 +651,27 @@ where
         &self,
         name: impl Into<String>,
         req: semver::VersionReq,
-    ) -> impl Iterator<Item = (NodeId, &N)> {
+    ) -> impl Iterator<Item = KrateMatch<'_, N>> {
         let raw_nodes = &self.graph.raw_nodes()[0..self.krates_end];
 
         let name = name.into();
 
-        raw_nodes.iter().enumerate().filter_map(move |(id, node)| {
-            if let Node::Krate { krate, .. } = &node.weight {
-                if krate.name() == name && req.matches(krate.version()) {
-                    return Some((NodeId::new(id), krate));
+        raw_nodes
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, node)| {
+                if let Node::Krate { krate, id, .. } = &node.weight {
+                    if krate.name() == name && req.matches(krate.version()) {
+                        return Some(KrateMatch {
+                            node_id: NodeId::new(index),
+                            krate,
+                            kid: id,
+                        });
+                    }
                 }
-            }
 
-            None
-        })
+                None
+            })
     }
 
     /// Get an iterator over all of the crates in the graph with the given name,
@@ -541,26 +681,42 @@ where
     /// use krates::Krates;
     ///
     /// fn print_all_versions(krates: &Krates, name: &str) {
-    ///     for vs in krates.krates_by_name(name).map(|(_, krate)| &krate.version) {
-    ///         println!("found version {}", vs);
+    ///     for vs in krates.krates_by_name(name).map(|km| &km.krate.version) {
+    ///         println!("found version {vs}");
     ///     }
     /// }
     /// ```
-    pub fn krates_by_name(&self, name: impl Into<String>) -> impl Iterator<Item = (NodeId, &N)> {
+    pub fn krates_by_name(
+        &self,
+        name: impl Into<String>,
+    ) -> impl Iterator<Item = KrateMatch<'_, N>> {
         let raw_nodes = &self.graph.raw_nodes()[0..self.krates_end];
 
         let name = name.into();
 
-        raw_nodes.iter().enumerate().filter_map(move |(id, node)| {
-            if let Node::Krate { krate, .. } = &node.weight {
-                if krate.name() == name {
-                    return Some((NodeId::new(id), krate));
+        raw_nodes
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, node)| {
+                if let Node::Krate { krate, id, .. } = &node.weight {
+                    if krate.name() == name {
+                        return Some(KrateMatch {
+                            node_id: NodeId::new(index),
+                            krate,
+                            kid: id,
+                        });
+                    }
                 }
-            }
 
-            None
-        })
+                None
+            })
     }
+}
+
+pub struct KrateMatch<'graph, N> {
+    pub krate: &'graph N,
+    pub kid: &'graph Kid,
+    pub node_id: NodeId,
 }
 
 impl<N, E> std::ops::Index<NodeId> for Krates<N, E> {
@@ -583,6 +739,34 @@ impl<N, E> std::ops::Index<usize> for Krates<N, E> {
         match &self.graph.raw_nodes()[idx].weight {
             Node::Krate { krate, .. } => krate,
             Node::Feature { .. } => panic!("indexed outside of crate graph"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn converts_package_ids() {
+        let ids = [
+            ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", "registry+https://github.com/rust-lang/crates.io-index"),
+            ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832"),
+            ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", "path+file:///home/jake/code/ark/components/allocator"),
+            ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2"),
+            ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2"),
+            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?branch=master"),
+            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?rev=b2e7622#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?rev=b2e7622"),
+            ("a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)", "a", "0.1.0", "path+file:///home/jake/code/krates/tests/ws/a"),
+            ("bindgen 0.59.2 (registry+https://github.com/rust-lang/crates.io-index)", "bindgen", "0.59.2", "registry+https://github.com/rust-lang/crates.io-index"),
+        ];
+
+        for (repr, name, version, source) in ids {
+            let kid = super::Kid::from(cargo_metadata::PackageId {
+                repr: repr.to_owned(),
+            });
+
+            assert_eq!(kid.name(), name);
+            assert_eq!(kid.version(), version);
+            assert_eq!(kid.source(), source);
         }
     }
 }

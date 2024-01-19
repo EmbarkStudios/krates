@@ -6,7 +6,7 @@ use crate::{DepKind, Edge, Error, Kid, Krates};
 use cargo_metadata as cm;
 use features::{Feature, ParsedFeature};
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
 };
 
@@ -604,21 +604,29 @@ impl Builder {
         E: From<Edge>,
         F: OnFilter,
     {
-        use cm::PackageId;
+        let mut resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
 
-        let resolved = md.resolve.ok_or(Error::NoResolveGraph)?;
-
-        let mut packages = md.packages;
-        packages.sort_by(|a, b| a.id.cmp(&b.id));
+        let mut packages: Vec<_> = md
+            .packages
+            .into_iter()
+            .map(|pkg| (Kid::from(pkg.id.clone()), pkg))
+            .collect();
+        packages.sort_by(|(a, _), (b, _)| a.cmp(b));
 
         // Load all the cache entries from disk for all the possible _unique_
         // crates in the graph so that we don't need to access disk again
         let index = self.crates_io_index.map(|index| {
-            index::CachingIndex::new(index, packages.iter().map(|pkg| pkg.name.clone()).collect())
+            index::CachingIndex::new(
+                index,
+                packages.iter().map(|(_id, pkg)| pkg.name.clone()).collect(),
+            )
         });
 
-        let mut workspace_members = md.workspace_members;
+        let mut workspace_members: Vec<_> =
+            md.workspace_members.into_iter().map(Kid::from).collect();
         workspace_members.sort();
+
+        let root = resolved.root.take().map(Kid::from);
 
         let roots = {
             let mut roots = BTreeSet::new();
@@ -633,8 +641,8 @@ impl Builder {
                 // that single root for the entire graph rather than a root for each
                 // workspace member crate
                 if !self.workspace {
-                    if let Some(root) = &resolved.root {
-                        roots.insert(root);
+                    if let Some(rkid) = &root {
+                        roots.insert(rkid);
                     }
                 }
 
@@ -650,11 +658,11 @@ impl Builder {
                     roots.extend(workspace_members.iter());
                 } else {
                     for wm in &workspace_members {
-                        if let Ok(i) = packages.binary_search_by(|pkg| pkg.id.cmp(wm)) {
+                        if let Ok(i) = packages.binary_search_by(|(id, _pkg)| id.cmp(wm)) {
                             if self
                                 .workspace_filters
                                 .iter()
-                                .any(|wf| wf == &packages[i].manifest_path)
+                                .any(|wf| wf == &packages[i].1.manifest_path)
                             {
                                 roots.insert(wm);
                             }
@@ -666,7 +674,7 @@ impl Builder {
             roots
         };
 
-        let is_root_crate = |pid: &PackageId| -> bool { roots.contains(&pid) };
+        let is_root_crate = |pid: &Kid| -> bool { roots.contains(&pid) };
 
         let exclude = self.exclude;
 
@@ -722,19 +730,12 @@ impl Builder {
             .nodes
             .into_iter()
             .map(|rn| {
-                if let Err(i) = packages.binary_search_by(|k| k.id.cmp(&rn.id)) {
-                    // In the case of git dependencies, the package ids may not line up exactly, due to the
-                    // user facing id containing the revision specifier (eg ?branch=master), whereas the id used to
-                    // reference it as a dependency in other parts of the graph only use the fully resolved
-                    // id with the #<rev>
-                    let probable = &packages[i];
-
-                    let prepr = DecomposedRepr::build(&probable.id);
-                    let drepr = DecomposedRepr::build(&rn.id);
-
-                    if prepr != drepr {
-                        panic!("Unable to find dependency {} in list of packages", rn.id);
-                    }
+                let id = Kid::from(rn.id);
+                if let Err(i) = packages.binary_search_by(|(pid, _)| pid.cmp(&id)) {
+                    unreachable!(
+                        "oh no, it looks we couldn't find '{id}', maybe it is this? {:#?}",
+                        &packages[i]
+                    );
                 }
 
                 let deps = rn
@@ -753,7 +754,7 @@ impl Builder {
 
                         NodeDep {
                             name: dn.name,
-                            pkg: dn.pkg,
+                            pkg: Kid::from(dn.pkg),
                             dep_kinds,
                         }
                     })
@@ -773,7 +774,7 @@ impl Builder {
                     .is_ok();
 
                 Node {
-                    id: rn.id,
+                    id,
                     deps,
                     features,
                     has_default_feature,
@@ -783,13 +784,16 @@ impl Builder {
 
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
-        #[inline]
-        fn crate_name_from_pid(pid: &PackageId) -> &str {
-            let name_end = pid.repr.find(' ').unwrap();
-            &pid.repr[..name_end]
-        }
+        // #[inline]
+        // fn crate_name_from_pid(pid: &PackageId) -> &str {
+        //     if let Some(name_end) = pid.repr.find(' ') {
+        //         &pid.repr[..name_end]
+        //     } else {
+        //         DecomposedRepr::build(pid).name
+        //     }
+        // }
 
-        let mut dep_edge_map = HashMap::new();
+        let mut dep_edge_map = BTreeMap::new();
         let mut feature_edge_map = BTreeMap::new();
 
         // The stack of pid + features that are visited until we've reached every
@@ -824,7 +828,7 @@ impl Builder {
         #[derive(Debug)]
         struct PackageNode<'p> {
             is_root: bool,
-            deps: BTreeMap<&'p PackageId, KrateDependency>,
+            deps: BTreeMap<&'p Kid, KrateDependency>,
         }
 
         #[derive(Debug)]
@@ -855,13 +859,11 @@ impl Builder {
             /// The actual set of features enabled by 1 or more parent krates
             actual: BTreeSet<usize>,
             /// Weakly referenced features
-            pending_weak: BTreeMap<&'p PackageId, BTreeSet<usize>>,
+            pending_weak: BTreeMap<&'p Kid, BTreeSet<usize>>,
             filled_non_optional: bool,
         }
 
-        let check = |map: &BTreeMap<&PackageId, KrateFeatures<'_>>,
-                     pid: &PackageId,
-                     feature: Option<usize>| {
+        let check = |map: &BTreeMap<&Kid, KrateFeatures<'_>>, pid: &Kid, feature: Option<usize>| {
             map.get(pid).map_or(false, |pn| {
                 if let Some(feat) = feature {
                     pn.actual.contains(&feat)
@@ -871,8 +873,7 @@ impl Builder {
             })
         };
 
-        let get_rnode =
-            |pid: &PackageId| &nodes[nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap()];
+        let get_rnode = |pid: &Kid| &nodes[nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap()];
 
         while let Some((pid, feature)) = visit_stack.pop() {
             if check(&feature_edge_map, pid, feature) {
@@ -884,24 +885,15 @@ impl Builder {
             let krate_index = nodes.binary_search_by(|n| n.id.cmp(pid)).unwrap();
 
             let rnode = &nodes[krate_index];
-            let krate = &mut packages[krate_index];
+            let (_, krate) = &mut packages[krate_index];
 
             if exclude.iter().any(|exc| exc.matches(krate)) {
                 continue;
             }
 
-            #[cfg(debug_assertions)]
-            {
-                let rrepr = DecomposedRepr::build(&rnode.id);
-                let krepr = DecomposedRepr::build(&krate.id);
-                debug_assert_eq!(rrepr, krepr);
-            }
-
             let get_dep_id = |dep_name: &str| -> Option<&Kid> {
                 rnode.deps.iter().find_map(|ndep| {
-                    let pkg_name = crate_name_from_pid(&ndep.pkg);
-
-                    if dep_names_match(dep_name, &ndep.name) || dep_name == pkg_name {
+                    if dep_names_match(dep_name, &ndep.name) || dep_name == ndep.pkg.name() {
                         Some(&ndep.pkg)
                     } else {
                         None
@@ -983,7 +975,7 @@ impl Builder {
                                 match sf.feat() {
                                     Feature::Krate(krate_name) => {
                                         let kid = get_dep_id(krate_name)?;
-                                        let real_name = crate_name_from_pid(kid);
+                                        let real_name = kid.name();
 
                                         Some(FeatureEdge {
                                             kid,
@@ -1039,7 +1031,7 @@ impl Builder {
                 deps: BTreeMap::new(),
             });
 
-            let mut deps = BTreeMap::<&PackageId, (&NodeDep, Option<BTreeSet<usize>>)>::new();
+            let mut deps = BTreeMap::<&Kid, (&NodeDep, Option<BTreeSet<usize>>)>::new();
 
             if let Some(feature) = feature {
                 if !krate_features.actual.insert(feature) {
@@ -1076,8 +1068,7 @@ impl Builder {
                     };
 
                     let Some(ndep) = rnode.deps.iter().find(|rdep| {
-                        dep_names_match(krate_name, &rdep.name)
-                            || crate_name_from_pid(&rdep.pkg) == krate_name
+                        dep_names_match(krate_name, &rdep.name) || krate_name == rdep.pkg.name()
                     }) else {
                         unreachable!(
                             "unable to find dependency {krate_name} for {pid} {:#?}",
@@ -1139,7 +1130,7 @@ impl Builder {
                     uses_default_features: bool,
                 }
 
-                let maybe_real_name = crate_name_from_pid(pkg);
+                let maybe_real_name = pkg.name();
                 let strong = features.is_some();
 
                 let edges = rdep.dep_kinds.iter().filter_map(|dk| {
@@ -1171,21 +1162,6 @@ impl Builder {
                         if dep.optional && !strong {
                             return None;
                         }
-
-                        // We also need to account for a bug in cargo, where weak
-                        // dependencies that aren't explicitly enabled still end
-                        // up as resolved in the graph.
-                        // https://github.com/EmbarkStudios/krates/issues/41
-                        // https://github.com/rust-lang/cargo/issues/10801
-                        // if dep.optional && !enabled_features
-                        //         .iter()
-                        //         .any(|(_feat, sub_feats)| {
-                        //             sub_feats.iter().any(|sf| {
-                        //                 sf.kid == &rdep.pkg
-                        //             })
-                        //         }) {
-                        //     return None;
-                        // }
 
                         let cfg = if let Some(cfg) = dk.cfg.as_deref() {
                             if !include_all_targets {
@@ -1304,9 +1280,8 @@ impl Builder {
         // Preserve the ordering of the krates when inserting them into the graph
         // so that we can easily binary search for the crates based on their
         // package id with just the graph and no ancillary tables
-        for krate in packages {
-            if let Some(pn) = dep_edge_map.get(&krate.id) {
-                let id = krate.id.clone();
+        for (id, krate) in packages {
+            if let Some(pn) = dep_edge_map.get(&id) {
                 let rnode = get_rnode(&id);
 
                 // If the crate is a root then the features it has enabled are
@@ -1443,27 +1418,10 @@ impl Builder {
                     // Add the features that were explicitly enabled by the specific
                     // normal/dev/build dependency
                     for edge in dep.edges {
-                        // let attach_direct_edge =
-                        //     !edge.uses_default_features && edge.features.is_empty();
-
-                        // if edge.uses_default_features {
-                        //     attach(
-                        //         &mut graph,
-                        //         "default".to_owned(),
-                        //         Edge::DepFeature {
-                        //             kind: edge.kind,
-                        //             cfg: edge.cfg.clone(),
-                        //         },
-                        //     );
-                        // }
-
                         let attach_direct_edge = edge.features.is_empty();
 
                         for feat in edge.features {
                             let feat = rnode.feature(feat);
-                            // if feat == "default" {
-                            //     continue;
-                            // }
                             attach(
                                 &mut graph,
                                 feat.to_owned(),
@@ -1569,29 +1527,29 @@ impl Builder {
                         FeatureEdgeName::Krate => None,
                     };
 
-                    let target_id =
-                        if let Some(target_id) = get(&graph, sub_feat.kid, feat_name.as_deref()) {
-                            target_id
-                        } else {
-                            let feat_name = feat_name
-                                .unwrap_or_else(|| crate_name_from_pid(sub_feat.kid).to_owned());
+                    let target_id = if let Some(target_id) =
+                        get(&graph, sub_feat.kid, feat_name.as_deref())
+                    {
+                        target_id
+                    } else {
+                        let feat_name = feat_name.unwrap_or_else(|| sub_feat.kid.name().to_owned());
 
-                            let target_id = graph.add_node(crate::Node::Feature {
-                                krate_index: kind,
-                                name: feat_name.clone(),
-                            });
+                        let target_id = graph.add_node(crate::Node::Feature {
+                            krate_index: kind,
+                            name: feat_name.clone(),
+                        });
 
-                            // Ensure that all of the subfeatures enabled by the parent feature are added to the
-                            // flat list of enabled features for the crate
-                            if let crate::Node::Krate { features, .. } = &mut graph[kind] {
-                                if !features.contains(&feat_name) {
-                                    features.insert(feat_name.clone());
-                                    feature_stack.push(feat_name);
-                                }
+                        // Ensure that all of the subfeatures enabled by the parent feature are added to the
+                        // flat list of enabled features for the crate
+                        if let crate::Node::Krate { features, .. } = &mut graph[kind] {
+                            if !features.contains(&feat_name) {
+                                features.insert(feat_name.clone());
+                                feature_stack.push(feat_name);
                             }
+                        }
 
-                            target_id
-                        };
+                        target_id
+                    };
 
                     graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
                 }
@@ -1604,32 +1562,6 @@ impl Builder {
             workspace_root: md.workspace_root,
             krates_end,
         })
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-struct DecomposedRepr<'a> {
-    name: &'a str,
-    version: &'a str,
-    rev: Option<&'a str>,
-}
-
-impl<'a> DecomposedRepr<'a> {
-    fn build(id: &'a cm::PackageId) -> Self {
-        let repr = &id.repr[..];
-        let mut riter = repr.split(' ');
-
-        let name = riter.next().unwrap();
-        let version = riter.next().unwrap();
-        let src = riter.next().unwrap();
-
-        let rev = if src.starts_with("(git+") {
-            src.find('#').map(|i| &src[i + 1..])
-        } else {
-            None
-        };
-
-        Self { name, version, rev }
     }
 }
 
@@ -1646,26 +1578,5 @@ fn dep_names_match(krate_dep_name: &str, resolved_name: &str) -> bool {
             .chars()
             .zip(resolved_name.chars())
             .all(|(kn, rn)| kn == rn || kn == '-' && rn == '_')
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn decompose_matches() {
-        let lock_repr = cm::PackageId {
-            repr: "fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)".to_owned(),
-        };
-
-        let dep_repr = cm::PackageId {
-            repr: "fuser 0.4.1 (git+https://github.com/cberner/fuser#b2e7622942e52a28ffa85cdaf48e28e982bb6923)".to_owned(),
-        };
-
-        assert_eq!(
-            DecomposedRepr::build(&lock_repr),
-            DecomposedRepr::build(&dep_repr)
-        );
     }
 }

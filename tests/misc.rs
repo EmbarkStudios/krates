@@ -17,17 +17,17 @@ fn iter_names() {
     let mut iter = krates.krates_by_name("winapi");
 
     let win28 = iter.next().unwrap();
-    assert_eq!(win28.1.name, "winapi");
+    assert_eq!(win28.krate.name, "winapi");
     assert_eq!(
-        win28.1.version,
+        win28.krate.version,
         krates::semver::Version::parse("0.2.8").unwrap()
     );
 
     let win38 = iter.next().unwrap();
-    assert_eq!(win38.1.name, "winapi");
+    assert_eq!(win38.krate.name, "winapi");
     assert_eq!(
-        win38.1.version,
-        krates::semver::Version::parse("0.3.9").unwrap()
+        win38.krate.version,
+        krates::semver::Version::parse("0.3.8").unwrap()
     );
 
     assert!(iter.next().is_none());
@@ -35,9 +35,9 @@ fn iter_names() {
     let mut iter = krates.krates_by_name("a");
 
     let a = iter.next().unwrap();
-    assert_eq!(a.1.name, "a");
+    assert_eq!(a.krate.name, "a");
     assert_eq!(
-        a.1.version,
+        a.krate.version,
         krates::semver::Version::parse("0.1.0").unwrap()
     );
 
@@ -46,9 +46,9 @@ fn iter_names() {
     let mut iter = krates.krates_by_name("winapi-x86_64-pc-windows-gnu");
 
     let wingnu = iter.next().unwrap();
-    assert_eq!(wingnu.1.name, "winapi-x86_64-pc-windows-gnu");
+    assert_eq!(wingnu.krate.name, "winapi-x86_64-pc-windows-gnu");
     assert_eq!(
-        wingnu.1.version,
+        wingnu.krate.version,
         krates::semver::Version::parse("0.4.0").unwrap()
     );
 
@@ -74,17 +74,17 @@ fn iter_matches() {
         let mut iter = krates.search_matches("winapi", any);
 
         let win28 = iter.next().unwrap();
-        assert_eq!(win28.1.name, "winapi");
+        assert_eq!(win28.krate.name, "winapi");
         assert_eq!(
-            win28.1.version,
+            win28.krate.version,
             krates::semver::Version::parse("0.2.8").unwrap()
         );
 
         let win38 = iter.next().unwrap();
-        assert_eq!(win38.1.name, "winapi");
+        assert_eq!(win38.krate.name, "winapi");
         assert_eq!(
-            win38.1.version,
-            krates::semver::Version::parse("0.3.9").unwrap()
+            win38.krate.version,
+            krates::semver::Version::parse("0.3.8").unwrap()
         );
 
         assert!(iter.next().is_none());
@@ -95,9 +95,9 @@ fn iter_matches() {
         let mut iter = krates.search_matches("winapi", two);
 
         let win28 = iter.next().unwrap();
-        assert_eq!(win28.1.name, "winapi");
+        assert_eq!(win28.krate.name, "winapi");
         assert_eq!(
-            win28.1.version,
+            win28.krate.version,
             krates::semver::Version::parse("0.2.8").unwrap()
         );
 
@@ -109,10 +109,10 @@ fn iter_matches() {
         let mut iter = krates.search_matches("winapi", grtr);
 
         let win38 = iter.next().unwrap();
-        assert_eq!(win38.1.name, "winapi");
+        assert_eq!(win38.krate.name, "winapi");
         assert_eq!(
-            win38.1.version,
-            krates::semver::Version::parse("0.3.9").unwrap()
+            win38.krate.version,
+            krates::semver::Version::parse("0.3.8").unwrap()
         );
 
         assert!(iter.next().is_none());
@@ -200,4 +200,14 @@ fn bug_repro() {
     let grafs = util::build("bug.json", kb).unwrap();
 
     insta::assert_snapshot!(grafs.dotgraph());
+}
+
+/// Validates that there is no difference between the OG "opaque" package id
+/// format and the newly stabilized one
+#[test]
+fn opaque_matches_stable() {
+    let opaque = util::build("all-features.json", krates::Builder::new()).unwrap();
+    let stable = util::build("all-features-stable.json", krates::Builder::new()).unwrap();
+
+    similar_asserts::assert_eq!(opaque.dotgraph(), stable.dotgraph());
 }

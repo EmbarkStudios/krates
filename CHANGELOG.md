@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#65](https://github.com/EmbarkStudios/krates/pull/65) resolved [#64](https://github.com/EmbarkStudios/krates/issues/64) by adding support for the newly stabilized (currently nightly only) package id format.
+
+### Changed
+- [PR#65](https://github.com/EmbarkStudios/krates/pull/65) changed `Kid` from just a type alias for `cargo_metadata::PackageId` to an actual type that has accessors for the various components of the id. It also specifies its own `Ord` etc implementation so that those ids are sorted the exact same as the old version.
+
 ## [0.15.3] - 2024-01-12
 ### Fixed
 - [PR#63](https://github.com/EmbarkStudios/krates/pull/63) resolved [#62](https://github.com/EmbarkStudios/krates/issues/62) which was a bug introduced in [PR#61](https://github.com/EmbarkStudios/krates/pull/61)

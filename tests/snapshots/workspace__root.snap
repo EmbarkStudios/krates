@@ -3,6 +3,6 @@ source: tests/workspace.rs
 expression: grafs.dotgraph()
 ---
 digraph {
-    0 [ label = "crate top 0.1.0 (path+file:///krates/tests/ws2)" ]
+    0 [ label = "crate top 0.1.0 path+file:///krates/tests/ws2" ]
 }
 

@@ -1,53 +1,62 @@
 #![allow(dead_code)]
 
+use krates::Kid;
 use std::{fmt, path::Path};
 
 #[derive(Debug, PartialEq)]
-pub struct JustId(pub krates::Kid);
+pub struct JustId(pub Kid);
 
 pub type Graph = krates::Krates<JustId>;
 
 impl From<krates::cm::Package> for JustId {
     fn from(pkg: krates::cm::Package) -> Self {
-        Self(pkg.id)
+        Self(pkg.id.into())
     }
 }
 
 impl fmt::Display for JustId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some((prefix, path)) = self.0.repr.split_once("(path+file://") {
-            let path = &path[..path.len() - 1];
-            let path = std::path::Path::new(path);
+        let name = self.0.name();
+        let version = self.0.version();
+        let source = self.0.source();
+        const CRATES_IO: &str = "registry+https://github.com/rust-lang/crates.io-index";
 
-            fn push(f: &mut fmt::Formatter<'_>, path: &std::path::Path) {
-                let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
-                    return;
-                };
-                if file_name != "krates" {
-                    let Some(parent) = path.parent() else {
+        write!(f, "{name} {version}")?;
+        if source != CRATES_IO {
+            const PATH_PREFIX: &str = "path+file://";
+            if let Some(path) = source.strip_prefix(PATH_PREFIX) {
+                let path = std::path::Path::new(path);
+
+                fn push(f: &mut fmt::Formatter<'_>, path: &std::path::Path) {
+                    let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
                         return;
                     };
-                    push(f, parent);
+                    if file_name != "krates" {
+                        let Some(parent) = path.parent() else {
+                            return;
+                        };
+                        push(f, parent);
+                    }
+
+                    f.write_str("/").unwrap();
+                    f.write_str(file_name).unwrap();
                 }
 
-                f.write_str("/").unwrap();
-                f.write_str(file_name).unwrap();
+                f.write_str(" ")?;
+                f.write_str(PATH_PREFIX)?;
+                push(f, path);
+            } else {
+                write!(f, " {source}")?;
             }
-
-            f.write_str(prefix)?;
-            f.write_str("(path+file://")?;
-            push(f, path);
-            f.write_str(")")?;
-            Ok(())
-        } else {
-            f.write_str(&self.0.repr)
         }
+
+        Ok(())
     }
 }
 
 pub struct Grafs {
     pub actual: Graph,
-    pub filtered: Vec<krates::Kid>,
+    pub filtered: Vec<Kid>,
     pub simple: SimpleGraph,
 }
 
@@ -68,13 +77,17 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
     let resolved = md.resolve.as_ref().cloned().unwrap();
 
     let simple = SimpleGraph {
-        workspace: md.workspace_members.clone(),
+        workspace: md
+            .workspace_members
+            .iter()
+            .map(|wm| Kid::from(wm.clone()))
+            .collect(),
         nodes: resolved
             .nodes
             .into_iter()
             .map(|rnode| {
                 (
-                    rnode.id,
+                    rnode.id.into(),
                     rnode
                         .deps
                         .into_iter()
@@ -82,7 +95,7 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
                             let id = d.pkg;
                             d.dep_kinds.into_iter().map(move |dk| {
                                 (
-                                    id.clone(),
+                                    id.clone().into(),
                                     krates::Edge::Dep {
                                         kind: dk.kind.into(),
                                         cfg: dk.target.map(|f| f.to_string()),
@@ -100,7 +113,7 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
 
     let graph = kb
         .build_with_metadata(md, |f: krates::cm::Package| {
-            filtered.push(f.id);
+            filtered.push(f.id.into());
         })
         .map_err(|e| format!("failed to build graph: {e}"))?;
 
@@ -113,60 +126,60 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
     })
 }
 
-#[macro_export]
-macro_rules! graph {
-    { $($id:expr => [$($did:expr; $kind:ident $(@ $cfg:expr)?),* $(,)?]),+ $(,)? } => {{
-        let mut _sg = $crate::util::SimpleGraph {
-            nodes: Vec::new(),
-        };
+// #[macro_export]
+// macro_rules! graph {
+//     { $($id:expr => [$($did:expr; $kind:ident $(@ $cfg:expr)?),* $(,)?]),+ $(,)? } => {{
+//         let mut _sg = $crate::util::SimpleGraph {
+//             nodes: Vec::new(),
+//         };
 
-        $(
-            let mut _deps = Vec::new();
+//         $(
+//             let mut _deps = Vec::new();
 
-            $(
-                let mut _cfg = None;
+//             $(
+//                 let mut _cfg = None;
 
-                $(
-                    _cfg = Some($cfg.to_owned());
-                )?
+//                 $(
+//                     _cfg = Some($cfg.to_owned());
+//                 )?
 
-                _deps.push(($crate::util::make_kid($did), krates::Edge {
-                    kind: krates::DepKind::$kind,
-                    cfg: _cfg,
-                }));
-            )*
+//                 _deps.push(($crate::util::make_kid($did), krates::Edge {
+//                     kind: krates::DepKind::$kind,
+//                     cfg: _cfg,
+//                 }));
+//             )*
 
-            _sg.nodes.push(($crate::util::make_kid($id), _deps));
-        )+
+//             _sg.nodes.push(($crate::util::make_kid($id), _deps));
+//         )+
 
-        _sg
-    }};
-}
+//         _sg
+//     }};
+// }
 
 pub fn is_workspace(kid: &krates::Kid) -> bool {
     kid.repr.starts_with("a ") || kid.repr.starts_with("b ") | kid.repr.starts_with("c ")
 }
 
-pub fn make_kid(s: &str) -> krates::Kid {
-    let mut i = s.splitn(3, ' ');
+// pub fn make_kid(s: &str) -> krates::Kid {
+//     let mut i = s.splitn(3, ' ');
 
-    let name = i.next().unwrap();
-    let version = i.next().unwrap();
-    let source = i.next();
+//     let name = i.next().unwrap();
+//     let version = i.next().unwrap();
+//     let source = i.next();
 
-    let source = match name {
-        which @ ("a" | "b" | "c") => {
-            format!("(path+file:///home/jake/code/krates/tests/ws/{which})")
-        }
-        _ => source
-            .unwrap_or("(registry+https://github.com/rust-lang/crates.io-index)")
-            .to_owned(),
-    };
+//     let source = match name {
+//         which @ ("a" | "b" | "c") => {
+//             format!("(path+file:///home/jake/code/krates/tests/ws/{which})")
+//         }
+//         _ => source
+//             .unwrap_or("(registry+https://github.com/rust-lang/crates.io-index)")
+//             .to_owned(),
+//     };
 
-    krates::Kid {
-        repr: format!("{name} {version} {source}"),
-    }
-}
+//     krates::Kid {
+//         repr: format!("{name} {version} {source}"),
+//     }
+// }
 
 pub struct SimpleGraph {
     pub nodes: Vec<(krates::Kid, Vec<(krates::Kid, krates::Edge)>)>,
@@ -182,7 +195,7 @@ impl SimpleGraph {
         self.nodes.sort_by(|a, b| a.0.cmp(&b.0));
 
         let mut graph = krates::petgraph::Graph::new();
-        let mut edge_map = std::collections::HashMap::new();
+        let mut edge_map = std::collections::BTreeMap::new();
 
         let mut pkg_stack = Vec::new();
 
@@ -231,7 +244,7 @@ impl SimpleGraph {
             edge_map.insert(kid, edges);
         }
 
-        let mut node_map = std::collections::HashMap::new();
+        let mut node_map = std::collections::BTreeMap::new();
 
         for kid in self.nodes.iter().map(|(id, _)| id) {
             if edge_map.contains_key(kid) {
