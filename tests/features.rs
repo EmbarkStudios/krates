@@ -234,6 +234,23 @@ fn handles_cyclic_features() {
     assert_features!(md, "features-galore", ["cycle", "midi", "subfeatcycle"]);
 }
 
+/// Ensures we handle features that enable dev only dependencies
+/// <https://github.com/EmbarkStudios/krates/issues/66>
+#[test]
+fn handles_dev_only_features() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/features/Cargo.toml")
+        .no_default_features();
+
+    let mut builder = krates::Builder::new();
+    builder.include_targets([("x86_64-pc-windows-msvc", vec![])]);
+    builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
+
+    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    insta::assert_snapshot!(krates::petgraph::dot::Dot::new(md.graph()).to_string());
+}
+
 /// Ensures that features only brought in by eg dev-dependencies are not used if
 /// dev-dependencies are ignored
 /// <https://github.com/EmbarkStudios/krates/issues/60>

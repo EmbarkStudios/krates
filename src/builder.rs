@@ -1070,10 +1070,9 @@ impl Builder {
                     let Some(ndep) = rnode.deps.iter().find(|rdep| {
                         dep_names_match(krate_name, &rdep.name) || krate_name == rdep.pkg.name()
                     }) else {
-                        unreachable!(
-                            "unable to find dependency {krate_name} for {pid} {:#?}",
-                            rnode.deps
-                        );
+                        // We can have a feature that points to a crate that isn't resolved by cargo due to it being
+                        // a dev-only dependency
+                        continue;
                     };
 
                     let rdep_node = get_rnode(&ndep.pkg);
