@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.16.1] - 2024-01-20
 ### Fixed
 - [PR#67](https://github.com/EmbarkStudios/krates/pull/67) resolved [#66](https://github.com/EmbarkStudios/krates/issues/66) by ignore features that reference crates that aren't resolved, instead of panicing, as there should only be one case where that occurs.
 
@@ -167,7 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.1...HEAD
+[0.16.1]: https://github.com/EmbarkStudios/krates/compare/0.16.0...0.16.1
 [0.16.0]: https://github.com/EmbarkStudios/krates/compare/0.15.3...0.16.0
 [0.15.3]: https://github.com/EmbarkStudios/krates/compare/0.15.2...0.15.3
 [0.15.2]: https://github.com/EmbarkStudios/krates/compare/0.15.1...0.15.2
