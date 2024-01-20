@@ -11,6 +11,9 @@ rgb = { version = "0.8.25", optional = true }
 serde = { version = "1.0.133", optional = true }
 rustls = { version = "0.20", optional = true }
 
+[target.'cfg(windows)'.dependencies]
+serde_ipld_dagcbor = "0.4.2"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 git = { package = "git2", version = "0.14", default-features = false }
 

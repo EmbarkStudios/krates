@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#67](https://github.com/EmbarkStudios/krates/pull/67) resolved [#66](https://github.com/EmbarkStudios/krates/issues/66) by ignore features that reference crates that aren't resolved, instead of panicing, as there should only be one case where that occurs.
+
 ## [0.16.0] - 2024-01-19
 ### Fixed
 - [PR#65](https://github.com/EmbarkStudios/krates/pull/65) resolved [#64](https://github.com/EmbarkStudios/krates/issues/64) by adding support for the newly stabilized (currently nightly only) package id format.
