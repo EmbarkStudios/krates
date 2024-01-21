@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#70](https://github.com/EmbarkStudios/krates/pull/67) resolved [#68](https://github.com/EmbarkStudios/krates/issues/68) and [#69](https://github.com/EmbarkStudios/krates/issues/69) by additionally checking the version of resolve dependencies if there were 2 or more of the same name referenced by the same crate.
+
 ## [0.16.1] - 2024-01-20
 ### Fixed
 - [PR#67](https://github.com/EmbarkStudios/krates/pull/67) resolved [#66](https://github.com/EmbarkStudios/krates/issues/66) by ignore features that reference crates that aren't resolved, instead of panicing, as there should only be one case where that occurs.
