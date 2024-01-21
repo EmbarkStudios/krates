@@ -190,18 +190,6 @@ fn direct_dependencies() {
     insta::assert_snapshot!(dd);
 }
 
-#[test]
-#[cfg(feature = "with-crates-index")]
-fn bug_repro() {
-    let mut kb = krates::Builder::new();
-    kb.with_crates_io_index(None, krates::index::IndexKind::Sparse)
-        .unwrap();
-
-    let grafs = util::build("bug.json", kb).unwrap();
-
-    insta::assert_snapshot!(grafs.dotgraph());
-}
-
 /// Validates that there is no difference between the OG "opaque" package id
 /// format and the newly stabilized one
 #[test]
@@ -210,4 +198,20 @@ fn opaque_matches_stable() {
     let stable = util::build("all-features-stable.json", krates::Builder::new()).unwrap();
 
     similar_asserts::assert_eq!(opaque.dotgraph(), stable.dotgraph());
+}
+
+/// Validates we can correctly find package ids for duplicated packages in both
+/// the opaque and stable formats
+///
+/// https://github.com/EmbarkStudios/krates/issues/68
+/// https://github.com/EmbarkStudios/krates/issues/69
+#[test]
+fn finds_duplicates() {
+    let opaque = util::build("pid-opaque.json", krates::Builder::new()).unwrap();
+    let stable = util::build("pid-stable.json", krates::Builder::new()).unwrap();
+
+    let opaque = opaque.dotgraph();
+    similar_asserts::assert_eq!(opaque, stable.dotgraph());
+
+    insta::assert_snapshot!(opaque);
 }
