@@ -203,8 +203,8 @@ fn opaque_matches_stable() {
 /// Validates we can correctly find package ids for duplicated packages in both
 /// the opaque and stable formats
 ///
-/// https://github.com/EmbarkStudios/krates/issues/68
-/// https://github.com/EmbarkStudios/krates/issues/69
+/// <https://github.com/EmbarkStudios/krates/issues/68>
+/// <https://github.com/EmbarkStudios/krates/issues/69>
 #[test]
 fn finds_duplicates() {
     let opaque = util::build("pid-opaque.json", krates::Builder::new()).unwrap();
