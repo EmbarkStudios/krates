@@ -696,6 +696,7 @@ impl Builder {
             name: String,
             pkg: Kid,
             dep_kinds: Vec<DepKindInfo>,
+            multi: bool,
         }
 
         #[derive(Debug)]
@@ -738,7 +739,7 @@ impl Builder {
                     );
                 }
 
-                let deps = rn
+                let mut deps: Vec<_> = rn
                     .deps
                     .into_iter()
                     .map(|dn| {
@@ -756,9 +757,25 @@ impl Builder {
                             name: dn.name,
                             pkg: Kid::from(dn.pkg),
                             dep_kinds,
+                            multi: false,
                         }
                     })
                     .collect();
+
+                // These _should_ always already be sorted, but again, might be
+                // due to implementation details rather than guaranteed
+                deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
+
+                // Note any dependencies that have the same name, we need to
+                // disambiguate them when resolving features
+                for ch in deps.chunks_mut(2) {
+                    if ch.len() != 2 || ch[0].pkg.name() != ch[1].pkg.name() {
+                        continue;
+                    }
+
+                    ch[0].multi = true;
+                    ch[1].multi = true;
+                }
 
                 let mut features = rn.features;
 
@@ -1142,13 +1159,9 @@ impl Builder {
                 // This _may_ mean there could be a situation where a single crate
                 // _could_ be referenced with 0.0.x versions, but...I'll fix that
                 // if someone reports an issue
-                let rdep_version = (rnode
-                    .deps
-                    .iter()
-                    .filter(|d| d.pkg.name() == rdep.pkg.name())
-                    .count()
-                    > 1)
-                .then(|| rdep.pkg.version().parse().expect("failed to parse semver"));
+                let rdep_version = rdep
+                    .multi
+                    .then(|| rdep.pkg.version().parse().expect("failed to parse semver"));
 
                 let edges = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
