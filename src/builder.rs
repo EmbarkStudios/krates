@@ -696,6 +696,7 @@ impl Builder {
             name: String,
             pkg: Kid,
             dep_kinds: Vec<DepKindInfo>,
+            multi: bool,
         }
 
         #[derive(Debug)]
@@ -738,7 +739,7 @@ impl Builder {
                     );
                 }
 
-                let deps = rn
+                let mut deps: Vec<_> = rn
                     .deps
                     .into_iter()
                     .map(|dn| {
@@ -756,9 +757,25 @@ impl Builder {
                             name: dn.name,
                             pkg: Kid::from(dn.pkg),
                             dep_kinds,
+                            multi: false,
                         }
                     })
                     .collect();
+
+                // These _should_ always already be sorted, but again, might be
+                // due to implementation details rather than guaranteed
+                deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
+
+                // Note any dependencies that have the same name, we need to
+                // disambiguate them when resolving features
+                for ch in deps.chunks_mut(2) {
+                    if ch.len() != 2 || ch[0].pkg.name() != ch[1].pkg.name() {
+                        continue;
+                    }
+
+                    ch[0].multi = true;
+                    ch[1].multi = true;
+                }
 
                 let mut features = rn.features;
 
@@ -1132,6 +1149,20 @@ impl Builder {
                 let maybe_real_name = pkg.name();
                 let strong = features.is_some();
 
+                // If there are multiple versions of the same package we use the
+                // version to disambiguate references to them, but that is extremely
+                // rare so we only do it in the case there are actually multiple crates
+                // with the same name. Note that cargo _should_ fail to resolve
+                // nodes if the same package is referenced with two `^` (compatible)
+                // semvers, ie, you can't reference both ">= 0.2.12" and "=0.2.7" of
+                // a package even if they could never point to the same package
+                // This _may_ mean there could be a situation where a single crate
+                // _could_ be referenced with 0.0.x versions, but...I'll fix that
+                // if someone reports an issue
+                let rdep_version = rdep
+                    .multi
+                    .then(|| rdep.pkg.version().parse().expect("failed to parse semver"));
+
                 let edges = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
                             DepKind::Normal => 0x1,
@@ -1154,7 +1185,11 @@ impl Builder {
 
                                 // Crates can rename the dependency package themselves
                                 let dep_name = dep.rename.as_deref().unwrap_or(&dep.name);
-                                dep_names_match(dep_name, &rdep.name) || maybe_real_name == dep_name
+                                if !dep_names_match(dep_name, &rdep.name) && maybe_real_name != dep_name {
+                                    return false;
+                                }
+
+                                rdep_version.as_ref().map_or(true, |rdv| dep.req.matches(rdv))
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 

@@ -1,0 +1,16 @@
+[package]
+name = "pid"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# does not have a feature called wasm-bindgen
+getrandom = { version = "0.2.7", features = ["js"] }
+# does not have a feature called js
+getrandom_old = { package = "getrandom", version = "0.1.16", features = [
+    "wasm-bindgen",
+] }
+tower_http_4 = { package = "tower-http", version = "0.4.4", features = [] }
+tower-http = { package = "tower-http", version = "0.5.0", features = [
+    "sensitive-headers",
+] }
