@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#71](https://github.com/EmbarkStudios/krates/pull/71) fixed an issue introduced in [PR#70](https://github.com/EmbarkStudios/krates/pull/70) that would cause duplicates to not be detected correctly. Thanks [@louisdewar](https://github.com/louisdewar)!
+
 ## [0.16.2] - 2024-01-21
 ### Fixed
-- [PR#70](https://github.com/EmbarkStudios/krates/pull/67) resolved [#68](https://github.com/EmbarkStudios/krates/issues/68) and [#69](https://github.com/EmbarkStudios/krates/issues/69) by additionally checking the version of resolve dependencies if there were 2 or more of the same name referenced by the same crate.
+- [PR#70](https://github.com/EmbarkStudios/krates/pull/70) resolved [#68](https://github.com/EmbarkStudios/krates/issues/68) and [#69](https://github.com/EmbarkStudios/krates/issues/69) by additionally checking the version of resolve dependencies if there were 2 or more of the same name referenced by the same crate.
 
 ## [0.16.1] - 2024-01-20
 ### Fixed
