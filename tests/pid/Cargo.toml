@@ -14,3 +14,5 @@ tower_http_4 = { package = "tower-http", version = "0.4.4", features = [] }
 tower-http = { package = "tower-http", version = "0.5.0", features = [
     "sensitive-headers",
 ] }
+# Repro for https://github.com/EmbarkStudios/krates/pull/71
+libc = "0.2"
