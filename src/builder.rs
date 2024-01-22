@@ -768,13 +768,14 @@ impl Builder {
 
                 // Note any dependencies that have the same name, we need to
                 // disambiguate them when resolving features
-                for ch in deps.chunks_mut(2) {
-                    if ch.len() != 2 || ch[0].pkg.name() != ch[1].pkg.name() {
+                // Starting at i=1 means that i and i-1 are always guaranteed to exist
+                for i in 1..deps.len() {
+                    if deps[i - 1].pkg.name() != deps[i].pkg.name() {
                         continue;
                     }
 
-                    ch[0].multi = true;
-                    ch[1].multi = true;
+                    deps[i - 1].multi = true;
+                    deps[i].multi = true;
                 }
 
                 let mut features = rn.features;
