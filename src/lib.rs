@@ -107,7 +107,7 @@ impl From<cargo_metadata::PackageId> for Kid {
                 } else {
                     let begin = repr.rfind('/')? + 1;
                     let end = if repr.starts_with("git+") {
-                        repr[begin..].find('?')? + begin
+                        repr[begin..].find('?').map_or(vmn, |q| q + begin)
                     } else {
                         vmn
                     };
@@ -748,11 +748,22 @@ mod tests {
     #[test]
     fn converts_package_ids() {
         let ids = [
+            // STABLE
+            // A typical registry url, source, name, and version are always distinct
             ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", "registry+https://github.com/rust-lang/crates.io-index"),
+            // A git url, with a `rev` specifier. For git urls, if the name of the package is the same as the last path component of the source, the name is not repeated after the #, only the version
             ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832"),
+            // The same as with git urls, the name is only after the # if it is different from the last path component
             ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", "path+file:///home/jake/code/ark/components/allocator"),
+            // A git url with a `branch` specifier
             ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2"),
+            // A git url with a `branch` specifier and a different name from the repo
             ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2"),
+            // A git url that doesn't specify a branch, tag, or revision, defaulting to HEAD
+            ("git+https://github.com/ComunidadAylas/glsl-lang#0.5.2", "glsl-lang", "0.5.2", "git+https://github.com/ComunidadAylas/glsl-lang"),
+            // A git url that uses a `tag` specifier
+            ("git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2#0.5.2", "glsl-lang", "0.5.2", "git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2"),
+            // OPAQUE
             ("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?branch=master"),
             ("fuser 0.4.1 (git+https://github.com/cberner/fuser?rev=b2e7622#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?rev=b2e7622"),
             ("a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)", "a", "0.1.0", "path+file:///home/jake/code/krates/tests/ws/a"),

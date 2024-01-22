@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#73](https://github.com/EmbarkStudios/krates/pull/73) resolved [#72](https://github.com/EmbarkStudios/krates/issues/72) by correctly parsing the new stable package ids where a specifier was not used.
+
 ## [0.16.3] - 2024-01-22
 ### Fixed
 - [PR#71](https://github.com/EmbarkStudios/krates/pull/71) fixed an issue introduced in [PR#70](https://github.com/EmbarkStudios/krates/pull/70) that would cause duplicates to not be detected correctly. Thanks [@louisdewar](https://github.com/louisdewar)!
