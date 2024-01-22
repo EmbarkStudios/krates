@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.16.4] - 2024-01-22
 ### Fixed
 - [PR#73](https://github.com/EmbarkStudios/krates/pull/73) resolved [#72](https://github.com/EmbarkStudios/krates/issues/72) by correctly parsing the new stable package ids where a specifier was not used.
 
@@ -179,7 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.4...HEAD
+[0.16.4]: https://github.com/EmbarkStudios/krates/compare/0.16.3...0.16.4
 [0.16.3]: https://github.com/EmbarkStudios/krates/compare/0.16.2...0.16.3
 [0.16.2]: https://github.com/EmbarkStudios/krates/compare/0.16.1...0.16.2
 [0.16.1]: https://github.com/EmbarkStudios/krates/compare/0.16.0...0.16.1
