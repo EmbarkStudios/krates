@@ -1178,7 +1178,11 @@ impl Builder {
                                     return false;
                                 }
 
-                                dep.req.matches(&rdep_version)
+                                // Handle case where a dependency may not have a version requirement, which
+                                // typically happens in the case of non-registry dependencies that use a pre-release
+                                // semver, if the version _is_ a prelease it will never match the empty
+                                // requirement
+                                dep.req.comparators.is_empty() || dep.req.matches(&rdep_version)
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 

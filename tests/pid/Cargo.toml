@@ -14,8 +14,10 @@ tower_http_4 = { package = "tower-http", version = "0.4.4", features = [] }
 tower-http = { package = "tower-http", version = "0.5.0", features = [
     "sensitive-headers",
 ] }
-# Repro for https://github.com/EmbarkStudios/krates/pull/71 (ie, make number of dependencies odd)
-libc = "0.2"
+# Repro for https://github.com/EmbarkStudios/krates/issues/76
+objc2-registry = { package = "objc2", version = "0.3.0-beta.3.patch-leaks.3" }
+objc2 = { git = "https://github.com/madsmtm/objc2", rev = "65de002" }
+objc2-latest = { package = "objc2", version = "0.5" }
 
 # Repro for https://github.com/EmbarkStudios/krates/issues/74, depending on 2
 # versions of the same crate, but only one of which is selected due to features
