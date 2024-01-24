@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.16.6] - 2024-01-24
 ### Fixed
 - [PR#77](https://github.com/EmbarkStudios/krates/pull/77) resolved [#76](https://github.com/EmbarkStudios/krates/issues/76) by special casing "wildcard" version requirements if the version being tested is a pre-release, as pre-releases must have at least one comparator.
 
@@ -187,7 +188,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.5...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.6...HEAD
+[0.16.6]: https://github.com/EmbarkStudios/krates/compare/0.16.5...0.16.6
 [0.16.5]: https://github.com/EmbarkStudios/krates/compare/0.16.4...0.16.5
 [0.16.4]: https://github.com/EmbarkStudios/krates/compare/0.16.3...0.16.4
 [0.16.3]: https://github.com/EmbarkStudios/krates/compare/0.16.2...0.16.3
