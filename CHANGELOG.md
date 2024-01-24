@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#75](https://github.com/EmbarkStudios/krates/pull/75) resolved [#74](https://github.com/EmbarkStudios/krates/issues/74) by just always checking version requirements for dependencies. Sigh.
+
 ## [0.16.4] - 2024-01-22
 ### Fixed
 - [PR#73](https://github.com/EmbarkStudios/krates/pull/73) resolved [#72](https://github.com/EmbarkStudios/krates/issues/72) by correctly parsing the new stable package ids where a specifier was not used.
