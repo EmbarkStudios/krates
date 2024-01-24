@@ -1150,7 +1150,9 @@ impl Builder {
                 // mean there could be a situation where a single crate _could_
                 // be referenced with 0.0.x versions, but...I'll fix that if
                 // someone reports an issue
-                let rdep_version = rdep.pkg.version().parse().expect("failed to parse semver");
+                let rdep_version: semver::Version =
+                    rdep.pkg.version().parse().expect("failed to parse semver");
+                let has_prelease = !rdep_version.pre.is_empty();
 
                 let edges = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
@@ -1182,7 +1184,7 @@ impl Builder {
                                 // typically happens in the case of non-registry dependencies that use a pre-release
                                 // semver, if the version _is_ a prelease it will never match the empty
                                 // requirement
-                                dep.req.comparators.is_empty() || dep.req.matches(&rdep_version)
+                                (has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 
