@@ -696,7 +696,6 @@ impl Builder {
             name: String,
             pkg: Kid,
             dep_kinds: Vec<DepKindInfo>,
-            multi: bool,
         }
 
         #[derive(Debug)]
@@ -757,7 +756,6 @@ impl Builder {
                             name: dn.name,
                             pkg: Kid::from(dn.pkg),
                             dep_kinds,
-                            multi: false,
                         }
                     })
                     .collect();
@@ -765,18 +763,6 @@ impl Builder {
                 // These _should_ always already be sorted, but again, might be
                 // due to implementation details rather than guaranteed
                 deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
-
-                // Note any dependencies that have the same name, we need to
-                // disambiguate them when resolving features
-                // Starting at i=1 means that i and i-1 are always guaranteed to exist
-                for i in 1..deps.len() {
-                    if deps[i - 1].pkg.name() != deps[i].pkg.name() {
-                        continue;
-                    }
-
-                    deps[i - 1].multi = true;
-                    deps[i].multi = true;
-                }
 
                 let mut features = rn.features;
 
@@ -1151,18 +1137,20 @@ impl Builder {
                 let strong = features.is_some();
 
                 // If there are multiple versions of the same package we use the
-                // version to disambiguate references to them, but that is extremely
-                // rare so we only do it in the case there are actually multiple crates
-                // with the same name. Note that cargo _should_ fail to resolve
-                // nodes if the same package is referenced with two `^` (compatible)
-                // semvers, ie, you can't reference both ">= 0.2.12" and "=0.2.7" of
-                // a package even if they could never point to the same package
-                // This _may_ mean there could be a situation where a single crate
-                // _could_ be referenced with 0.0.x versions, but...I'll fix that
-                // if someone reports an issue
-                let rdep_version = rdep
-                    .multi
-                    .then(|| rdep.pkg.version().parse().expect("failed to parse semver"));
+                // version to disambiguate references to them, unfortunately,
+                // though (it should be) extremely rare to do this, we always
+                // check that versions match once a crate is found, as nodes can
+                // not be resolved due to features, but will still be listed as
+                // a dependency
+                //
+                // Note that cargo _should_ fail to resolve nodes if the same
+                // package is referenced with two `^` (compatible) semvers, ie,
+                // you can't reference both ">= 0.2.12" and "=0.2.7" of a package
+                // even if they could never point to the same package, this _may_
+                // mean there could be a situation where a single crate _could_
+                // be referenced with 0.0.x versions, but...I'll fix that if
+                // someone reports an issue
+                let rdep_version = rdep.pkg.version().parse().expect("failed to parse semver");
 
                 let edges = rdep.dep_kinds.iter().filter_map(|dk| {
                         let mask = match dk.kind {
@@ -1190,7 +1178,7 @@ impl Builder {
                                     return false;
                                 }
 
-                                rdep_version.as_ref().map_or(true, |rdv| dep.req.matches(rdv))
+                                dep.req.matches(&rdep_version)
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 
