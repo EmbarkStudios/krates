@@ -14,5 +14,23 @@ tower_http_4 = { package = "tower-http", version = "0.4.4", features = [] }
 tower-http = { package = "tower-http", version = "0.5.0", features = [
     "sensitive-headers",
 ] }
-# Repro for https://github.com/EmbarkStudios/krates/pull/71
+# Repro for https://github.com/EmbarkStudios/krates/pull/71 (ie, make number of dependencies odd)
 libc = "0.2"
+
+# Repro for https://github.com/EmbarkStudios/krates/issues/74, depending on 2
+# versions of the same crate, but only one of which is selected due to features
+[dependencies.time]
+version = "0.2"
+features = ["std"]
+optional = true
+default-features = false
+
+[dependencies.time03]
+version = "0.3"
+features = ["parsing"]
+optional = true
+default-features = false
+package = "time"
+
+[features]
+default = ["time03"]
