@@ -135,7 +135,11 @@ impl From<Cmd> for cm::MetadataCommand {
         }
 
         if let Some(cd) = cmd.current_dir {
-            mdc.current_dir(cd);
+            if !cd.as_os_str().is_empty() {
+                mdc.current_dir(cd);
+            } else {
+                mdc.current_dir(".");
+            }
         }
 
         // Everything else we specify as additional options, as MetadataCommand
