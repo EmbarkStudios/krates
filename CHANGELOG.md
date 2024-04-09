@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#80](https://github.com/EmbarkStudios/krates/pull/80) resolved [#79](https://github.com/EmbarkStudios/krates/issues/79) by fixing an extreme edge case with dependency renaming.
+
 ## [0.16.7] - 2024-03-20
 ### Fixed
 - [PR#78](https://github.com/EmbarkStudios/krates/pull/78) fixed an issue where setting manifest_path to `Cargo.toml` without preceding `./` would cause the current directory be set to empty, and cargo_metadata to fail.
