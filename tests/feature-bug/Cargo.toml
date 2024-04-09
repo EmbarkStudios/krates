@@ -13,12 +13,12 @@ edition = "2021"
 sub-crate = { path = "sub-crate", version = "0.1", default-features = false, features = [
     "simple",
 ] }
-
-[dependencies.krates]
-git = "https://github.com/EmbarkStudios/krates"
-tag = "0.14.1"
-default-features = false
-features = ["prefer-index"]
+amethyst_core = "0.10.1"
+md-5 = "0.7.0"
+md5 = "0.7.0"
+krates = { version = "0.14.1", default-features = false, features = [
+    "prefer-index",
+] }
 
 [dependencies.krates-old]
 package = "krates"
@@ -28,3 +28,7 @@ default-features = false
 
 [dev-dependencies]
 ndarray-linalg = { workspace = true, features = ["intel-mkl-static"] }
+
+[patch.crates-io]
+amethyst_core = { git = "https://gitlab.com/amethyst-engine/amethyst", rev = "0c2da617" }
+krates = { git = "https://github.com/EmbarkStudios/krates", tag = "0.14.1" }

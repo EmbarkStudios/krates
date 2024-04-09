@@ -1170,6 +1170,24 @@ impl Builder {
                             return None;
                         }
 
+                        let multiple_candidates = krate.dependencies.iter().filter(|dep| {
+                            if dk.kind != dep.kind {
+                                return false;
+                            }
+
+                            // Crates can rename the dependency package themselves
+                            let dname = dep.rename.as_deref().unwrap_or(&dep.name);
+                            if !dep_names_match(dname, &rdep.name) && maybe_real_name != dname {
+                                return false;
+                            }
+
+                            // Handle case where a dependency may not have a version requirement, which
+                            // typically happens in the case of non-registry dependencies that use a pre-release
+                            // semver, if the version _is_ a prelease it will never match the empty
+                            // requirement
+                            (has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)
+                        }).count() > 1;
+
                         let dep = krate
                             .dependencies
                             .iter()
@@ -1179,19 +1197,30 @@ impl Builder {
                                 }
 
                                 // Crates can rename the dependency package themselves
-                                let skip = if let Some(rename) = dep.rename.as_deref() {
-                                    !dep_names_match(rename, &rdep.name)
-                                } else {
-                                    !dep_names_match(&dep.name, &rdep.name) && maybe_real_name != dep.name
-                                };
-
-                                if skip {
+                                let dname = dep.rename.as_deref().unwrap_or(&dep.name);
+                                if !dep_names_match(dname, &rdep.name) && maybe_real_name != dname {
                                     return false;
                                 }
 
-                                // In addition to matching the name, ensure the sources are the same (when not paths), as
-                                // it is possible to have a crate with the same name, but one is renamed, both sourced
-                                // from the same git repo but at different revisions, etc
+                                // Handle case where a dependency may not have a version requirement, which
+                                // typically happens in the case of non-registry dependencies that use a pre-release
+                                // semver, if the version _is_ a prelease it will never match the empty
+                                // requirement
+                                if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)) {
+                                    return false;
+                                }
+
+                                if !multiple_candidates {
+                                    return true;
+                                }
+
+                                // Finally, even if the name matches and the version matches, the source for the package might
+                                // be different if there are multiple git dependencies at different revisions :(
+                                // There is also an _extreme_ edge case where a package's lib target can be the same
+                                // name as another package. This actually would mean that the code won't compile, but I
+                                // encountered it in testing (eg. the `md-5` crate names its lib target `md5`, and you
+                                // can have a dependency on the `md5` crate, they both get resolved to the same name, but
+                                // then rustc can't compile `md5::compute` because there are two libs that satisfy that name)
                                 let source_matches = dep.source.as_deref().map_or(true, |dsrc| {
                                     let psrc = rdep.pkg.source();
                                     if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
@@ -1204,15 +1233,7 @@ impl Builder {
                                     }
                                 });
 
-                                if !source_matches {
-                                    return false;
-                                }
-
-                                // Handle case where a dependency may not have a version requirement, which
-                                // typically happens in the case of non-registry dependencies that use a pre-release
-                                // semver, if the version _is_ a prelease it will never match the empty
-                                // requirement
-                                (has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)
+                                source_matches
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 
