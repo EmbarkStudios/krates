@@ -1179,8 +1179,32 @@ impl Builder {
                                 }
 
                                 // Crates can rename the dependency package themselves
-                                let dep_name = dep.rename.as_deref().unwrap_or(&dep.name);
-                                if !dep_names_match(dep_name, &rdep.name) && maybe_real_name != dep_name {
+                                let skip = if let Some(rename) = dep.rename.as_deref() {
+                                    !dep_names_match(rename, &rdep.name)
+                                } else {
+                                    !dep_names_match(&dep.name, &rdep.name) && maybe_real_name != dep.name
+                                };
+
+                                if skip {
+                                    return false;
+                                }
+
+                                // In addition to matching the name, ensure the sources are the same (when not paths), as
+                                // it is possible to have a crate with the same name, but one is renamed, both sourced
+                                // from the same git repo but at different revisions, etc
+                                let source_matches = dep.source.as_deref().map_or(true, |dsrc| {
+                                    let psrc = rdep.pkg.source();
+                                    if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
+                                        // Git sources can have the full revision spec at the end, which is not part of
+                                        // source declaration
+                                        let dgit = dgit.rfind('#').map_or(dgit, |end| &dgit[..end]);
+                                        dgit == pgit
+                                    } else {
+                                        dsrc == psrc
+                                    }
+                                });
+
+                                if !source_matches {
                                     return false;
                                 }
 
