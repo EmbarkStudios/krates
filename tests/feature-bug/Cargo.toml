@@ -14,5 +14,17 @@ sub-crate = { path = "sub-crate", version = "0.1", default-features = false, fea
     "simple",
 ] }
 
+[dependencies.krates]
+git = "https://github.com/EmbarkStudios/krates"
+tag = "0.14.1"
+default-features = false
+features = ["prefer-index"]
+
+[dependencies.krates-old]
+package = "krates"
+git = "https://github.com/EmbarkStudios/krates"
+tag = "0.12.2"
+default-features = false
+
 [dev-dependencies]
 ndarray-linalg = { workspace = true, features = ["intel-mkl-static"] }
