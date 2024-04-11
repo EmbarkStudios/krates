@@ -331,3 +331,19 @@ mod prefer_index {
         confirm_index_snapshot(b);
     }
 }
+
+/// Ensures dependencies only brought in by specific features for specific targets
+/// are correctly found
+#[test]
+fn includes_target_specific_feature_dependencies() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/features-2/Cargo.toml")
+        .all_features();
+
+    let mut builder = krates::Builder::new();
+    builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
+    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
+    insta::assert_snapshot!(dotgraph);
+}

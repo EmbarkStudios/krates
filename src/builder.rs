@@ -689,7 +689,7 @@ impl Builder {
         #[derive(Debug)]
         struct DepKindInfo {
             kind: DepKind,
-            cfg: Option<String>,
+            cfg: Option<(String, cargo_platform::Platform)>,
         }
 
         #[derive(Debug)]
@@ -752,7 +752,7 @@ impl Builder {
                             .into_iter()
                             .map(|dk| DepKindInfo {
                                 kind: dk.kind.into(),
-                                cfg: dk.target.map(|t| t.to_string()),
+                                cfg: dk.target.map(|t| (t.to_string(), t)),
                             })
                             .collect();
 
@@ -1185,7 +1185,11 @@ impl Builder {
                             // typically happens in the case of non-registry dependencies that use a pre-release
                             // semver, if the version _is_ a prelease it will never match the empty
                             // requirement
-                            (has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)
+                            if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)) {
+                                return false;
+                            }
+
+                            dk.cfg.as_ref().map(|(_, p)| p) == dep.target.as_ref()
                         }).count() > 1;
 
                         let dep = krate
@@ -1207,6 +1211,10 @@ impl Builder {
                                 // semver, if the version _is_ a prelease it will never match the empty
                                 // requirement
                                 if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)) {
+                                    return false;
+                                }
+
+                                if dk.cfg.as_ref().map(|(_, p)| p) != dep.target.as_ref() {
                                     return false;
                                 }
 
@@ -1241,7 +1249,7 @@ impl Builder {
                             return None;
                         }
 
-                        let cfg = if let Some(cfg) = dk.cfg.as_deref() {
+                        let cfg = if let Some(cfg) = dk.cfg.as_ref().map(|(c, _)| c.as_str()) {
                             if !include_all_targets {
                                 let matched = if cfg.starts_with("cfg(") {
                                     match cfg_expr::Expression::parse(cfg) {
