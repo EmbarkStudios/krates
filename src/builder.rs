@@ -1279,6 +1279,20 @@ impl Builder {
                                 if !matched {
                                     return None;
                                 }
+                            } else if cfg.starts_with("cfg(") {
+                                // This is _basically_ a tortured way to evaluate `cfg(any())`, which is always false but
+                                // is used by eg. serde -> serde_derive. If not filtering targets this would mean that
+                                // serde_derive and all of its dependencies would be pulled into the graph, even if the
+                                // only edge was the cfg(any()).
+                                if let Ok(expr) = cfg_expr::Expression::parse(cfg) {
+                                    // We can't just do an eval and always return true, as that then would cause any
+                                    // not() expressions to evaluate to false
+                                    if expr.predicates().count() == 0 {
+                                        if !expr.eval(|_| true) {
+                                            return None;
+                                        }
+                                    }
+                                }
                             }
 
                             Some(cfg)
