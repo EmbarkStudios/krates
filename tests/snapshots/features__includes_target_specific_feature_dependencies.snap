@@ -1,0 +1,15 @@
+---
+source: tests/features.rs
+expression: dotgraph
+---
+digraph {
+    0 [ label = "crate features-2 0.1.0 path+file:///krates/tests/features-2" ]
+    1 [ label = "crate serde 1.0.197" ]
+    2 [ label = "crate smallvec 1.13.2" ]
+    3 [ label = "feature serde" ]
+    0 -> 2 [ label = "" ]
+    0 -> 3 [ label = " 'cfg(target_os = \"android\")'" ]
+    2 -> 1 [ label = "" ]
+    3 -> 2 [ label = "" ]
+    3 -> 1 [ label = "" ]
+}
