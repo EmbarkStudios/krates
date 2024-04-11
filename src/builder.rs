@@ -1287,10 +1287,8 @@ impl Builder {
                                 if let Ok(expr) = cfg_expr::Expression::parse(cfg) {
                                     // We can't just do an eval and always return true, as that then would cause any
                                     // not() expressions to evaluate to false
-                                    if expr.predicates().count() == 0 {
-                                        if !expr.eval(|_| true) {
-                                            return None;
-                                        }
+                                    if expr.predicates().count() == 0 && !expr.eval(|_| true) {
+                                        return None;
                                     }
                                 }
                             }
