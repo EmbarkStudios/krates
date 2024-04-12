@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "krates"
-version = "0.16.9"
+version = "0.16.10"
 dependencies = [
  "cargo-platform",
  "cargo_metadata",

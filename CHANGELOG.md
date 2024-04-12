@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.16.10] - 2024-04-12
 ### Fixed
 - [PR#83](https://github.com/EmbarkStudios/krates/pull/83) resolved [#82](https://github.com/EmbarkStudios/krates/issues/82) by properly handling `cfg()` specific dependencies for the same crate with different features enabled.
 - [PR#83](https://github.com/EmbarkStudios/krates/pull/83) fixed an issue where `cfg(any())` crates would be pulled into the graph erroneously if not performing target filtering.
@@ -204,7 +205,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.9...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.16.10...HEAD
+[0.16.10]: https://github.com/EmbarkStudios/krates/compare/0.16.9...0.16.10
 [0.16.9]: https://github.com/EmbarkStudios/krates/compare/0.16.8...0.16.9
 [0.16.8]: https://github.com/EmbarkStudios/krates/compare/0.16.7...0.16.8
 [0.16.7]: https://github.com/EmbarkStudios/krates/compare/0.16.6...0.16.7
