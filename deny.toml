@@ -23,6 +23,9 @@ allow = [
 
 [bans]
 multiple-versions = "deny"
+deny = [
+    { crate = "quinn", reason = "we don't need http3 support, this just ensures we aren't unneccessarily having http3 support actually (https://github.com/rust-lang/cargo/issues/10801) enabled" },
+]
 skip = []
 skip-tree = []
 
