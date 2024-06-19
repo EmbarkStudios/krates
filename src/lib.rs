@@ -113,9 +113,6 @@ impl From<cargo_metadata::PackageId> for Kid {
                         let end = repr[begin..].rfind('?').map_or(vmn, |q| q + begin);
 
                         if repr[end..].contains('%') {
-                            // https://en.wikipedia.org/wiki/Percent-encoding
-                            // ␣   !   "   #   $   %   &   '   (   )   *   +   ,   /   :   ;   =   ?   @   [   ]
-                            // %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %2A %2B %2C %2F %3A %3B %3D %3F %40 %5B %5D
                             let mut decoded = String::new();
                             let mut encoded = &repr[end..];
                             let before = encoded.len();
@@ -133,10 +130,23 @@ impl From<cargo_metadata::PackageId> for Kid {
                                     panic!("invalid percent encoding in '{}', '{}' should be exactly 3 digits long", &repr[end..], &encoded[pi..]);
                                 };
 
+                                // https://en.wikipedia.org/wiki/Percent-encoding
+                                // Reserved characters after percent-encoding
+                                //
+                                // ␣   !   "   #   $   %   &   '   (   )   *   +   ,   /   :   ;   =   ?   @   [   ]
+                                // %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %2A %2B %2C %2F %3A %3B %3D %3F %40 %5B %5D
+                                //
+                                // Common characters after percent-encoding (ASCII or UTF-8 based)
+                                //
+                                // -   .   <   >   \   ^   _   `   {   |   }   ~
+                                // %2D %2E %3C %3E %5C %5E %5F %60 %7B %7C %7D %7E
+                                //
+                                // Note that `£` and `€` can also be percent encoded, but are _completely_ different and
+                                // I don't feel like supporting it until someone actually complains
+
                                 let c = match encoding {
                                     // By far the most likely one
                                     "2F" | "2f" => '/',
-                                    "20" => ' ',
                                     "21" => '!',
                                     "22" => '"',
                                     "23" => '#',
@@ -149,13 +159,28 @@ impl From<cargo_metadata::PackageId> for Kid {
                                     "2A" | "2a" => '*',
                                     "2B" | "2b" => '+',
                                     "2C" | "2c" => ',',
-                                    "3A" | "3a" => ':',
+                                    "2D" | "2d" => '-',
+                                    "2E" | "2e" => '.',
                                     "3B" | "3b" => ';',
+                                    "3C" | "3c" => '<',
                                     "3D" | "3d" => '=',
-                                    "3F" | "3f" => '?',
+                                    "3E" | "3e" => '>',
                                     "40" => '@',
-                                    "5B" | "5b" => '[',
                                     "5D" | "5d" => ']',
+                                    "5F" | "5f" => '_',
+                                    "60" => '`',
+                                    "7B" | "7b" => '{',
+                                    "7C" | "7c" => '|',
+                                    "7D" | "7d" => '}',
+                                    // These are invalid in branches/tags, but meh
+                                    // https://git-scm.com/docs/git-check-ref-format
+                                    "20" => ' ',
+                                    "3A" | "3a" => ':',
+                                    "3F" | "3f" => '?',
+                                    "5B" | "5b" => '[',
+                                    "5C" | "5c" => '\\',
+                                    "5E" | "5e" => '^',
+                                    "7E" | "7e" => '~',
                                     _ => panic!(
                                         "unknown percent encoding '%{encoding}' in '{}'",
                                         &repr[end..]
