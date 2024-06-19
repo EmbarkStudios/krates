@@ -44,7 +44,7 @@ similar-asserts = "1.1"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 # index metadata retrieval
-tame-index = "0.10"
+tame-index = "0.12"
 
 [profile.dev.package.insta]
 opt-level = 3

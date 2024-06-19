@@ -6,7 +6,7 @@ use std::fmt;
 pub enum Error {
     /// --no-deps was specified when acquiring metadata
     NoResolveGraph,
-    /// A cargo_metadata error occurred
+    /// A [`cargo_metadata::Error`] error occurred
     Metadata(CMErr),
     /// A package specification was invalid
     InvalidPkgSpec(&'static str),
