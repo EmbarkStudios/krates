@@ -238,7 +238,7 @@ pub enum Node<N> {
     Krate {
         /// The unique identifier for this node.
         id: Kid,
-        /// Associated user data with the node. Must be From<cargo_metadata::Package>
+        /// Associated user data with the node. Must be `From<cargo_metadata::Package>`
         krate: N,
         /// List of features enabled on the crate
         features: EnabledFeatures,
@@ -288,7 +288,7 @@ pub enum Edge {
     Dep {
         /// The dependency kind for the edge link
         kind: DepKind,
-        /// A possible cfg() or <target-triple> applied to this dependency
+        /// A possible `cfg()` or <target-triple> applied to this dependency
         cfg: Option<String>,
     },
     /// An edge from one feature to another
@@ -296,7 +296,7 @@ pub enum Edge {
     DepFeature {
         /// The dependency kind for the edge link
         kind: DepKind,
-        /// A possible cfg() or <target-triple> applied to this dependency
+        /// A possible `cfg()` or <target-triple> applied to this dependency
         cfg: Option<String>,
     },
 }
