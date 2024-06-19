@@ -85,9 +85,9 @@ impl Kid {
 #[allow(clippy::fallible_impl_from)]
 impl From<cargo_metadata::PackageId> for Kid {
     fn from(pid: cargo_metadata::PackageId) -> Self {
-        let repr = pid.repr;
+        let mut repr = pid.repr;
 
-        let gen = || {
+        let mut gen = || {
             let components = if repr.contains(' ') {
                 let name = (0, repr.find(' ')?);
                 let version = (name.1 + 1, repr[name.1 + 1..].find(' ')? + name.1 + 1);
@@ -101,13 +101,79 @@ impl From<cargo_metadata::PackageId> for Kid {
 
                 [name, version, source]
             } else {
-                let vmn = repr.rfind('#')?;
+                let mut vmn = repr.rfind('#')?;
                 let (name, version) = if let Some(split) = repr[vmn..].find('@') {
                     ((vmn + 1, vmn + split), (vmn + split + 1, repr.len()))
                 } else {
                     let begin = repr.rfind('/')? + 1;
                     let end = if repr.starts_with("git+") {
-                        repr[begin..].find('?').map_or(vmn, |q| q + begin)
+                        // Unfortunately the stable format percent encodes the source url in the metadata, and since
+                        // git branches/tags can contain various special characters, notably '/', we need to decode them
+                        // to be able to match against the non-encoded url used...everywhere else
+                        let end = repr[begin..].rfind('?').map_or(vmn, |q| q + begin);
+
+                        if repr[end..].contains('%') {
+                            // https://en.wikipedia.org/wiki/Percent-encoding
+                            // ␣   !   "   #   $   %   &   '   (   )   *   +   ,   /   :   ;   =   ?   @   [   ]
+                            // %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %2A %2B %2C %2F %3A %3B %3D %3F %40 %5B %5D
+                            let mut decoded = String::new();
+                            let mut encoded = &repr[end..];
+                            let before = encoded.len();
+
+                            loop {
+                                let Some(pi) = encoded.find('%') else {
+                                    decoded.push_str(encoded);
+                                    break;
+                                };
+
+                                decoded.push_str(&encoded[..pi]);
+
+                                let Some(encoding) = encoded.get(pi + 1..pi + 3) else {
+                                    // This _should_ never happen, but just in case
+                                    panic!("invalid percent encoding in '{}', '{}' should be exactly 3 digits long", &repr[end..], &encoded[pi..]);
+                                };
+
+                                let c = match encoding {
+                                    // By far the most likely one
+                                    "2F" | "2f" => '/',
+                                    "20" => ' ',
+                                    "21" => '!',
+                                    "22" => '"',
+                                    "23" => '#',
+                                    "24" => '$',
+                                    "25" => '%',
+                                    "26" => '&',
+                                    "27" => '\'',
+                                    "28" => '(',
+                                    "29" => ')',
+                                    "2A" | "2a" => '*',
+                                    "2B" | "2b" => '+',
+                                    "2C" | "2c" => ',',
+                                    "3A" | "3a" => ':',
+                                    "3B" | "3b" => ';',
+                                    "3D" | "3d" => '=',
+                                    "3F" | "3f" => '?',
+                                    "40" => '@',
+                                    "5B" | "5b" => '[',
+                                    "5D" | "5d" => ']',
+                                    _ => panic!(
+                                        "unknown percent encoding '%{encoding}' in '{}'",
+                                        &repr[end..]
+                                    ),
+                                };
+
+                                decoded.push(c);
+                                encoded = &encoded[pi + 3..];
+                            }
+
+                            repr.truncate(end);
+                            repr.push_str(&decoded);
+
+                            // move the version string back to account for the now shorter decoded repr
+                            vmn -= before - decoded.len();
+                        }
+
+                        end
                     } else {
                         vmn
                     };
