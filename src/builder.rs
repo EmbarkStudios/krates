@@ -730,6 +730,10 @@ impl Builder {
             }
         }
 
+        // We need to establish if the package ids are in the opaque or stable format as
+        // it changes how git sources are compared
+        let is_opaque = resolved.nodes[0].id.repr.splitn(3, ' ').count() == 3;
+
         let mut nodes: Vec<_> = resolved
             .nodes
             .into_iter()
@@ -1232,9 +1236,14 @@ impl Builder {
                                 let source_matches = dep.source.as_deref().map_or(true, |dsrc| {
                                     let psrc = rdep.pkg.source();
                                     if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
-                                        // Git sources can have the full revision spec at the end, which is not part of
+                                        // The opaque git sources can have the full revision spec at the end, which is not part of
                                         // source declaration
-                                        let dgit = dgit.rfind('#').map_or(dgit, |end| &dgit[..end]);
+                                        let dgit = if is_opaque {
+                                            dgit.rfind('#').map_or(dgit, |end| &dgit[..end])
+                                        } else {
+                                            dgit
+                                        };
+
                                         dgit == pgit
                                     } else {
                                         dsrc == psrc

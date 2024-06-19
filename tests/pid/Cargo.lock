@@ -297,6 +297,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "krates"
+version = "0.16.10"
+source = "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb"
+dependencies = [
+ "cargo-platform",
+ "cargo_metadata",
+ "cfg-expr",
+ "petgraph",
+ "semver 1.0.23",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -393,6 +405,7 @@ dependencies = [
  "getrandom 0.2.12",
  "krates 0.16.10 (git+https://github.com/EmbarkStudios/krates?tag=0.16.10)",
  "krates 0.16.10 (git+https://github.com/EmbarkStudios/krates?branch=branch/test)",
+ "krates 0.16.10 (git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&())",
  "objc2 0.3.0-beta.3.patch-leaks.2",
  "objc2 0.3.0-beta.5",
  "objc2 0.5.0",

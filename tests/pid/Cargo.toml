@@ -21,6 +21,7 @@ objc2 = { git = "https://github.com/madsmtm/objc2", rev = "65de002" }
 # Repro for https://github.com/EmbarkStudios/krates/issues/85
 ohno = { git = "https://github.com/EmbarkStudios/krates", branch = "branch/test", package = "krates" }
 krates = { git = "https://github.com/EmbarkStudios/krates", tag = "0.16.10" }
+sanity = { git = "https://github.com/EmbarkStudios/krates", branch = "}{please_don't-ever_do/this!#$%&()", package = "krates" }
 
 # Repro for https://github.com/EmbarkStudios/krates/issues/74, depending on 2
 # versions of the same crate, but only one of which is selected due to features
