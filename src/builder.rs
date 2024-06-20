@@ -835,6 +835,7 @@ impl Builder {
             kind: DepKind,
             cfg: Option<String>,
             features: Vec<usize>,
+            dep_index: usize,
         }
 
         #[derive(Debug)]
@@ -1138,6 +1139,7 @@ impl Builder {
                     kind: DepKind,
                     cfg: Option<&'d str>,
                     features: &'d [String],
+                    dep_index: usize,
                     uses_default_features: bool,
                 }
 
@@ -1196,10 +1198,11 @@ impl Builder {
                             dk.cfg.as_ref().map(|(_, p)| p) == dep.target.as_ref()
                         }).count() > 1;
 
-                        let dep = krate
+                        let (dep_index, dep) = krate
                             .dependencies
                             .iter()
-                            .find(|dep| {
+                            .enumerate()
+                            .find(|(_, dep)| {
                                 if dk.kind != dep.kind {
                                     return false;
                                 }
@@ -1311,6 +1314,7 @@ impl Builder {
                             kind: dk.kind,
                             cfg,
                             features: &dep.features,
+                            dep_index,
                             // Dependencies will default to saying "uses_default_features" on edges,
                             // even if the crate in question doesn't actually have a "default" feature,
                             // so check that it actually does
@@ -1362,6 +1366,7 @@ impl Builder {
 
                         let edge = DependencyEdge {
                             kind: edge.kind,
+                            dep_index: edge.dep_index,
                             cfg: edge.cfg.map(|s| s.into()),
                             features,
                         };
@@ -1404,10 +1409,13 @@ impl Builder {
                         .collect()
                 };
 
+                let dep_mapping = vec![None; krate.dependencies.len()];
+
                 let krate = crate::Node::Krate {
                     id,
                     krate: N::from(krate),
                     features,
+                    dep_mapping,
                 };
 
                 graph.add_node(krate);
@@ -1537,6 +1545,10 @@ impl Builder {
                                     cfg: edge.cfg.clone(),
                                 },
                             );
+                        }
+
+                        if let crate::Node::Krate { dep_mapping, .. } = &mut graph[srcid] {
+                            dep_mapping[edge.dep_index] = Some(target_krate);
                         }
 
                         if attach_direct_edge {

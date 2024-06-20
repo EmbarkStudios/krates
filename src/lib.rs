@@ -333,6 +333,11 @@ pub enum Node<N> {
         krate: N,
         /// List of features enabled on the crate
         features: EnabledFeatures,
+        /// Mapping to the exact node that a dependency is resolved to.
+        ///
+        /// This can be used manually but the helper `[Krates::resolved_dependency`]
+        /// is easier to use
+        dep_mapping: Vec<Option<NodeId>>,
     },
     Feature {
         /// The node index for the crate this feature is for
@@ -555,6 +560,33 @@ impl<N, E> Krates<N, E> {
         }
 
         direct_dependents
+    }
+
+    /// Retrieves the krate that was resolved for the specified crate dependency.
+    ///
+    /// This will return `None` if the krate doesn't exist, the dependency doesn't
+    /// exist, or dependency was pruned.
+    ///
+    /// Note that `dep_index` is the index of [`cargo_metadata::Package::dependencies`]
+    #[inline]
+    pub fn resolved_dependency(&self, nid: NodeId, dep_index: usize) -> Option<&N> {
+        if nid.index() < self.krates_end {
+            return None;
+        }
+
+        let Node::Krate { dep_mapping, .. } = &self.graph[nid] else {
+            return None;
+        };
+        dep_mapping
+            .get(dep_index)
+            .copied()
+            .flatten()
+            .and_then(|nid| {
+                let Node::Krate { krate, .. } = &self.graph[nid] else {
+                    return None;
+                };
+                Some(krate)
+            })
     }
 
     /// Get the node identifier for the specified crate identifier
