@@ -1,23 +1,6 @@
 use std::{fmt, io, str::Utf8Error, string::FromUtf8Error};
 
 /// Error returned when executing/parsing `cargo metadata` fails.
-///
-/// # Note about Backtraces
-///
-/// This error type does not contain backtraces, but each error variant
-/// comes from _one_ specific place, so it's not really needed for the
-/// inside of this crate. If you need a backtrace down to, but not inside
-/// of, a failed call of `cargo_metadata` you can do one of multiple thinks:
-///
-/// 1. Convert it to a `failure::Error` (possible using the `?` operator),
-///    which is similar to a `Box<::std::error::Error + 'static + Send  + Sync>`.
-/// 2. Have appropriate variants in your own error type. E.g. you could wrap
-///    a `failure::Context<Error>` or add a `failure::Backtrace` field (which
-///    is empty if `RUST_BACKTRACE` is not set, so it's simple to use).
-/// 3. You still can place a failure based error into a `error_chain` if you
-///    really want to. (Either through foreign_links or by making it a field
-///    value of a `ErrorKind` variant).
-///
 #[derive(Debug)]
 pub enum Error {
     /// Error during execution of `cargo metadata`

@@ -4,13 +4,13 @@ use std::{ffi::OsString, process::Command};
 
 /// Cargo features flags
 #[derive(Debug, Clone)]
-pub enum CargoOpt {
+pub enum Features {
     /// Run cargo with `--features-all`
-    AllFeatures,
+    All,
     /// Run cargo with `--no-default-features`
-    NoDefaultFeatures,
+    NoDefault,
     /// Run cargo with `--features <FEATURES>`
-    SomeFeatures(Vec<String>),
+    Selected(Vec<String>),
 }
 
 /// A builder for configurating `cargo metadata` invocation.
@@ -71,17 +71,17 @@ impl MetadataCommand {
         self
     }
     /// Which features to include.
-    pub fn features(&mut self, features: CargoOpt) -> &mut Self {
+    pub fn features(&mut self, features: Features) -> &mut Self {
         match features {
-            CargoOpt::SomeFeatures(features) => self.features.extend(features),
-            CargoOpt::NoDefaultFeatures => {
+            Features::Selected(features) => self.features.extend(features),
+            Features::NoDefault => {
                 assert!(
                     !self.no_default_features,
                     "Do not supply CargoOpt::NoDefaultFeatures more than once!"
                 );
                 self.no_default_features = true;
             }
-            CargoOpt::AllFeatures => {
+            Features::All => {
                 assert!(
                     !self.all_features,
                     "Do not supply CargoOpt::AllFeatures more than once!"
@@ -156,8 +156,8 @@ impl MetadataCommand {
 
     /// Parses `cargo metadata` output.  `data` must have been
     /// produced by a command built with `cargo_command`.
-    pub fn parse<T: AsRef<str>>(data: T) -> Result<super::Metadata, Error> {
-        let meta = serde_json::from_str(data.as_ref())?;
+    pub fn parse(data: &str) -> Result<super::Metadata, Error> {
+        let meta = serde_json::from_str(data)?;
         Ok(meta)
     }
 

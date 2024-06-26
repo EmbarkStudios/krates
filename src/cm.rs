@@ -505,6 +505,7 @@ pub enum TargetKind {
     Test,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<&str> for TargetKind {
     fn from(value: &str) -> Self {
         match value {
@@ -555,6 +556,7 @@ pub enum CrateType {
     StaticLib,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<&str> for CrateType {
     fn from(value: &str) -> Self {
         match value {
@@ -574,7 +576,6 @@ impl From<&str> for CrateType {
 ///
 /// As of writing this comment rust editions 2024, 2027 and 2030 are not actually a thing yet but are parsed nonetheless for future proofing.
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[non_exhaustive]
 pub enum Edition {
     /// Edition 2015
     #[serde(rename = "2015")]
@@ -585,28 +586,15 @@ pub enum Edition {
     /// Edition 2021
     #[serde(rename = "2021")]
     E2021,
-    #[doc(hidden)]
-    #[serde(rename = "2024")]
-    _E2024,
-    #[doc(hidden)]
-    #[serde(rename = "2027")]
-    _E2027,
-    #[doc(hidden)]
-    #[serde(rename = "2030")]
-    _E2030,
 }
 
 impl Edition {
     /// Return the string representation of the edition
     pub fn as_str(&self) -> &'static str {
-        use Edition::*;
         match self {
-            E2015 => "2015",
-            E2018 => "2018",
-            E2021 => "2021",
-            _E2024 => "2024",
-            _E2027 => "2027",
-            _E2030 => "2030",
+            Self::E2015 => "2015",
+            Self::E2018 => "2018",
+            Self::E2021 => "2021",
         }
     }
 }
