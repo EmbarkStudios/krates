@@ -2,8 +2,7 @@ pub(crate) mod features;
 
 pub mod index;
 
-use crate::{DepKind, Edge, Error, Kid, Krates};
-use cargo_metadata as cm;
+use crate::{cm, DepKind, Edge, Error, Kid, Krates, MdTarget};
 use features::{Feature, ParsedFeature};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -568,7 +567,7 @@ impl Builder {
         on_filter: F,
     ) -> Result<Krates<N, E>, Error>
     where
-        N: From<cargo_metadata::Package>,
+        N: From<crate::Package>,
         E: From<Edge>,
         F: OnFilter,
     {
@@ -600,11 +599,11 @@ impl Builder {
     /// ```
     pub fn build_with_metadata<N, E, F>(
         self,
-        md: cargo_metadata::Metadata,
+        md: crate::Metadata,
         mut on_filter: F,
     ) -> Result<Krates<N, E>, Error>
     where
-        N: From<cargo_metadata::Package>,
+        N: From<crate::Package>,
         E: From<Edge>,
         F: OnFilter,
     {
@@ -689,7 +688,7 @@ impl Builder {
         #[derive(Debug)]
         struct DepKindInfo {
             kind: DepKind,
-            cfg: Option<(String, cargo_platform::Platform)>,
+            cfg: Option<MdTarget>,
         }
 
         #[derive(Debug)]
@@ -756,7 +755,7 @@ impl Builder {
                             .into_iter()
                             .map(|dk| DepKindInfo {
                                 kind: dk.kind.into(),
-                                cfg: dk.target.map(|t| (t.to_string(), t)),
+                                cfg: dk.target.map(MdTarget::from),
                             })
                             .collect();
 
@@ -835,6 +834,7 @@ impl Builder {
             kind: DepKind,
             cfg: Option<String>,
             features: Vec<usize>,
+            dep_index: usize,
         }
 
         #[derive(Debug)]
@@ -1138,6 +1138,7 @@ impl Builder {
                     kind: DepKind,
                     cfg: Option<&'d str>,
                     features: &'d [String],
+                    dep_index: usize,
                     uses_default_features: bool,
                 }
 
@@ -1193,13 +1194,14 @@ impl Builder {
                                 return false;
                             }
 
-                            dk.cfg.as_ref().map(|(_, p)| p) == dep.target.as_ref()
+                            crate::targets_eq(&dk.cfg, &dep.target)
                         }).count() > 1;
 
-                        let dep = krate
+                        let (dep_index, dep) = krate
                             .dependencies
                             .iter()
-                            .find(|dep| {
+                            .enumerate()
+                            .find(|(_, dep)| {
                                 if dk.kind != dep.kind {
                                     return false;
                                 }
@@ -1218,7 +1220,7 @@ impl Builder {
                                     return false;
                                 }
 
-                                if dk.cfg.as_ref().map(|(_, p)| p) != dep.target.as_ref() {
+                                if !crate::targets_eq(&dk.cfg, &dep.target) {
                                     return false;
                                 }
 
@@ -1258,51 +1260,42 @@ impl Builder {
                             return None;
                         }
 
-                        let cfg = if let Some(cfg) = dk.cfg.as_ref().map(|(c, _)| c.as_str()) {
+                        let cfg = if let Some(cfg) = &dk.cfg {
                             if !include_all_targets {
-                                let matched = if cfg.starts_with("cfg(") {
-                                    match cfg_expr::Expression::parse(cfg) {
-                                        Ok(expr) => {
-                                            // We only need to focus on target predicates because they are
-                                            // the only type of predicate allowed by cargo at the moment
+                                let matched = if let Some(expr) = &cfg.cfg {
+                                    // We only need to focus on target predicates because they are
+                                    // the only type of predicate allowed by cargo at the moment
 
-                                            // While it might be nicer to evaluate all the targets for each predicate
-                                            // it would lead to weird situations where an expression could evaluate to true
-                                            // (or false) with a combination of platform, that would otherwise be impossible,
-                                            // eg cfg(all(windows, target_env = "musl")) could evaluate to true
-                                            targets
-                                                .iter()
-                                                .any(|target| expr.eval(|pred| target.eval(pred)))
-                                        }
-                                        Err(_pe) => {
-                                            // TODO: maybe log a warning if we somehow fail to parse the cfg?
-                                            true
-                                        }
-                                    }
+                                    // While it might be nicer to evaluate all the targets for each predicate
+                                    // it would lead to weird situations where an expression could evaluate to true
+                                    // (or false) with a combination of platform, that would otherwise be impossible,
+                                    // eg cfg(all(windows, target_env = "musl")) could evaluate to true
+                                    targets
+                                        .iter()
+                                        .any(|target| expr.eval(|pred| target.eval(pred)))
                                 } else {
                                     // If it's not a cfg expression, it's just a fully specified target triple,
                                     // so we just do a string comparison
-                                    targets.iter().any(|target| target.matches_triple(cfg))
+                                    targets.iter().any(|target| target.matches_triple(&cfg.inner))
                                 };
 
                                 if !matched {
                                     return None;
                                 }
-                            } else if cfg.starts_with("cfg(") {
+                            } else if let Some(expr) = &cfg.cfg {
                                 // This is _basically_ a tortured way to evaluate `cfg(any())`, which is always false but
                                 // is used by eg. serde -> serde_derive. If not filtering targets this would mean that
                                 // serde_derive and all of its dependencies would be pulled into the graph, even if the
                                 // only edge was the cfg(any()).
-                                if let Ok(expr) = cfg_expr::Expression::parse(cfg) {
-                                    // We can't just do an eval and always return true, as that then would cause any
-                                    // not() expressions to evaluate to false
-                                    if expr.predicates().count() == 0 && !expr.eval(|_| true) {
-                                        return None;
-                                    }
+
+                                // We can't just do an eval and always return true, as that then would cause any
+                                // not() expressions to evaluate to false
+                                if expr.predicates().count() == 0 && !expr.eval(|_| true) {
+                                    return None;
                                 }
                             }
 
-                            Some(cfg)
+                            Some(cfg.inner.as_str())
                         } else {
                             None
                         };
@@ -1311,6 +1304,7 @@ impl Builder {
                             kind: dk.kind,
                             cfg,
                             features: &dep.features,
+                            dep_index,
                             // Dependencies will default to saying "uses_default_features" on edges,
                             // even if the crate in question doesn't actually have a "default" feature,
                             // so check that it actually does
@@ -1362,6 +1356,7 @@ impl Builder {
 
                         let edge = DependencyEdge {
                             kind: edge.kind,
+                            dep_index: edge.dep_index,
                             cfg: edge.cfg.map(|s| s.into()),
                             features,
                         };
@@ -1404,10 +1399,13 @@ impl Builder {
                         .collect()
                 };
 
+                let dep_mapping = vec![None; krate.dependencies.len()];
+
                 let krate = crate::Node::Krate {
                     id,
                     krate: N::from(krate),
                     features,
+                    dep_mapping,
                 };
 
                 graph.add_node(krate);
@@ -1537,6 +1535,10 @@ impl Builder {
                                     cfg: edge.cfg.clone(),
                                 },
                             );
+                        }
+
+                        if let crate::Node::Krate { dep_mapping, .. } = &mut graph[srcid] {
+                            dep_mapping[edge.dep_index] = Some(target_krate);
                         }
 
                         if attach_direct_edge {

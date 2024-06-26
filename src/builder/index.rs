@@ -40,10 +40,12 @@ impl CachingIndex {
     }
 }
 
+/// Correct features with index information
+///
 /// Due to <https://github.com/rust-lang/cargo/issues/11319>, we can't actually
 /// trust cargo to give us the correct package metadata, so we instead use the
 /// (presumably) correct data from the the index
-pub(super) fn fix_features(index: &CachingIndex, krate: &mut cargo_metadata::Package) {
+pub(super) fn fix_features(index: &CachingIndex, krate: &mut crate::Package) {
     if krate
         .source
         .as_ref()
@@ -62,10 +64,9 @@ pub(super) fn fix_features(index: &CachingIndex, krate: &mut cargo_metadata::Pac
         }
     }
 
-    // The index entry features might not have the `dep:<crate>`
-    // used with weak features if the crate version was
-    // published with cargo <1.60.0 version, so we need to
-    // manually fix that up since we depend on that format
+    // The index entry features might not have the `dep:<crate>` used with weak
+    // features if the crate version was published with cargo <1.60.0 version,
+    // so we need to manually fix that up since we depend on that format
     let missing_deps: Vec<_> = krate
         .features
         .iter()

@@ -21,19 +21,24 @@ rust-version = "1.65.0"
 default = []
 # Adds support for filtering target specific dependencies
 targets = ["cfg-expr/targets"]
+# Enables interop with cargo_metadata, if not enabled uses types defined within krates
+metadata = ["dep:cargo_metadata", "dep:cargo-platform"]
 
 [dependencies]
+camino = { version = "1.1", features = ["serde1"] }
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = "0.18"
+cargo_metadata = { version = "0.18", default-features = false, optional = true }
 # We need to use a type from this because it use part of the public API of cargo_metadata
 # ...but it's not actually in the public API :p
-cargo-platform = "0.1"
+cargo-platform = { version = "0.1", default-features = false, optional = true }
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.15"
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements
-semver = "1.0"
+semver = { version = "1.0", features = ["serde"] }
+serde = "1.0"
+serde_json = "1.0"
 
 [dev-dependencies]
 # Example CLI
