@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#90](https://github.com/EmbarkStudios/krates/pull/90) added `Krates::resolved_dependency` to get the `Krate` (if any) that was resolved for a `Package`'s `Dependency`.
+
+### Fixed
+- [PR#86](https://github.com/EmbarkStudios/krates/pull/86) and [PR#87](https://github.com/EmbarkStudios/krates/pull/87) resolved [#85](https://github.com/EmbarkStudios/krates/issues/85) caused by the stable package format URL-encoding query parameters, unlike the old opaque format, causing `krates` to be unable to resolve dependencies to the appropriate crate node.
+
+### Changed
+- [PR#90](https://github.com/EmbarkStudios/krates/pull/90) made `cargo_metadata` optional, if not selected types internal to this crate are used (and exported) instead. The types are currently mostly the same, but this might change in the future.
+
 ## [0.16.10] - 2024-04-12
 ### Fixed
 - [PR#83](https://github.com/EmbarkStudios/krates/pull/83) resolved [#82](https://github.com/EmbarkStudios/krates/issues/82) by properly handling `cfg()` specific dependencies for the same crate with different features enabled.
