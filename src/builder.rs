@@ -1287,7 +1287,7 @@ impl Builder {
                                 // is used by eg. serde -> serde_derive. If not filtering targets this would mean that
                                 // serde_derive and all of its dependencies would be pulled into the graph, even if the
                                 // only edge was the cfg(any()).
-                                
+
                                 // We can't just do an eval and always return true, as that then would cause any
                                 // not() expressions to evaluate to false
                                 if expr.predicates().count() == 0 && !expr.eval(|_| true) {
