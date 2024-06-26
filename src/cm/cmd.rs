@@ -71,43 +71,6 @@ impl MetadataCommand {
         self
     }
     /// Which features to include.
-    ///
-    /// Call this multiple times to specify advanced feature configurations:
-    ///
-    /// ```no_run
-    /// # use cargo_metadata::{CargoOpt, MetadataCommand};
-    /// MetadataCommand::new()
-    ///     .features(CargoOpt::NoDefaultFeatures)
-    ///     .features(CargoOpt::SomeFeatures(vec!["feat1".into(), "feat2".into()]))
-    ///     .features(CargoOpt::SomeFeatures(vec!["feat3".into()]))
-    ///     // ...
-    ///     # ;
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// `cargo metadata` rejects multiple `--no-default-features` flags. Similarly, the `features()`
-    /// method panics when specifying multiple `CargoOpt::NoDefaultFeatures`:
-    ///
-    /// ```should_panic
-    /// # use cargo_metadata::{CargoOpt, MetadataCommand};
-    /// MetadataCommand::new()
-    ///     .features(CargoOpt::NoDefaultFeatures)
-    ///     .features(CargoOpt::NoDefaultFeatures) // <-- panic!
-    ///     // ...
-    ///     # ;
-    /// ```
-    ///
-    /// The method also panics for multiple `CargoOpt::AllFeatures` arguments:
-    ///
-    /// ```should_panic
-    /// # use cargo_metadata::{CargoOpt, MetadataCommand};
-    /// MetadataCommand::new()
-    ///     .features(CargoOpt::AllFeatures)
-    ///     .features(CargoOpt::AllFeatures) // <-- panic!
-    ///     // ...
-    ///     # ;
-    /// ```
     pub fn features(&mut self, features: CargoOpt) -> &mut Self {
         match features {
             CargoOpt::SomeFeatures(features) => self.features.extend(features),
@@ -137,21 +100,6 @@ impl MetadataCommand {
 
     /// Arbitrary environment variables to set when running `cargo`.  These will be merged into
     /// the calling environment, overriding any which clash.
-    ///
-    /// Some examples of when you may want to use this:
-    /// 1. Setting cargo config values without needing a .cargo/config.toml file, e.g. to set
-    ///    `CARGO_NET_GIT_FETCH_WITH_CLI=true`
-    /// 2. To specify a custom path to RUSTC if your rust toolchain components aren't laid out in
-    ///    the way cargo expects by default.
-    ///
-    /// ```no_run
-    /// # use cargo_metadata::{CargoOpt, MetadataCommand};
-    /// MetadataCommand::new()
-    ///     .env("CARGO_NET_GIT_FETCH_WITH_CLI", "true")
-    ///     .env("RUSTC", "/path/to/rustc")
-    ///     // ...
-    ///     # ;
-    /// ```
     pub fn env<K: Into<OsString>, V: Into<OsString>>(
         &mut self,
         key: K,
