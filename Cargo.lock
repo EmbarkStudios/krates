@@ -567,6 +567,7 @@ dependencies = [
 name = "krates"
 version = "0.16.10"
 dependencies = [
+ "camino",
  "cargo-platform",
  "cargo_metadata",
  "cfg-expr",
@@ -574,6 +575,7 @@ dependencies = [
  "insta",
  "petgraph",
  "semver",
+ "serde",
  "serde_json",
  "similar-asserts",
  "tame-index",

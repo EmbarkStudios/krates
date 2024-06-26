@@ -25,17 +25,23 @@
 //! }
 //! ```
 
+#[cfg(feature = "metadata")]
 pub use cargo_metadata as cm;
+#[cfg(not(feature = "metadata"))]
+pub mod cm;
+
 pub use cfg_expr;
 
 #[cfg(feature = "targets")]
 pub use cfg_expr::target_lexicon;
 
 use cm::DependencyKind as DK;
+pub use cm::{Metadata, Package, PackageId};
+
 pub use petgraph;
 pub use semver;
 
-pub use cm::camino::{self, Utf8Path, Utf8PathBuf};
+pub use camino::{self, Utf8Path, Utf8PathBuf};
 use petgraph::{graph::EdgeIndex, graph::NodeIndex, visit::EdgeRef, Direction};
 
 mod builder;
@@ -83,8 +89,8 @@ impl Kid {
 }
 
 #[allow(clippy::fallible_impl_from)]
-impl From<cargo_metadata::PackageId> for Kid {
-    fn from(pid: cargo_metadata::PackageId) -> Self {
+impl From<PackageId> for Kid {
+    fn from(pid: PackageId) -> Self {
         let mut repr = pid.repr;
 
         let mut gen = || {
@@ -296,6 +302,7 @@ impl From<DK> for DepKind {
             DK::Normal => Self::Normal,
             DK::Build => Self::Build,
             DK::Development => Self::Dev,
+            #[cfg(feature = "metadata")]
             DK::Unknown => unreachable!(),
         }
     }
@@ -570,7 +577,7 @@ impl<N, E> Krates<N, E> {
     /// Note that `dep_index` is the index of [`cargo_metadata::Package::dependencies`]
     #[inline]
     pub fn resolved_dependency(&self, nid: NodeId, dep_index: usize) -> Option<&N> {
-        if nid.index() < self.krates_end {
+        if nid.index() >= self.krates_end {
             return None;
         }
 
@@ -866,6 +873,59 @@ impl<N, E> std::ops::Index<usize> for Krates<N, E> {
     }
 }
 
+#[derive(Debug)]
+struct MdTarget {
+    inner: String,
+    cfg: Option<cfg_expr::Expression>,
+    #[cfg(feature = "metadata")]
+    platform: cargo_platform::Platform,
+}
+
+#[cfg(feature = "metadata")]
+impl From<cargo_platform::Platform> for MdTarget {
+    fn from(platform: cargo_platform::Platform) -> Self {
+        let inner = platform.to_string();
+        let cfg = inner
+            .starts_with("cfg(")
+            .then(|| cfg_expr::Expression::parse(&inner).ok())
+            .flatten();
+        Self {
+            inner,
+            cfg,
+            platform,
+        }
+    }
+}
+
+#[cfg(not(feature = "metadata"))]
+impl From<String> for MdTarget {
+    fn from(inner: String) -> Self {
+        let cfg = inner
+            .starts_with("cfg(")
+            .then(|| cfg_expr::Expression::parse(&inner).ok())
+            .flatten();
+        Self { inner, cfg }
+    }
+}
+
+#[cfg(feature = "metadata")]
+fn targets_eq(target: &Option<MdTarget>, other: &Option<cargo_platform::Platform>) -> bool {
+    match (target, other) {
+        (None, None) => true,
+        (Some(a), Some(b)) => a.platform.eq(b),
+        _ => false,
+    }
+}
+
+#[cfg(not(feature = "metadata"))]
+fn targets_eq(target: &Option<MdTarget>, other: &Option<String>) -> bool {
+    match (target, other) {
+        (None, None) => true,
+        (Some(a), Some(b)) => a.inner.eq(b),
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -894,7 +954,7 @@ mod tests {
         ];
 
         for (repr, name, version, source) in ids {
-            let kid = super::Kid::from(cargo_metadata::PackageId {
+            let kid = super::Kid::from(super::PackageId {
                 repr: repr.to_owned(),
             });
 

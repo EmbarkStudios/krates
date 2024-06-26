@@ -1,3 +1,6 @@
+#[cfg(not(feature = "metadata"))]
+use crate::cm::Error as CMErr;
+#[cfg(feature = "metadata")]
 use cargo_metadata::Error as CMErr;
 use std::fmt;
 
