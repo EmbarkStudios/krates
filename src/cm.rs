@@ -384,11 +384,9 @@ pub struct Target {
     ///
     /// Other possible values may be added in the future.
     #[serde(default)]
-    #[cfg_attr(feature = "builder", builder(default))]
     pub crate_types: Vec<CrateType>,
 
     #[serde(default)]
-    #[cfg_attr(feature = "builder", builder(default))]
     #[serde(rename = "required-features")]
     /// This target is built only if these features are enabled.
     /// It doesn't apply to `lib` targets.
@@ -397,26 +395,22 @@ pub struct Target {
     pub src_path: PathBuf,
     /// Rust edition for this target
     #[serde(default)]
-    #[cfg_attr(feature = "builder", builder(default))]
     pub edition: Edition,
     /// Whether or not this target has doc tests enabled, and the target is
     /// compatible with doc testing.
     ///
     /// This is always `true` if running with a version of Cargo older than 1.37.
     #[serde(default = "default_true")]
-    #[cfg_attr(feature = "builder", builder(default = "true"))]
     pub doctest: bool,
     /// Whether or not this target is tested by default by `cargo test`.
     ///
     /// This is always `true` if running with a version of Cargo older than 1.47.
     #[serde(default = "default_true")]
-    #[cfg_attr(feature = "builder", builder(default = "true"))]
     pub test: bool,
     /// Whether or not this target is documented by `cargo doc`.
     ///
     /// This is always `true` if running with a version of Cargo older than 1.50.
     #[serde(default = "default_true")]
-    #[cfg_attr(feature = "builder", builder(default = "true"))]
     pub doc: bool,
 }
 
