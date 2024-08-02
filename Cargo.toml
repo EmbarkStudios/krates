@@ -32,7 +32,7 @@ cargo_metadata = { version = "0.18", default-features = false, optional = true }
 # ...but it's not actually in the public API :p
 cargo-platform = { version = "0.1", default-features = false, optional = true }
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.15"
+cfg-expr = "0.16"
 # Used to create and traverse graph structures
 petgraph = "0.6"
 # Used for checking version requirements
@@ -49,7 +49,7 @@ similar-asserts = "1.1"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 # index metadata retrieval
-tame-index = "0.12"
+tame-index = "0.13"
 
 [profile.dev.package.insta]
 opt-level = 3
