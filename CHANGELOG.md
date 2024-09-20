@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#93](https://github.com/EmbarkStudios/krates/pull/93) updated crates.
+
 ## [0.17.1] - 2024-08-02
 ### Changed
 - [PR#92](https://github.com/EmbarkStudios/krates/pull/92) updated crates.
