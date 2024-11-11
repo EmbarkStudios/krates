@@ -577,6 +577,9 @@ pub enum Edition {
     /// Edition 2021
     #[serde(rename = "2021")]
     E2021,
+    /// Edition 2024
+    #[serde(rename = "2024")]
+    E2024,
 }
 
 impl Edition {
@@ -586,6 +589,7 @@ impl Edition {
             Self::E2015 => "2015",
             Self::E2018 => "2018",
             Self::E2021 => "2021",
+            Self::E2024 => "2024",
         }
     }
 }
