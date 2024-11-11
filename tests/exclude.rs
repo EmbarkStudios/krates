@@ -14,6 +14,16 @@ fn excludes_workspace_member() {
 }
 
 #[test]
+fn includes_by_path() {
+    let mut kb = krates::Builder::new();
+    kb.include_workspace_crates(["/home/jake/code/krates/tests/ws/c"]);
+
+    let grafs = build("all-features.json", kb).unwrap();
+
+    insta::assert_snapshot!(grafs.dotgraph());
+}
+
+#[test]
 fn excludes_dependencies() {
     let mut kb = krates::Builder::new();
 
