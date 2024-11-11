@@ -16,10 +16,7 @@ fn excludes_workspace_member() {
 #[test]
 fn includes_by_path() {
     let mut kb = krates::Builder::new();
-    kb.include_workspace_crates(&[
-        //"/home/jake/code/krates/tests/ws/b",
-        "/home/jake/code/krates/tests/ws/c",
-    ]);
+    kb.include_workspace_crates(["/home/jake/code/krates/tests/ws/c"]);
 
     let grafs = build("all-features.json", kb).unwrap();
 
