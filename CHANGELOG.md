@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.17.3] - 2024-11-11
 ### Fixed
 - [PR#94](https://github.com/EmbarkStudios/krates/pull/94) fixed an issue with canonical path mismatches (I presume on Windows). Thanks [@Tastaturtaste](http://github.com/Tastaturtaste)!
 
@@ -229,7 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.2...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.3...HEAD
+[0.17.3]: https://github.com/EmbarkStudios/krates/compare/0.17.2...0.17.3
 [0.17.2]: https://github.com/EmbarkStudios/krates/compare/0.17.1...0.17.2
 [0.17.1]: https://github.com/EmbarkStudios/krates/compare/0.17.0...0.17.1
 [0.17.0]: https://github.com/EmbarkStudios/krates/compare/0.16.10...0.17.0
