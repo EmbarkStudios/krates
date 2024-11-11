@@ -662,11 +662,11 @@ impl Builder {
                 } else {
                     for wm in &workspace_members {
                         if let Ok(i) = packages.binary_search_by(|(id, _pkg)| id.cmp(wm)) {
-                            let manifest_path =
-                                packages[i].1.manifest_path.clone().into_std_path_buf();
-                            let manifest_path =
-                                manifest_path.canonicalize().unwrap_or(manifest_path);
-                            if self.workspace_filters.iter().any(|wf| wf == &manifest_path) {
+                            let mp = packages[i].1.manifest_path.as_std_path();
+                            let manifest_path = mp.canonicalize();
+
+                            let mp = manifest_path.as_deref().unwrap_or(mp);
+                            if self.workspace_filters.iter().any(|wf| wf == mp) {
                                 roots.insert(wm);
                             }
                         }
