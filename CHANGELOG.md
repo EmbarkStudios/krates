@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#94](https://github.com/EmbarkStudios/krates/pull/94) fixed an issue with canonical path mismatches (I presume on Windows). Thanks [@Tastaturtaste](http://github.com/Tastaturtaste)!
+
+### Added
+- [PR#95](https://github.com/EmbarkStudios/krates/pull/95) added the 2024 variant so that edition 2024 (unstable) crates don't fail to be parsed from cargo-metadata. Thanks [@kpcyrd](http://github.com/kpcyrd)!
+
 ## [0.17.2] - 2024-09-20
 ### Changed
 - [PR#93](https://github.com/EmbarkStudios/krates/pull/93) updated crates.
