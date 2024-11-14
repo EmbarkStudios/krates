@@ -1054,10 +1054,10 @@ impl Builder {
                     visit_stack.push((pid, None));
                 }
 
-                // This _should_ never fail in normal cases, however if the
-                // an index implementation is not provided, it's possible for
-                // the resolved features to mention features that aren't in
-                // the actual crate manifest
+                // This _should_ never fail in normal cases, however if an
+                // index implementation is not provided, it's possible for the
+                // resolved features to mention features that aren't in the
+                // actual crate manifest
                 let fs = if let Some(fs) = krate.features.get(rnode.feature(feature)) {
                     fs
                 } else {
@@ -1079,9 +1079,15 @@ impl Builder {
                         }
                     };
 
-                    let Some(ndep) = rnode.deps.iter().find(|rdep| {
-                        dep_names_match(krate_name, &rdep.name) || krate_name == rdep.pkg.name()
-                    }) else {
+                    // Note that we don't care about the package name here, as cargo
+                    // resolves feature by the manifest name for the package only, since
+                    // it's possible to have multiple versions of the same crate that
+                    // each need a unique name
+                    let Some(ndep) = rnode
+                        .deps
+                        .iter()
+                        .find(|rdep| dep_names_match(krate_name, &rdep.name))
+                    else {
                         // We can have a feature that points to a crate that isn't resolved by cargo due to it being
                         // a dev-only dependency
                         continue;

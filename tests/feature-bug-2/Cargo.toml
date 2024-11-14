@@ -1,0 +1,16 @@
+[package]
+name = "feature-bug-2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+defmt = { version = "0.3.8", optional = true }
+embedded-hal-02 = { version = "0.2.7", features = ["unproven"], package = "embedded-hal" }
+embedded-hal = "1.0.0"
+
+[features]
+default = []
+defmt = [
+    "dep:defmt",
+    "embedded-hal/defmt-03",
+]

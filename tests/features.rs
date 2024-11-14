@@ -347,3 +347,19 @@ fn includes_target_specific_feature_dependencies() {
     let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
     insta::assert_snapshot!(dotgraph);
 }
+
+/// Ensures that dependencies on the same crate but on different version with
+/// different features, correctly resolves them when doing feature resolution
+/// See <https://github.com/EmbarkStudios/krates/issues/97>
+#[test]
+fn duplicate_versions() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/feature-bug-2/Cargo.toml")
+        .all_features();
+
+    let builder = krates::Builder::new();
+    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
+
+    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
+    insta::assert_snapshot!(dotgraph);
+}
