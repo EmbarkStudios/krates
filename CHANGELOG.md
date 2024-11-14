@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.17.4] - 2024-11-14
 ### Fixed
 - [PR#96](https://github.com/EmbarkStudios/krates/pull/96) fixed an issue where package specs didn't allow the `@` separator, resolving [cargo-deny#717](https://github.com/EmbarkStudios/cargo-deny/issues/717).
 
@@ -233,7 +234,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.4...HEAD
+[0.17.4]: https://github.com/EmbarkStudios/krates/compare/0.17.3...0.17.4
 [0.17.3]: https://github.com/EmbarkStudios/krates/compare/0.17.2...0.17.3
 [0.17.2]: https://github.com/EmbarkStudios/krates/compare/0.17.1...0.17.2
 [0.17.1]: https://github.com/EmbarkStudios/krates/compare/0.17.0...0.17.1
