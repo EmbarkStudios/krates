@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#98](https://github.com/EmbarkStudios/krates/pull/98) resolved [#84](https://github.com/EmbarkStudios/krates/issues/84) and [#97](https://github.com/EmbarkStudios/krates/issues/97) by resolving `<crate>/<feature>` references to the correct crate in all cases, as it could have resolved to a crate with the same name but different version/feature set previously.
+
 ## [0.17.4] - 2024-11-14
 ### Fixed
 - [PR#96](https://github.com/EmbarkStudios/krates/pull/96) fixed an issue where package specs didn't allow the `@` separator, resolving [cargo-deny#717](https://github.com/EmbarkStudios/cargo-deny/issues/717).
