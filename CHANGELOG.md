@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.17.5] - 2024-11-14
 ### Fixed
 - [PR#98](https://github.com/EmbarkStudios/krates/pull/98) resolved [#84](https://github.com/EmbarkStudios/krates/issues/84) and [#97](https://github.com/EmbarkStudios/krates/issues/97) by resolving `<crate>/<feature>` references to the correct crate in all cases, as it could have resolved to a crate with the same name but different version/feature set previously.
 
@@ -237,7 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.4...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.5...HEAD
+[0.17.5]: https://github.com/EmbarkStudios/krates/compare/0.17.4...0.17.5
 [0.17.4]: https://github.com/EmbarkStudios/krates/compare/0.17.3...0.17.4
 [0.17.3]: https://github.com/EmbarkStudios/krates/compare/0.17.2...0.17.3
 [0.17.2]: https://github.com/EmbarkStudios/krates/compare/0.17.1...0.17.2
