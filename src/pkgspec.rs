@@ -17,7 +17,7 @@ impl PkgSpec {
             return false;
         }
 
-        if let Some(ref vers) = self.version {
+        if let Some(vers) = &self.version {
             if vers != &krate.version {
                 return false;
             }
@@ -87,7 +87,7 @@ impl std::str::FromStr for PkgSpec {
 
             match nv {
                 Some(nv) => {
-                    match nv.find(':') {
+                    match nv.find([':', '@']) {
                         Some(ind) => {
                             if ind == nv.len() - 1 {
                                 return Err(Error::InvalidPkgSpec(
@@ -184,11 +184,13 @@ mod test {
 
     #[test]
     fn name_and_version() {
-        let spec: PkgSpec = "bitflags:1.0.4".parse().unwrap();
+        for spec in ["bitflags:1.0.4", "bitflags@1.0.4"] {
+            let spec: PkgSpec = spec.parse().unwrap();
 
-        assert_eq!("bitflags", spec.name);
-        assert_eq!(Version::parse("1.0.4").unwrap(), spec.version.unwrap());
-        assert!(spec.url.is_none());
+            assert_eq!("bitflags", spec.name);
+            assert_eq!(Version::parse("1.0.4").unwrap(), spec.version.unwrap());
+            assert!(spec.url.is_none());
+        }
     }
 
     #[test]
@@ -225,13 +227,16 @@ mod test {
 
     #[test]
     fn url_and_name_and_version() {
-        let spec: PkgSpec = "https://github.com/rust-lang/cargo#crates-io:0.21.0"
-            .parse()
-            .unwrap();
+        for spec in [
+            "https://github.com/rust-lang/cargo#crates-io:0.21.0",
+            "https://github.com/rust-lang/cargo#crates-io@0.21.0",
+        ] {
+            let spec: PkgSpec = spec.parse().unwrap();
 
-        assert_eq!("crates-io", spec.name);
-        assert_eq!(Version::parse("0.21.0").unwrap(), spec.version.unwrap());
-        assert_eq!("https://github.com/rust-lang/cargo", spec.url.unwrap());
+            assert_eq!("crates-io", spec.name);
+            assert_eq!(Version::parse("0.21.0").unwrap(), spec.version.unwrap());
+            assert_eq!("https://github.com/rust-lang/cargo", spec.url.unwrap());
+        }
     }
 
     #[test]

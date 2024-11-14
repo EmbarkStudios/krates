@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#96](https://github.com/EmbarkStudios/krates/pull/96) fixed an issue where package specs didn't allow the `@` separator, resolving [cargo-deny#717](https://github.com/EmbarkStudios/cargo-deny/issues/717).
+
 ## [0.17.3] - 2024-11-11
 ### Fixed
 - [PR#94](https://github.com/EmbarkStudios/krates/pull/94) fixed an issue with canonical path mismatches (I presume on Windows). Thanks [@Tastaturtaste](http://github.com/Tastaturtaste)!
