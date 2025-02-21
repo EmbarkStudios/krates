@@ -6,7 +6,7 @@ authors = [
     "Embark <opensource@embark-studios.com>",
     "Jake Shadle <jake.shadle@embark-studios.com>",
 ]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/EmbarkStudios/krates"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -15,7 +15,7 @@ homepage = "https://github.com/EmbarkStudios/krates"
 keywords = ["cargo", "metadata", "graph"]
 categories = ["visualization"]
 exclude = [".github", "tests"]
-rust-version = "1.65.0"
+rust-version = "1.85.0"
 
 [features]
 default = []
@@ -23,33 +23,35 @@ default = []
 targets = ["cfg-expr/targets"]
 # Enables interop with cargo_metadata, if not enabled uses types defined within krates
 metadata = ["dep:cargo_metadata", "dep:cargo-platform"]
+# Enables serialization of the metadata types within krates
+serialize = []
 
 [dependencies]
 camino = { version = "1.1", features = ["serde1"] }
 # Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = { version = "0.18", default-features = false, optional = true }
+cargo_metadata = { version = "0.19", default-features = false, optional = true }
 # We need to use a type from this because it use part of the public API of cargo_metadata
 # ...but it's not actually in the public API :p
 cargo-platform = { version = "0.1", default-features = false, optional = true }
 # Used to parse and evaluate cfg() expressions for dependencies
-cfg-expr = "0.17"
+cfg-expr = "0.18"
 # Used to create and traverse graph structures
-petgraph = "0.6"
+petgraph = "0.7"
 # Used for checking version requirements
-semver = { version = "1.0", features = ["serde"] }
+semver = "1.0"
 serde = "1.0"
 serde_json = "1.0"
 
 [dev-dependencies]
 # Example CLI
 clap = { version = "4.5", features = ["derive"] }
-insta = "1.40"
+insta = { version = "1.40", features = ["json"] }
 # Used to print colored diffs in case of test failures
 similar-asserts = "1.6"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 # index metadata retrieval
-tame-index = "0.14"
+tame-index = "0.18"
 
 [profile.dev.package.insta]
 opt-level = 3

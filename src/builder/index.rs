@@ -46,11 +46,7 @@ impl CachingIndex {
 /// trust cargo to give us the correct package metadata, so we instead use the
 /// (presumably) correct data from the the index
 pub(super) fn fix_features(index: &CachingIndex, krate: &mut crate::Package) {
-    if krate
-        .source
-        .as_ref()
-        .map_or(true, |src| !src.is_crates_io())
-    {
+    if krate.source.as_ref().is_none_or(|src| !src.is_crates_io()) {
         return;
     }
 
