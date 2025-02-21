@@ -129,60 +129,9 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
     })
 }
 
-// #[macro_export]
-// macro_rules! graph {
-//     { $($id:expr => [$($did:expr; $kind:ident $(@ $cfg:expr)?),* $(,)?]),+ $(,)? } => {{
-//         let mut _sg = $crate::util::SimpleGraph {
-//             nodes: Vec::new(),
-//         };
-
-//         $(
-//             let mut _deps = Vec::new();
-
-//             $(
-//                 let mut _cfg = None;
-
-//                 $(
-//                     _cfg = Some($cfg.to_owned());
-//                 )?
-
-//                 _deps.push(($crate::util::make_kid($did), krates::Edge {
-//                     kind: krates::DepKind::$kind,
-//                     cfg: _cfg,
-//                 }));
-//             )*
-
-//             _sg.nodes.push(($crate::util::make_kid($id), _deps));
-//         )+
-
-//         _sg
-//     }};
-// }
-
 pub fn is_workspace(kid: &krates::Kid) -> bool {
     kid.repr.starts_with("a ") || kid.repr.starts_with("b ") | kid.repr.starts_with("c ")
 }
-
-// pub fn make_kid(s: &str) -> krates::Kid {
-//     let mut i = s.splitn(3, ' ');
-
-//     let name = i.next().unwrap();
-//     let version = i.next().unwrap();
-//     let source = i.next();
-
-//     let source = match name {
-//         which @ ("a" | "b" | "c") => {
-//             format!("(path+file:///home/jake/code/krates/tests/ws/{which})")
-//         }
-//         _ => source
-//             .unwrap_or("(registry+https://github.com/rust-lang/crates.io-index)")
-//             .to_owned(),
-//     };
-
-//     krates::Kid {
-//         repr: format!("{name} {version} {source}"),
-//     }
-// }
 
 pub struct SimpleGraph {
     pub nodes: Vec<(krates::Kid, Vec<(krates::Kid, krates::Edge)>)>,
@@ -265,7 +214,7 @@ impl SimpleGraph {
                     graph.add_edge(*source, *target, edge.1.clone());
                 }
             } else {
-                println!("filtered {}", kid);
+                println!("filtered {kid}");
             }
         }
 
