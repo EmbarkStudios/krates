@@ -215,3 +215,11 @@ fn finds_duplicates() {
 
     insta::assert_snapshot!(opaque);
 }
+
+#[test]
+#[cfg(all(feature = "serialize", not(feature = "metadata")))]
+fn roundtrip() {
+    let contents = std::fs::read_to_string("tests/all-features.json").unwrap();
+    let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();
+    insta::assert_json_snapshot!(md);
+}

@@ -42,15 +42,16 @@ pub use petgraph;
 pub use semver;
 
 pub use camino::{self, Utf8Path, Utf8PathBuf};
-use petgraph::{graph::EdgeIndex, graph::NodeIndex, visit::EdgeRef, Direction};
+use petgraph::{Direction, graph::EdgeIndex, graph::NodeIndex, visit::EdgeRef};
 
 mod builder;
 mod errors;
 mod pkgspec;
 
 pub use builder::{
+    Builder, Cmd, LockOptions, NoneFilter, OnFilter, Scope, Target,
     features::{Feature, ParsedFeature},
-    index, Builder, Cmd, LockOptions, NoneFilter, OnFilter, Scope, Target,
+    index,
 };
 pub use errors::Error;
 pub use pkgspec::PkgSpec;
@@ -93,7 +94,7 @@ impl From<PackageId> for Kid {
     fn from(pid: PackageId) -> Self {
         let mut repr = pid.repr;
 
-        let mut gen = || {
+        let mut parse = || {
             let components = if repr.contains(' ') {
                 let name = (0, repr.find(' ')?);
                 let version = (name.1 + 1, repr[name.1 + 1..].find(' ')? + name.1 + 1);
@@ -133,7 +134,11 @@ impl From<PackageId> for Kid {
 
                                 let Some(encoding) = encoded.get(pi + 1..pi + 3) else {
                                     // This _should_ never happen, but just in case
-                                    panic!("invalid percent encoding in '{}', '{}' should be exactly 3 digits long", &repr[end..], &encoded[pi..]);
+                                    panic!(
+                                        "invalid percent encoding in '{}', '{}' should be exactly 3 digits long",
+                                        &repr[end..],
+                                        &encoded[pi..]
+                                    );
                                 };
 
                                 // https://en.wikipedia.org/wiki/Percent-encoding
@@ -218,7 +223,7 @@ impl From<PackageId> for Kid {
             Some(components)
         };
 
-        if let Some(components) = gen() {
+        if let Some(components) = parse() {
             Self { repr, components }
         } else {
             panic!("unable to parse package id '{repr}'");
@@ -933,24 +938,79 @@ mod tests {
         let ids = [
             // STABLE
             // A typical registry url, source, name, and version are always distinct
-            ("registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22", "ab_glyph", "0.2.22", "registry+https://github.com/rust-lang/crates.io-index"),
+            (
+                "registry+https://github.com/rust-lang/crates.io-index#ab_glyph@0.2.22",
+                "ab_glyph",
+                "0.2.22",
+                "registry+https://github.com/rust-lang/crates.io-index",
+            ),
             // A git url, with a `rev` specifier. For git urls, if the name of the package is the same as the last path component of the source, the name is not repeated after the #, only the version
-            ("git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0", "egui-stylist", "0.2.0", "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832"),
+            (
+                "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832#0.2.0",
+                "egui-stylist",
+                "0.2.0",
+                "git+https://github.com/EmbarkStudios/egui-stylist?rev=3900e8aedc5801e42c1bb747cfd025615bf3b832",
+            ),
             // The same as with git urls, the name is only after the # if it is different from the last path component
-            ("path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0", "ark-allocator", "0.1.0", "path+file:///home/jake/code/ark/components/allocator"),
+            (
+                "path+file:///home/jake/code/ark/components/allocator#ark-allocator@0.1.0",
+                "ark-allocator",
+                "0.1.0",
+                "path+file:///home/jake/code/ark/components/allocator",
+            ),
             // A git url with a `branch` specifier
-            ("git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269", "ash", "0.38.0+1.3.269", "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2"),
+            (
+                "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2#0.38.0+1.3.269",
+                "ash",
+                "0.38.0+1.3.269",
+                "git+https://github.com/EmbarkStudios/ash?branch=nv-low-latency2",
+            ),
             // A git url with a `branch` specifier and a different name from the repo
-            ("git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7", "fsr", "0.1.7", "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2"),
+            (
+                "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2#fsr@0.1.7",
+                "fsr",
+                "0.1.7",
+                "git+https://github.com/EmbarkStudios/fsr-rs?branch=nv-low-latency2",
+            ),
             // A git url that doesn't specify a branch, tag, or revision, defaulting to HEAD
-            ("git+https://github.com/ComunidadAylas/glsl-lang#0.5.2", "glsl-lang", "0.5.2", "git+https://github.com/ComunidadAylas/glsl-lang"),
+            (
+                "git+https://github.com/ComunidadAylas/glsl-lang#0.5.2",
+                "glsl-lang",
+                "0.5.2",
+                "git+https://github.com/ComunidadAylas/glsl-lang",
+            ),
             // A git url that uses a `tag` specifier
-            ("git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2#0.5.2", "glsl-lang", "0.5.2", "git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2"),
+            (
+                "git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2#0.5.2",
+                "glsl-lang",
+                "0.5.2",
+                "git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2",
+            ),
             // OPAQUE
-            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?branch=master"),
-            ("fuser 0.4.1 (git+https://github.com/cberner/fuser?rev=b2e7622#b2e7622942e52a28ffa85cdaf48e28e982bb6923)", "fuser", "0.4.1", "git+https://github.com/cberner/fuser?rev=b2e7622"),
-            ("a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)", "a", "0.1.0", "path+file:///home/jake/code/krates/tests/ws/a"),
-            ("bindgen 0.59.2 (registry+https://github.com/rust-lang/crates.io-index)", "bindgen", "0.59.2", "registry+https://github.com/rust-lang/crates.io-index"),
+            (
+                "fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)",
+                "fuser",
+                "0.4.1",
+                "git+https://github.com/cberner/fuser?branch=master",
+            ),
+            (
+                "fuser 0.4.1 (git+https://github.com/cberner/fuser?rev=b2e7622#b2e7622942e52a28ffa85cdaf48e28e982bb6923)",
+                "fuser",
+                "0.4.1",
+                "git+https://github.com/cberner/fuser?rev=b2e7622",
+            ),
+            (
+                "a 0.1.0 (path+file:///home/jake/code/krates/tests/ws/a)",
+                "a",
+                "0.1.0",
+                "path+file:///home/jake/code/krates/tests/ws/a",
+            ),
+            (
+                "bindgen 0.59.2 (registry+https://github.com/rust-lang/crates.io-index)",
+                "bindgen",
+                "0.59.2",
+                "registry+https://github.com/rust-lang/crates.io-index",
+            ),
         ];
 
         for (repr, name, version, source) in ids {

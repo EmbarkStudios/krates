@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#99](https://github.com/EmbarkStudios/krates/pull/99) updated to edition 2024.
+- [PR#99](https://github.com/EmbarkStudios/krates/pull/99) changed from using `serde_derive` to manual deserialization.
+
+### Added
+- [PR#99](https://github.com/EmbarkStudios/krates/pull/99) added support for serialization of metadata gated behind the `serialize` feature.
+
 ## [0.17.5] - 2024-11-14
 ### Fixed
 - [PR#98](https://github.com/EmbarkStudios/krates/pull/98) resolved [#84](https://github.com/EmbarkStudios/krates/issues/84) and [#97](https://github.com/EmbarkStudios/krates/issues/97) by resolving `<crate>/<feature>` references to the correct crate in all cases, as it could have resolved to a crate with the same name but different version/feature set previously.

@@ -2,7 +2,7 @@ pub(crate) mod features;
 
 pub mod index;
 
-use crate::{cm, DepKind, Edge, Error, Kid, Krates, MdTarget};
+use crate::{DepKind, Edge, Error, Kid, Krates, MdTarget, cm};
 use features::{Feature, ParsedFeature};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -351,7 +351,7 @@ impl Builder {
         self.ignore_kinds |= match scope {
             Scope::Workspace => kind_flag << 1,
             Scope::NonWorkspace => kind_flag << 2,
-            Scope::All => kind_flag << 1 | kind_flag << 2,
+            Scope::All => (kind_flag << 1) | (kind_flag << 2),
         };
 
         self
@@ -876,7 +876,7 @@ impl Builder {
         }
 
         let check = |map: &BTreeMap<&Kid, KrateFeatures<'_>>, pid: &Kid, feature: Option<usize>| {
-            map.get(pid).map_or(false, |pn| {
+            map.get(pid).is_some_and(|pn| {
                 if let Some(feat) = feature {
                     pn.actual.contains(&feat)
                 } else {
@@ -1176,7 +1176,7 @@ impl Builder {
                             DepKind::Build => 0x40,
                         };
 
-                        let mask = mask | mask << if is_in_workspace { 1 } else { 2 };
+                        let mask = mask | (mask << if is_in_workspace { 1 } else { 2 });
                         if mask & ignore_kinds == mask {
                             return None;
                         }
@@ -1241,7 +1241,7 @@ impl Builder {
                                 // encountered it in testing (eg. the `md-5` crate names its lib target `md5`, and you
                                 // can have a dependency on the `md5` crate, they both get resolved to the same name, but
                                 // then rustc can't compile `md5::compute` because there are two libs that satisfy that name)
-                                let source_matches = dep.source.as_deref().map_or(true, |dsrc| {
+                                let source_matches = dep.source.as_deref().is_none_or(|dsrc| {
                                     let psrc = rdep.pkg.source();
                                     if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
                                         // The opaque git sources can have the full revision spec at the end, which is not part of
