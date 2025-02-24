@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.18.0] - 2025-02-24
 ### Changed
 - [PR#99](https://github.com/EmbarkStudios/krates/pull/99) updated to edition 2024.
 - [PR#99](https://github.com/EmbarkStudios/krates/pull/99) changed from using `serde_derive` to manual deserialization.
@@ -245,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.17.5...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.18.0...HEAD
+[0.18.0]: https://github.com/EmbarkStudios/krates/compare/0.17.5...0.18.0
 [0.17.5]: https://github.com/EmbarkStudios/krates/compare/0.17.4...0.17.5
 [0.17.4]: https://github.com/EmbarkStudios/krates/compare/0.17.3...0.17.4
 [0.17.3]: https://github.com/EmbarkStudios/krates/compare/0.17.2...0.17.3
