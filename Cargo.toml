@@ -38,7 +38,7 @@ cfg-expr = "0.18"
 # Used to create and traverse graph structures
 petgraph = "0.7"
 # Used for checking version requirements
-semver = "1.0"
+semver = { version = "1.0", features = ["serde"] }
 serde = "1.0"
 serde_json = "1.0"
 
