@@ -83,7 +83,9 @@ map!(Metadata, map, {
             "target_directory" => target_directory = Some(map.next_value()?),
             "metadata" => workspace_metadata = map.next_value()?,
             "version" => version = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -107,7 +109,9 @@ map!(Resolve, map, {
         match key.as_ref() {
             "nodes" => nodes = Some(map.next_value()?),
             "root" => root = Some(map.next_value()?),
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -129,7 +133,9 @@ map!(Node, map, {
             "deps" => deps = map.next_value()?,
             "dependencies" => dependencies = Some(map.next_value()?),
             "features" => features = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -151,7 +157,9 @@ map!(NodeDep, map, {
             "name" => name = Some(map.next_value()?),
             "pkg" => pkg = Some(map.next_value()?),
             "dep_kinds" => dep_kinds = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -170,7 +178,9 @@ map!(DepKindInfo, map, {
         match key.as_ref() {
             "kind" => kind = map.next_value()?,
             "target" => target = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -224,7 +234,9 @@ map!(Dependency, map, {
             "rename" => rename = map.next_value()?,
             "registry" => registry = map.next_value()?,
             "path" => path = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -304,7 +316,9 @@ map!(Package, map, {
                     rust_version = Some(deserialize_rust_version(s)?);
                 }
             }
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -358,7 +372,9 @@ map!(Target, map, {
             "doctest" => doctest = map.next_value()?,
             "test" => test = map.next_value()?,
             "doc" => doc = map.next_value()?,
-            _ => {}
+            _ => {
+                map.next_value::<Ignore>()?;
+            }
         }
     }
 
@@ -411,4 +427,122 @@ fn deserialize_rust_version<E: Error>(mut buf: String) -> Result<semver::Version
     }
 
     Version::parse(&buf).map_err(E::custom)
+}
+
+pub struct Ignore;
+
+impl<'de> Visitor<'de> for Ignore {
+    type Value = Self;
+
+    fn expecting(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+
+    #[inline]
+    fn visit_bool<E>(self, _x: bool) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_i64<E>(self, _x: i64) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_i128<E>(self, _x: i128) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, _x: u64) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_u128<E>(self, _x: u128) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, _x: f64) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_str<E>(self, _s: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        while let Some(Self) = seq.next_element()? {}
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        while let Some((Self, Self)) = map.next_entry()? {}
+        Ok(Self)
+    }
+
+    #[inline]
+    fn visit_bytes<E>(self, _bytes: &[u8]) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Self)
+    }
+
+    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::EnumAccess<'de>,
+    {
+        use serde::de::VariantAccess;
+        data.variant::<Self>()?.1.newtype_variant()
+    }
+}
+
+impl<'de> Deserialize<'de> for Ignore {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_ignored_any(Self)
+    }
 }
