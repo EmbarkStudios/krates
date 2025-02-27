@@ -2,13 +2,22 @@ use super::*;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 type Key<'de> = std::borrow::Cow<'de, str>;
 
+macro_rules! tri {
+    ($res:expr) => {
+        match $res {
+            Ok(r) => r,
+            Err(err) => return Err(err),
+        }
+    };
+}
+
 impl<'de> Deserialize<'de> for PackageId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         Ok(Self {
-            repr: String::deserialize(deserializer)?,
+            repr: tri!(String::deserialize(deserializer)),
         })
     }
 }
@@ -50,7 +59,7 @@ macro_rules! parse {
             where
                 D: Deserializer<'de>,
             {
-                let s = std::borrow::Cow::<'de, str>::deserialize(deserializer)?;
+                let s = tri!(std::borrow::Cow::<'de, str>::deserialize(deserializer));
                 s.parse().map_err(|err| Error::custom(err))
             }
         }
@@ -59,7 +68,11 @@ macro_rules! parse {
 
 macro_rules! required {
     ($name:ident) => {
-        $name.ok_or_else(|| Error::missing_field(stringify!($name)))?
+        if let Some(v) = $name {
+            v
+        } else {
+            return Err(Error::missing_field(stringify!($name)));
+        }
     };
 }
 
@@ -73,18 +86,18 @@ map!(Metadata, map, {
     let mut workspace_metadata = serde_json::Value::Null;
     let mut version = 0;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "packages" => packages = Some(map.next_value()?),
-            "workspace_members" => workspace_members = Some(map.next_value()?),
-            "workspace_default_members" => workspace_default_members = Some(map.next_value()?),
-            "resolve" => resolve = Some(map.next_value()?),
-            "workspace_root" => workspace_root = Some(map.next_value()?),
-            "target_directory" => target_directory = Some(map.next_value()?),
-            "metadata" => workspace_metadata = map.next_value()?,
-            "version" => version = map.next_value()?,
+            "packages" => packages = Some(tri!(map.next_value())),
+            "workspace_members" => workspace_members = Some(tri!(map.next_value())),
+            "workspace_default_members" => workspace_default_members = Some(tri!(map.next_value())),
+            "resolve" => resolve = Some(tri!(map.next_value())),
+            "workspace_root" => workspace_root = Some(tri!(map.next_value())),
+            "target_directory" => target_directory = Some(tri!(map.next_value())),
+            "metadata" => workspace_metadata = tri!(map.next_value()),
+            "version" => version = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -105,12 +118,12 @@ map!(Resolve, map, {
     let mut nodes = None;
     let mut root = None;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "nodes" => nodes = Some(map.next_value()?),
-            "root" => root = Some(map.next_value()?),
+            "nodes" => nodes = Some(tri!(map.next_value())),
+            "root" => root = Some(tri!(map.next_value())),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -127,14 +140,14 @@ map!(Node, map, {
     let mut dependencies = None;
     let mut features = Vec::new();
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "id" => id = Some(map.next_value()?),
-            "deps" => deps = map.next_value()?,
-            "dependencies" => dependencies = Some(map.next_value()?),
-            "features" => features = map.next_value()?,
+            "id" => id = Some(tri!(map.next_value())),
+            "deps" => deps = tri!(map.next_value()),
+            "dependencies" => dependencies = Some(tri!(map.next_value())),
+            "features" => features = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -152,13 +165,13 @@ map!(NodeDep, map, {
     let mut pkg = None;
     let mut dep_kinds = Vec::new();
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "name" => name = Some(map.next_value()?),
-            "pkg" => pkg = Some(map.next_value()?),
-            "dep_kinds" => dep_kinds = map.next_value()?,
+            "name" => name = Some(tri!(map.next_value())),
+            "pkg" => pkg = Some(tri!(map.next_value())),
+            "dep_kinds" => dep_kinds = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -174,12 +187,12 @@ map!(DepKindInfo, map, {
     let mut kind = DependencyKind::Normal;
     let mut target = None;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "kind" => kind = map.next_value()?,
-            "target" => target = map.next_value()?,
+            "kind" => kind = tri!(map.next_value()),
+            "target" => target = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -192,7 +205,9 @@ impl<'de> Deserialize<'de> for DependencyKind {
     where
         D: Deserializer<'de>,
     {
-        let kind = Option::<std::borrow::Cow<'de, str>>::deserialize(deserializer)?;
+        let kind = tri!(Option::<std::borrow::Cow<'de, str>>::deserialize(
+            deserializer
+        ));
         if let Some(kind) = kind {
             Ok(match kind.as_ref() {
                 "normal" => Self::Normal,
@@ -221,21 +236,21 @@ map!(Dependency, map, {
     let mut registry = None;
     let mut path = None;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "name" => name = Some(map.next_value()?),
-            "source" => source = map.next_value()?,
-            "req" => req = Some(map.next_value()?),
-            "kind" => kind = map.next_value()?,
-            "optional" => optional = Some(map.next_value()?),
-            "uses_default_features" => uses_default_features = Some(map.next_value()?),
-            "features" => features = Some(map.next_value()?),
-            "target" => target = map.next_value()?,
-            "rename" => rename = map.next_value()?,
-            "registry" => registry = map.next_value()?,
-            "path" => path = map.next_value()?,
+            "name" => name = Some(tri!(map.next_value())),
+            "source" => source = tri!(map.next_value()),
+            "req" => req = Some(tri!(map.next_value())),
+            "kind" => kind = tri!(map.next_value()),
+            "optional" => optional = Some(tri!(map.next_value())),
+            "uses_default_features" => uses_default_features = Some(tri!(map.next_value())),
+            "features" => features = Some(tri!(map.next_value())),
+            "target" => target = tri!(map.next_value()),
+            "rename" => rename = tri!(map.next_value()),
+            "registry" => registry = tri!(map.next_value()),
+            "path" => path = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -285,39 +300,39 @@ map!(Package, map, {
     let mut default_run = None;
     let mut rust_version = None;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "name" => name = Some(map.next_value()?),
-            "version" => version = Some(map.next_value()?),
-            "authors" => authors = map.next_value()?,
-            "id" => id = Some(map.next_value()?),
-            "source" => source = map.next_value()?,
-            "description" => description = map.next_value()?,
-            "dependencies" => dependencies = Some(map.next_value()?),
-            "license" => license = map.next_value()?,
-            "license_file" => license_file = map.next_value()?,
-            "targets" => targets = Some(map.next_value()?),
-            "features" => features = Some(map.next_value()?),
-            "manifest_path" => manifest_path = Some(map.next_value()?),
-            "categories" => categories = map.next_value()?,
-            "keywords" => keywords = map.next_value()?,
-            "readme" => readme = map.next_value()?,
-            "repository" => repository = map.next_value()?,
-            "homepage" => homepage = map.next_value()?,
-            "documentation" => documentation = map.next_value()?,
-            "edition" => edition = map.next_value()?,
-            "metadata" => metadata = map.next_value()?,
-            "links" => links = map.next_value()?,
-            "publish" => publish = map.next_value()?,
-            "default_run" => default_run = map.next_value()?,
+            "name" => name = Some(tri!(map.next_value())),
+            "version" => version = Some(tri!(map.next_value())),
+            "authors" => authors = tri!(map.next_value()),
+            "id" => id = Some(tri!(map.next_value())),
+            "source" => source = tri!(map.next_value()),
+            "description" => description = tri!(map.next_value()),
+            "dependencies" => dependencies = Some(tri!(map.next_value())),
+            "license" => license = tri!(map.next_value()),
+            "license_file" => license_file = tri!(map.next_value()),
+            "targets" => targets = Some(tri!(map.next_value())),
+            "features" => features = Some(tri!(map.next_value())),
+            "manifest_path" => manifest_path = Some(tri!(map.next_value())),
+            "categories" => categories = tri!(map.next_value()),
+            "keywords" => keywords = tri!(map.next_value()),
+            "readme" => readme = tri!(map.next_value()),
+            "repository" => repository = tri!(map.next_value()),
+            "homepage" => homepage = tri!(map.next_value()),
+            "documentation" => documentation = tri!(map.next_value()),
+            "edition" => edition = tri!(map.next_value()),
+            "metadata" => metadata = tri!(map.next_value()),
+            "links" => links = tri!(map.next_value()),
+            "publish" => publish = tri!(map.next_value()),
+            "default_run" => default_run = tri!(map.next_value()),
             "rust_version" => {
-                let s = map.next_value::<Option<String>>()?;
+                let s = tri!(map.next_value::<Option<String>>());
                 if let Some(s) = s {
-                    rust_version = Some(deserialize_rust_version(s)?);
+                    rust_version = Some(tri!(deserialize_rust_version(s)));
                 }
             }
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -361,19 +376,19 @@ map!(Target, map, {
     let mut test = true;
     let mut doc = true;
 
-    while let Some(key) = map.next_key::<Key<'de>>()? {
+    while let Some(key) = tri!(map.next_key::<Key<'de>>()) {
         match key.as_ref() {
-            "name" => name = Some(map.next_value()?),
-            "kind" => kind = Some(map.next_value()?),
-            "crate_types" => crate_types = map.next_value()?,
-            "required-features" => required_features = map.next_value()?,
-            "src_path" => src_path = Some(map.next_value()?),
-            "edition" => edition = map.next_value()?,
-            "doctest" => doctest = map.next_value()?,
-            "test" => test = map.next_value()?,
-            "doc" => doc = map.next_value()?,
+            "name" => name = Some(tri!(map.next_value())),
+            "kind" => kind = Some(tri!(map.next_value())),
+            "crate_types" => crate_types = tri!(map.next_value()),
+            "required-features" => required_features = tri!(map.next_value()),
+            "src_path" => src_path = Some(tri!(map.next_value())),
+            "edition" => edition = tri!(map.next_value()),
+            "doctest" => doctest = tri!(map.next_value()),
+            "test" => test = tri!(map.next_value()),
+            "doc" => doc = tri!(map.next_value()),
             _ => {
-                map.next_value::<Ignore>()?;
+                tri!(map.next_value::<Ignore>());
             }
         }
     }
@@ -397,7 +412,7 @@ impl<'de> Deserialize<'de> for Source {
         D: Deserializer<'de>,
     {
         Ok(Self {
-            repr: String::deserialize(deserializer)?,
+            repr: tri!(String::deserialize(deserializer)),
         })
     }
 }
@@ -507,7 +522,7 @@ impl<'de> Visitor<'de> for Ignore {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        while let Some(Self) = seq.next_element()? {}
+        while let Some(Self) = tri!(seq.next_element()) {}
         Ok(Self)
     }
 
@@ -516,7 +531,7 @@ impl<'de> Visitor<'de> for Ignore {
     where
         A: serde::de::MapAccess<'de>,
     {
-        while let Some((Self, Self)) = map.next_entry()? {}
+        while let Some((Self, Self)) = tri!(map.next_entry()) {}
         Ok(Self)
     }
 
@@ -533,7 +548,7 @@ impl<'de> Visitor<'de> for Ignore {
         A: serde::de::EnumAccess<'de>,
     {
         use serde::de::VariantAccess;
-        data.variant::<Self>()?.1.newtype_variant()
+        tri!(data.variant::<Self>()).1.newtype_variant()
     }
 }
 
