@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#101](https://github.com/EmbarkStudios/krates/pull/101) resolved [#100](https://github.com/EmbarkStudios/krates/issues/100) by correctly swallowing unknown fields for the various objects in a metadata dump.
+
 ## [0.18.0] - 2025-02-24
 ### Changed
 - [PR#99](https://github.com/EmbarkStudios/krates/pull/99) updated to edition 2024.

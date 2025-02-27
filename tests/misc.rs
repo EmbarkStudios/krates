@@ -223,3 +223,110 @@ fn roundtrip() {
     let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();
     insta::assert_json_snapshot!(md);
 }
+
+/// Tests that manifest deserialization ignores unknown fields from eg. unstable features
+#[test]
+fn ignores_unknown_fields() {
+    use serde_json::json;
+
+    let json = json!({
+        "packages": [
+            json!({
+                "name": "fake",
+                "version": "1.0.9",
+                "authors": ["boop"],
+                "id": "registry+https://github.com/rust-lang/crates.io-index#fake@1.0.9",
+                "source": "registry+https://github.com/rust-lang/crates.io-index",
+                "description": "fake",
+                "__extra__": null,
+                "dependencies": [
+                    json!({
+                        "name": "dep",
+                        "source": "registry+https://github.com/rust-lang/crates.io-index",
+                        "req": "^1.0",
+                        "kind": null,
+                        "rename": null,
+                        "optional": true,
+                        "uses_default_features": true,
+                        "features": ["feature"],
+                        "target": null,
+                        "__extra__": json!({"a":"b"}),
+                        "registry": null,
+                    })
+                ],
+                "license": "MIT OR Apache-2.0",
+                "license_file": null,
+                "targets": [
+                    json!({
+                        "kind": ["lib"],
+                        "crate_types": ["lib"],
+                        "name": "fake",
+                        "src_path": "/home/jake/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fake-1.0.9/src/lib.rs",
+                        "edition": "2024",
+                        "__extra__": ["a", "b"],
+                        "doc": true,
+                        "doctest": true,
+                        "test": true
+                    })
+                ],
+                "features": json!({
+                    "a": ["b"],
+                    "b": []
+                }),
+                "manifest_path": "path",
+                "categories": ["one", "two"],
+                "keywords": ["key1", "key2"],
+                "readme": "README.md",
+                "repository": "https://github.com/fake/fake",
+                "homepage": "https://github.com/fake/fake",
+                "documentation": "https://docs.rs/fake",
+                "edition": "2024",
+                "metadata": json!({
+                    "docs": json!({
+                        "rs": json!({
+                            "features": ["b"]
+                        })
+                    })
+                }),
+                "links": null,
+                "publish": null,
+                "default_run": null,
+                "rust_version": "1.85.0"
+            }),
+        ],
+        "__extra__": "",
+        "workspace_members": ["path+file:///home/jake/code/fake/fake#1.0.9"],
+        "workspace_default_members": ["path+file:///home/jake/code/fake/fake#1.0.9"],
+        "resolve": json!({
+            "__extra__": -99999999999999999i64,
+            "nodes": [
+                json!({
+                    "id": "registry+https://github.com/rust-lang/crates.io-index#bitflags@2.4.2",
+                    "dependencies": ["git+https://github.com/madsmtm/objc2?rev=65de002#objc-sys@0.2.0-beta.2"],
+                    "__extra__": true,
+                    "deps": [
+                        json!({
+                            "name": "objc_sys",
+                            "pkg": "git+https://github.com/madsmtm/objc2?rev=65de002#objc-sys@0.2.0-beta.2",
+                            "dep_kinds": [
+                                json!({
+                                    "kind": null,
+                                    "target":null,
+                                    "__extra__": 1,
+                                })
+                            ]
+                        })
+                    ],
+                    "features": ["alloc","apple","std"]
+                })
+            ],
+            "root": "path+file:///home/jake/code/krates/tests/pid#0.1.0"
+        }),
+        "target_directory": "/home/jake/code/krates/tests/pid/target",
+        "version": 1,
+        "workspace_root": "/home/jake/code/krates/tests/pid",
+        "metadata": null
+    });
+
+    let _cm = serde_json::from_str::<krates::cm::Metadata>(&json.to_string()).unwrap();
+}
