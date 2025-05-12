@@ -36,7 +36,7 @@ cargo-platform = { version = "0.1", default-features = false, optional = true }
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.19"
 # Used to create and traverse graph structures
-petgraph = "0.8"
+petgraph = { version = "0.8", default-features = false }
 # Used for checking version requirements
 semver = { version = "1.0", features = ["serde"] }
 serde = "1.0"
