@@ -47,7 +47,9 @@ jobs:
       # When using the sparse index, we need to do this additional fetch so that
       # the entries we want are in the sparse cache, otherwise the bug_repro test
       # fails.
-      - run: cargo fetch --manifest-path tests/bug/Cargo.toml
+      - run: |
+          cargo fetch --manifest-path tests/bug/Cargo.toml
+          cargo fetch --manifest-path tests/features/Cargo.toml
       - name: cargo test build
         run: cargo build --tests --release ${{ matrix.features }}
       - name: cargo test
