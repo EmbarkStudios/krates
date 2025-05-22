@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.20.0] - 2025-05-22
 ### Changed
 - [PR#103](https://github.com/EmbarkStudios/krates/pull/103) updated petgraph -> 0.8.
 - [PR#104](https://github.com/EmbarkStudios/krates/pull/104) updated crates.
@@ -258,7 +259,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.19.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.20.0...HEAD
+[0.20.0]: https://github.com/EmbarkStudios/krates/compare/0.19.0...0.20.0
 [0.19.0]: https://github.com/EmbarkStudios/krates/compare/0.18.1...0.19.0
 [0.18.1]: https://github.com/EmbarkStudios/krates/compare/0.18.0...0.18.1
 [0.18.0]: https://github.com/EmbarkStudios/krates/compare/0.17.5...0.18.0
