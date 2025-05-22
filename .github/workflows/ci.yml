@@ -53,6 +53,9 @@ jobs:
           cargo fetch --target x86_64-unknown-linux-gnu
           cargo fetch --manifest-path tests/bug/Cargo.toml
           cargo fetch --manifest-path tests/features/Cargo.toml
+          cargo fetch --manifest-path tests/feature-bug/Cargo.toml
+          cargo fetch --manifest-path tests/features-2/Cargo.toml
+          cargo fetch --manifest-path tests/feature-bug-2/Cargo.toml
       - name: cargo test build
         run: cargo build --tests --release ${{ matrix.features }}
       - name: cargo test
