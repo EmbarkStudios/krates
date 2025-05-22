@@ -1241,7 +1241,7 @@ impl Builder {
                                 // encountered it in testing (eg. the `md-5` crate names its lib target `md5`, and you
                                 // can have a dependency on the `md5` crate, they both get resolved to the same name, but
                                 // then rustc can't compile `md5::compute` because there are two libs that satisfy that name)
-                                let source_matches = dep.source.as_deref().is_none_or(|dsrc| {
+                                dep.source.as_deref().is_none_or(|dsrc| {
                                     let psrc = rdep.pkg.source();
                                     if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
                                         // The opaque git sources can have the full revision spec at the end, which is not part of
@@ -1256,9 +1256,7 @@ impl Builder {
                                     } else {
                                         dsrc == psrc
                                     }
-                                });
-
-                                source_matches
+                                })
                             })
                             .unwrap_or_else(|| panic!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}"));
 

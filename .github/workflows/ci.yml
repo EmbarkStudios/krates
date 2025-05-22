@@ -14,7 +14,7 @@ name: CI
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,28 +36,34 @@ jobs:
     name: Test
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
         features: ["--features targets", "--features metadata", null]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fetch --target x86_64-unknown-linux-gnu
+      - name: Install nextest
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
       # When using the sparse index, we need to do this additional fetch so that
       # the entries we want are in the sparse cache, otherwise the bug_repro test
       # fails.
-      - run: |
+      - name: fetch
+        run: |
+          cargo fetch --target x86_64-unknown-linux-gnu
           cargo fetch --manifest-path tests/bug/Cargo.toml
           cargo fetch --manifest-path tests/features/Cargo.toml
+          cargo fetch --manifest-path tests/feature-bug/Cargo.toml
+          cargo fetch --manifest-path tests/features-2/Cargo.toml
+          cargo fetch --manifest-path tests/feature-bug-2/Cargo.toml
       - name: cargo test build
         run: cargo build --tests --release ${{ matrix.features }}
       - name: cargo test
-        run: cargo test --release ${{ matrix.features }}
+        run: cargo nextest run --release ${{ matrix.features }}
 
   deny-check:
     name: cargo-deny
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
@@ -66,7 +72,7 @@ jobs:
 
   publish-check:
     name: Publish Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -74,3 +80,9 @@ jobs:
       - run: cargo fetch
       - name: cargo publish check
         run: cargo publish --dry-run
+
+  test_success:
+    runs-on: ubuntu-24.04
+    needs: [lint, test, deny-check, publish-check]
+    steps:
+      - run: echo "All test jobs passed"
