@@ -14,7 +14,7 @@ name: CI
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,7 +36,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
         features: ["--features targets", "--features metadata", null]
     runs-on: ${{ matrix.os }}
     steps:
@@ -57,7 +57,7 @@ jobs:
 
   deny-check:
     name: cargo-deny
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
@@ -66,7 +66,7 @@ jobs:
 
   publish-check:
     name: Publish Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -74,3 +74,9 @@ jobs:
       - run: cargo fetch
       - name: cargo publish check
         run: cargo publish --dry-run
+
+  test_success:
+    runs-on: ubuntu-24.04
+    needs: [lint, test, deny-check, publish-check]
+    steps:
+      - run: echo "All test jobs passed"
