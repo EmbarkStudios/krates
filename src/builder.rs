@@ -621,7 +621,10 @@ impl Builder {
         let index = self.crates_io_index.map(|index| {
             index::CachingIndex::new(
                 index,
-                packages.iter().map(|(_id, pkg)| pkg.name.clone()).collect(),
+                packages
+                    .iter()
+                    .map(|(_id, pkg)| pkg.name.to_string())
+                    .collect(),
             )
         });
 
@@ -760,7 +763,7 @@ impl Builder {
                             .collect();
 
                         NodeDep {
-                            name: dn.name,
+                            name: dn.name.to_string(),
                             pkg: Kid::from(dn.pkg),
                             dep_kinds,
                         }
@@ -771,7 +774,7 @@ impl Builder {
                 // due to implementation details rather than guaranteed
                 deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
 
-                let mut features = rn.features;
+                let mut features: Vec<_> = rn.features.iter().map(|f| f.to_string()).collect();
 
                 // Note that cargo metadata _currently_ always outputs these in
                 // lexicographic order, but I don't know if that is actually
@@ -1241,7 +1244,11 @@ impl Builder {
                                 // encountered it in testing (eg. the `md-5` crate names its lib target `md5`, and you
                                 // can have a dependency on the `md5` crate, they both get resolved to the same name, but
                                 // then rustc can't compile `md5::compute` because there are two libs that satisfy that name)
-                                dep.source.as_deref().is_none_or(|dsrc| {
+                                dep.source.as_ref().is_none_or(|dsrc| {
+                                    // Caution: "It is possible to inspect the repr field, if the need
+                                    // arises, but its precise format is an implementation detail and
+                                    // is subject to change."
+                                    let dsrc = &dsrc.repr;
                                     let psrc = rdep.pkg.source();
                                     if let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) {
                                         // The opaque git sources can have the full revision spec at the end, which is not part of
@@ -1254,7 +1261,7 @@ impl Builder {
 
                                         dgit == pgit
                                     } else {
-                                        dsrc == psrc
+                                        dsrc.as_str() == psrc
                                     }
                                 })
                             })

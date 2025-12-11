@@ -13,7 +13,7 @@ pub struct PkgSpec {
 
 impl PkgSpec {
     pub fn matches(&self, krate: &crate::cm::Package) -> bool {
-        if self.name != krate.name {
+        if self.name != krate.name.to_string() {
             return false;
         }
 
