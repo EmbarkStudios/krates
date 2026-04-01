@@ -665,7 +665,7 @@ impl Builder {
                         return false;
                     }
 
-                    self.inner.get(rdep.pkg.name()).map_or(false, |renames| {
+                    self.inner.get(rdep.pkg.name()).is_some_and(|renames| {
                         let Ok(i) = renames.binary_search_by(|(vs, _n)| vs.cmp(&&rdep.version))
                         else {
                             return false;
@@ -1283,7 +1283,7 @@ impl Builder {
 
                             // Crates can rename the dependency package themselves
                             let dname = dep.rename.as_deref().unwrap_or(&dep.name);
-                            if maybe_real_name != dname && !dep_names_match(dname, &rdep) {
+                            if maybe_real_name != dname && !dep_names_match(dname, rdep) {
                                     return false;
                             }
 
@@ -1291,7 +1291,7 @@ impl Builder {
                             // typically happens in the case of non-registry dependencies that use a pre-release
                             // semver, if the version _is_ a prelease it will never match the empty
                             // requirement
-                            if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)) {
+                            if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(rdep_version)) {
                                 return false;
                             }
 
@@ -1309,7 +1309,7 @@ impl Builder {
 
                                 // Crates can rename the dependency package themselves
                                 let dname = dep.rename.as_deref().unwrap_or(&dep.name);
-                                if maybe_real_name != dname && !dep_names_match(dname, &rdep) {
+                                if maybe_real_name != dname && !dep_names_match(dname, rdep) {
                                     return false;
                                 }
 
@@ -1317,7 +1317,7 @@ impl Builder {
                                 // typically happens in the case of non-registry dependencies that use a pre-release
                                 // semver, if the version _is_ a prelease it will never match the empty
                                 // requirement
-                                if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(&rdep_version)) {
+                                if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(rdep_version)) {
                                     return false;
                                 }
 
