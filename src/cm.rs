@@ -183,6 +183,7 @@ pub enum DependencyKind {
     Build,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for DependencyKind {
     fn default() -> Self {
         Self::Normal
@@ -600,6 +601,7 @@ impl fmt::Display for Edition {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Edition {
     fn default() -> Self {
         Self::E2015

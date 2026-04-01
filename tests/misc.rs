@@ -217,7 +217,7 @@ fn finds_duplicates() {
 }
 
 #[test]
-#[cfg(all(feature = "serialize", not(feature = "metadata")))]
+#[cfg(feature = "serialize")]
 fn roundtrip() {
     let contents = std::fs::read_to_string("tests/all-features.json").unwrap();
     let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();

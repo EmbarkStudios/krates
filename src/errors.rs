@@ -1,7 +1,4 @@
-#[cfg(not(feature = "metadata"))]
 use crate::cm::Error as CMErr;
-#[cfg(feature = "metadata")]
-use cargo_metadata::Error as CMErr;
 use std::fmt;
 
 /// Errors that can occur when acquiring metadata to create a graph from

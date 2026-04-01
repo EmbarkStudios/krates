@@ -98,10 +98,7 @@ pub fn build<P: AsRef<Path>>(src: P, kb: krates::Builder) -> Result<Grafs, Strin
                                     id.clone().into(),
                                     krates::Edge::Dep {
                                         kind: dk.kind.into(),
-                                        #[cfg(not(feature = "metadata"))]
                                         cfg: dk.target.clone(),
-                                        #[cfg(feature = "metadata")]
-                                        cfg: dk.target.map(|s| s.to_string()),
                                     },
                                 )
                             })

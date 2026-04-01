@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#107](https://github.com/EmbarkStudios/krates/pull/107) updated crates.
+
+### Removed
+- [PR#107](https://github.com/EmbarkStudios/krates/pull/107) removed the `metadata` feature and thus compatibility with cargo_metadata.
+
+### Fixed
+- [PR#107](https://github.com/EmbarkStudios/krates/pull/107) fixed an issue where crates which renamed their lib target and were gated behind a feature in a dependent that didn't rename it would be pruned from the final graph erroneously.
+
 ## [0.20.0] - 2025-05-22
 ### Changed
 - [PR#103](https://github.com/EmbarkStudios/krates/pull/103) updated petgraph -> 0.8.

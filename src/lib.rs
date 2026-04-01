@@ -25,9 +25,6 @@
 //! }
 //! ```
 
-#[cfg(feature = "metadata")]
-pub use cargo_metadata as cm;
-#[cfg(not(feature = "metadata"))]
 pub mod cm;
 
 pub use cfg_expr;
@@ -307,8 +304,6 @@ impl From<DK> for DepKind {
             DK::Normal => Self::Normal,
             DK::Build => Self::Build,
             DK::Development => Self::Dev,
-            #[cfg(feature = "metadata")]
-            DK::Unknown => unreachable!(),
         }
     }
 }
@@ -882,27 +877,8 @@ impl<N, E> std::ops::Index<usize> for Krates<N, E> {
 struct MdTarget {
     inner: String,
     cfg: Option<cfg_expr::Expression>,
-    #[cfg(feature = "metadata")]
-    platform: cargo_platform::Platform,
 }
 
-#[cfg(feature = "metadata")]
-impl From<cargo_platform::Platform> for MdTarget {
-    fn from(platform: cargo_platform::Platform) -> Self {
-        let inner = platform.to_string();
-        let cfg = inner
-            .starts_with("cfg(")
-            .then(|| cfg_expr::Expression::parse(&inner).ok())
-            .flatten();
-        Self {
-            inner,
-            cfg,
-            platform,
-        }
-    }
-}
-
-#[cfg(not(feature = "metadata"))]
 impl From<String> for MdTarget {
     fn from(inner: String) -> Self {
         let cfg = inner
@@ -913,16 +889,6 @@ impl From<String> for MdTarget {
     }
 }
 
-#[cfg(feature = "metadata")]
-fn targets_eq(target: &Option<MdTarget>, other: &Option<cargo_platform::Platform>) -> bool {
-    match (target, other) {
-        (None, None) => true,
-        (Some(a), Some(b)) => a.platform.eq(b),
-        _ => false,
-    }
-}
-
-#[cfg(not(feature = "metadata"))]
 fn targets_eq(target: &Option<MdTarget>, other: &Option<String>) -> bool {
     match (target, other) {
         (None, None) => true,
