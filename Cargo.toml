@@ -21,22 +21,15 @@ rust-version = "1.85.0"
 default = []
 # Adds support for filtering target specific dependencies
 targets = ["cfg-expr/targets"]
-# Enables interop with cargo_metadata, if not enabled uses types defined within krates
-metadata = ["dep:cargo_metadata", "dep:cargo-platform"]
 # Enables serialization of the metadata types within krates
 serialize = []
 
 [dependencies]
 camino = { version = "1.1", features = ["serde1"] }
-# Used for acquiring and/or deserializing `cargo metadata` output
-cargo_metadata = { version = "0.19", default-features = false, optional = true }
-# We need to use a type from this because it use part of the public API of cargo_metadata
-# ...but it's not actually in the public API :p
-cargo-platform = { version = "0.1", default-features = false, optional = true }
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.20"
 # Used to create and traverse graph structures
-petgraph = { version = "0.8", default-features = false }
+petgraph = { version = "=0.8.1", default-features = false }
 # Used for checking version requirements
 semver = { version = "1.0", features = ["serde"] }
 serde = "1.0"
@@ -44,14 +37,14 @@ serde_json = "1.0"
 
 [dev-dependencies]
 # Example CLI
-clap = { version = "4.5", features = ["derive"] }
-insta = { version = "1.40", features = ["json"] }
+clap = { version = "4.6", features = ["derive"] }
+insta = { version = "1.47", features = ["json"] }
 # Used to print colored diffs in case of test failures
 similar-asserts = "1.6"
 # Used to deserialize test files into metadata we can load
 serde_json = "1.0"
 # index metadata retrieval
-tame-index = "0.21"
+tame-index = "0.26"
 
 [profile.dev.package.insta]
 opt-level = 3
