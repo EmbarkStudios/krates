@@ -1,16 +1,11 @@
-mod util;
-
 use krates::PkgSpec;
-use util::build;
 
 #[test]
 fn excludes_workspace_member() {
     let mut kb = krates::Builder::new();
     kb.exclude(std::iter::once("a".parse::<PkgSpec>().unwrap()));
 
-    let grafs = build("all-features.json", kb).unwrap();
-
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features.json", kb);
 }
 
 #[test]
@@ -18,9 +13,7 @@ fn includes_by_path() {
     let mut kb = krates::Builder::new();
     kb.include_workspace_crates(["/home/jake/code/krates/tests/ws/c"]);
 
-    let grafs = build("all-features.json", kb).unwrap();
-
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features.json", kb);
 }
 
 #[test]
@@ -37,8 +30,7 @@ fn excludes_dependencies() {
 
     kb.exclude(pkg_ids.iter().map(|id| id.parse::<PkgSpec>().unwrap()));
 
-    let grafs = build("all-features.json", kb).unwrap();
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features.json", kb);
 }
 
 #[test]
@@ -59,7 +51,7 @@ fn no_roots() {
         .map_err(|e| format!("failed to deserialize metadata: {}", e))
         .unwrap();
 
-    match kb.build_with_metadata::<util::JustId, krates::Edge, _>(md, |_f: krates::cm::Package| {
+    match kb.build_with_metadata::<ktest::JustId, krates::Edge, _>(md, |_f: krates::cm::Package| {
         panic!("shouldn't get here")
     }) {
         Err(krates::Error::NoRootKrates) => {}

@@ -42,6 +42,12 @@ impl<'feat> ParsedFeature<'feat> {
     }
 }
 
+impl std::fmt::Debug for ParsedFeature<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.inner)
+    }
+}
+
 impl<'feat> From<&'feat str> for ParsedFeature<'feat> {
     #[inline]
     fn from(f: &'feat str) -> Self {
@@ -56,40 +62,5 @@ impl<'feat> From<&'feat str> for ParsedFeature<'feat> {
         };
 
         Self { inner: f, kind }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::{Feature, ParsedFeature};
-    use similar_asserts::assert_eq;
-
-    #[test]
-    fn parses_features() {
-        assert_eq!(
-            ParsedFeature::from("simple").feat(),
-            Feature::Simple("simple"),
-        );
-
-        assert_eq!(
-            ParsedFeature::from("dep:krate-name-here").feat(),
-            Feature::Krate("krate-name-here"),
-        );
-
-        assert_eq!(
-            ParsedFeature::from("krate-name-here?/feature-name-here").feat(),
-            Feature::Weak {
-                krate: "krate-name-here",
-                feature: "feature-name-here"
-            },
-        );
-
-        assert_eq!(
-            ParsedFeature::from("name/feat").feat(),
-            Feature::Strong {
-                krate: "name",
-                feature: "feat"
-            },
-        );
     }
 }

@@ -1,6 +1,6 @@
 ---
 source: tests/features.rs
-expression: dotgraph
+expression: "krates :: petgraph :: dot :: Dot :: new(md.graph()).to_string()"
 ---
 digraph {
     0 [ label = "crate ahash 0.7.7" ]

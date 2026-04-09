@@ -1,4 +1,4 @@
-mod util;
+use ktest::util::build;
 
 #[test]
 fn iter_names() {
@@ -137,7 +137,7 @@ fn direct_dependents() {
         vec![],
     )));
 
-    let grafs = util::build("direct.json", kb).unwrap();
+    let grafs = build("direct.json", kb).unwrap();
 
     let id = grafs
         .actual
@@ -155,7 +155,7 @@ fn direct_dependents() {
     ids.sort();
     let dd = ids.join("\n");
 
-    insta::assert_snapshot!(dd);
+    ktest::assert_snapshot!(dd);
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn direct_dependencies() {
         vec![],
     )));
 
-    let grafs = util::build("direct.json", kb).unwrap();
+    let grafs = build("direct.json", kb).unwrap();
 
     let id = grafs
         .actual
@@ -187,17 +187,17 @@ fn direct_dependencies() {
     ids.sort();
     let dd = ids.join("\n");
 
-    insta::assert_snapshot!(dd);
+    ktest::assert_snapshot!(dd);
 }
 
 /// Validates that there is no difference between the OG "opaque" package id
 /// format and the newly stabilized one
 #[test]
 fn opaque_matches_stable() {
-    let opaque = util::build("all-features.json", krates::Builder::new()).unwrap();
-    let stable = util::build("all-features-stable.json", krates::Builder::new()).unwrap();
+    let opaque = build("all-features.json", krates::Builder::new()).unwrap();
+    let stable = build("all-features-stable.json", krates::Builder::new()).unwrap();
 
-    similar_asserts::assert_eq!(opaque.dotgraph(), stable.dotgraph());
+    ktest::similar_asserts::assert_eq!(opaque.dotgraph(), stable.dotgraph());
 }
 
 /// Validates we can correctly find package ids for duplicated packages in both
@@ -207,13 +207,13 @@ fn opaque_matches_stable() {
 /// <https://github.com/EmbarkStudios/krates/issues/69>
 #[test]
 fn finds_duplicates() {
-    let opaque = util::build("pid-opaque.json", krates::Builder::new()).unwrap();
-    let stable = util::build("pid-stable.json", krates::Builder::new()).unwrap();
+    let opaque = build("pid-opaque.json", krates::Builder::new()).unwrap();
+    let stable = build("pid-stable.json", krates::Builder::new()).unwrap();
 
     let opaque = opaque.dotgraph();
-    similar_asserts::assert_eq!(opaque, stable.dotgraph());
+    ktest::similar_asserts::assert_eq!(opaque, stable.dotgraph());
 
-    insta::assert_snapshot!(opaque);
+    ktest::assert_snapshot!(opaque);
 }
 
 #[test]
@@ -221,7 +221,7 @@ fn finds_duplicates() {
 fn roundtrip() {
     let contents = std::fs::read_to_string("tests/all-features.json").unwrap();
     let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();
-    insta::assert_json_snapshot!(md);
+    ktest::assert_json_snapshot!(md);
 }
 
 /// Tests that manifest deserialization ignores unknown fields from eg. unstable features

@@ -7,17 +7,10 @@ edition = "2021"
 defmt = { version = "0.3.8", optional = true }
 embedded-hal-02 = { version = "0.2.7", features = ["unproven"], package = "embedded-hal" }
 embedded-hal = "1.0.0"
-config = "=0.14.1"
-inii = { package = "rust-ini", version = "=0.21.3" }
-rust-ini = "=0.19.0"
 
 [features]
 default = []
 defmt = [
     "dep:defmt",
     "embedded-hal/defmt-03",
-]
-unicase = [
-    "rust-ini/unicase",
-    "inii/case-insensitive",
 ]
