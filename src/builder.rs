@@ -948,10 +948,10 @@ impl Builder {
             let krate_index = nodes.binary_search_by(|n| n.id.cmp(root)).unwrap();
             let rnode = &nodes[krate_index];
 
-            visit_stack.push(*root);
+            visit_stack.push(root);
 
             for feat in 0..rnode.features.len() {
-                visit_stack.push_with_feature(*root, feat);
+                visit_stack.push_with_feature(root, feat);
             }
         }
 

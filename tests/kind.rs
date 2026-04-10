@@ -1,6 +1,6 @@
 #[test]
 fn all_the_things() {
-    ktest::assert_dotgraph!(default "all-features.json")
+    ktest::assert_dotgraph!(default "all-features.json");
 }
 
 mod filters_dev {
