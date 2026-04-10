@@ -42,4 +42,3 @@ digraph {
     9 -> 15 [ label = "" ]
     16 -> 7 [ label = "" ]
 }
-

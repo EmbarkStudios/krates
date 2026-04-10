@@ -1,7 +1,6 @@
 ---
 source: tests/exclude.rs
 expression: grafs.dotgraph()
-snapshot_kind: text
 ---
 digraph {
     0 [ label = "crate aho-corasick 0.7.6" ]

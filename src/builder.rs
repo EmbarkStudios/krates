@@ -919,16 +919,39 @@ impl Builder {
         // entirely, and thus have to basically re-resolve the crates + features
         // to avoid adding nodes/edges that shouldn't exist based on the caller's
         // configuration (eg. https://github.com/EmbarkStudios/krates/issues/60)
-        let mut visit_stack = Vec::with_capacity(roots.len());
+        struct VisitStack<'s> {
+            v: Vec<(&'s Kid, Option<usize>)>,
+        }
+
+        impl<'s> VisitStack<'s> {
+            #[inline]
+            fn push(&mut self, kid: &'s Kid) {
+                self.v.push((kid, None));
+            }
+
+            #[inline]
+            fn push_with_feature(&mut self, kid: &'s Kid, feat: usize) {
+                self.v.push((kid, Some(feat)));
+            }
+
+            #[inline]
+            fn pop(&mut self) -> Option<(&'s Kid, Option<usize>)> {
+                self.v.pop()
+            }
+        }
+
+        let mut visit_stack = VisitStack {
+            v: Vec::with_capacity(roots.len()),
+        };
 
         for root in &roots {
             let krate_index = nodes.binary_search_by(|n| n.id.cmp(root)).unwrap();
             let rnode = &nodes[krate_index];
 
-            visit_stack.push((*root, None));
+            visit_stack.push(root);
 
             for feat in 0..rnode.features.len() {
-                visit_stack.push((*root, Some(feat)));
+                visit_stack.push_with_feature(root, feat);
             }
         }
 
@@ -1120,6 +1143,10 @@ impl Builder {
                                         } else {
                                             None
                                         }
+                                        // } => Some(FeatureEdge {
+                                        //     kid: get_dep_id(krate_name)?,
+                                        //     name: FeatureEdgeName::Feature(feature.to_owned()),
+                                        // }),
                                     }
                                 }
                             })
@@ -1150,7 +1177,7 @@ impl Builder {
                 }
 
                 if !krate_features.filled_non_optional {
-                    visit_stack.push((pid, None));
+                    visit_stack.push(pid);
                 }
 
                 // This _should_ never fail in normal cases, however if an
@@ -1168,7 +1195,7 @@ impl Builder {
 
                     let (krate_name, feature) = match pf.feat() {
                         Feature::Simple(feat) => {
-                            visit_stack.push((pid, Some(rnode.feature_index(feat))));
+                            visit_stack.push_with_feature(pid, rnode.feature_index(feat));
                             continue;
                         }
                         Feature::Krate(krate) => (krate, None),
@@ -1184,7 +1211,7 @@ impl Builder {
                     // ...except we do have to care! While the above is the **overwhelming** majority of cases, packages
                     // can also rename their `lib` target, which will mean that the resolved nodes use that name,
                     // unless they are _also_ renamed in the dependent, but the package name is used in the crate's
-                    // dependencies. FUCK
+                    // dependencies.
                     let Some(ndep) = renames.resolve_feature(krate_name, rnode) else {
                         continue;
                     };
@@ -1200,8 +1227,9 @@ impl Builder {
                             .or_default()
                             .insert(feature);
                         continue;
-                    } else if let Some(mut pending) = krate_features.pending_weak.remove(&ndep.pkg)
-                    {
+                    }
+
+                    if let Some(mut pending) = krate_features.pending_weak.remove(&ndep.pkg) {
                         deps.entry(&ndep.pkg)
                             .or_insert_with(|| (ndep, Some(BTreeSet::new())))
                             .1
@@ -1284,7 +1312,7 @@ impl Builder {
                             // Crates can rename the dependency package themselves
                             let dname = dep.rename.as_deref().unwrap_or(&dep.name);
                             if maybe_real_name != dname && !dep_names_match(dname, rdep) {
-                                    return false;
+                                return false;
                             }
 
                             // Handle case where a dependency may not have a version requirement, which
@@ -1424,13 +1452,22 @@ impl Builder {
                     features: BTreeSet::new(),
                 });
 
-                let mut visit_dep = Some((pkg, None));
+                let mut visit_dep = Some(pkg);
 
                 for edge in edges {
                     if let Some(features) = features.take() {
-                        visit_stack.extend(visit_dep.take());
+                        if let Some(vd) = visit_dep.take() {
+                            visit_stack.push(vd);
+                            if let Some(kf) = krate_features.pending_weak.remove(vd) {
+                                for feat in kf {
+                                    visit_stack.push_with_feature(vd, feat);
+                                    dep.features.insert(feat);
+                                }
+                            }
+                        }
+
                         for feat in features {
-                            visit_stack.push((pkg, Some(feat)));
+                            visit_stack.push_with_feature(pkg, feat);
                             dep.features.insert(feat);
                         }
                     }
@@ -1443,7 +1480,15 @@ impl Builder {
                         continue;
                     }
 
-                    visit_stack.extend(visit_dep.take());
+                    if let Some(vd) = visit_dep.take() {
+                        visit_stack.push(vd);
+                        if let Some(kf) = krate_features.pending_weak.remove(vd) {
+                            for feat in kf {
+                                visit_stack.push_with_feature(vd, feat);
+                                dep.features.insert(feat);
+                            }
+                        }
+                    }
 
                     let mut features = Vec::new();
                     for feat in edge
@@ -1453,7 +1498,7 @@ impl Builder {
                         .chain(edge.uses_default_features.then_some("default"))
                     {
                         let feat_index = rdep_node.feature_index(feat);
-                        visit_stack.push((pkg, Some(feat_index)));
+                        visit_stack.push_with_feature(pkg, feat_index);
                         features.push(feat_index);
                     }
 

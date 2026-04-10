@@ -5,4 +5,3 @@ expression: grafs.dotgraph()
 digraph {
     0 [ label = "crate top 0.1.0 path+file:///krates/tests/ws2" ]
 }
-

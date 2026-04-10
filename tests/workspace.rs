@@ -1,7 +1,3 @@
-mod util;
-
-use util::build;
-
 #[test]
 fn includes() {
     let mut kb = krates::Builder::new();
@@ -11,8 +7,7 @@ fn includes() {
         "/home/jake/code/krates/tests/ws2/c/Cargo.toml",
     ]);
 
-    let grafs = build("all-features2.json", kb).unwrap();
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features2.json", kb);
 }
 
 #[test]
@@ -23,10 +18,10 @@ fn root() {
     // others in the workspace, it will be a graph of one
     let kb = krates::Builder::new();
 
-    let grafs = build("all-features2.json", kb).unwrap();
+    let grafs = ktest::util::build("all-features2.json", kb).unwrap();
 
     assert_eq!(grafs.actual.len(), 1);
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_snapshot!(grafs.dotgraph());
 }
 
 #[test]
@@ -36,8 +31,7 @@ fn workspace_with_root() {
     // members, regardless of whether the resolution root is set or not
     kb.workspace(true);
 
-    let grafs = build("all-features2.json", kb).unwrap();
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features2.json", kb);
 }
 
 #[test]
@@ -46,6 +40,5 @@ fn workspace_with_root_exclude() {
     kb.workspace(true);
     kb.exclude(std::iter::once("c".parse::<krates::PkgSpec>().unwrap()));
 
-    let grafs = build("all-features2.json", kb).unwrap();
-    insta::assert_snapshot!(grafs.dotgraph());
+    ktest::assert_dotgraph!("all-features2.json", kb);
 }

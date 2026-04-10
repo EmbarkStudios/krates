@@ -1,0 +1,16 @@
+[package]
+name = "lib-rename"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+config = "=0.14.1"
+inii = { package = "rust-ini", version = "=0.21.3" }
+rust-ini = "=0.19.0"
+
+[features]
+default = []
+unicase = [
+    "rust-ini/unicase",
+    "inii/case-insensitive",
+]

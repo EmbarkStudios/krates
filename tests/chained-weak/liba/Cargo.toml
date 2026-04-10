@@ -1,0 +1,10 @@
+[package]
+name = "liba"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+optionb = ["dep:libb", "libb?/optionc"]
+
+[dependencies]
+libb = { path = "../libb", optional = true }

@@ -1,5 +1,3 @@
-mod util;
-
 macro_rules! feats {
     ($feats:expr) => {
         $feats.into_iter().map(|f| f.to_owned())
@@ -246,9 +244,7 @@ fn handles_dev_only_features() {
     builder.include_targets([("x86_64-pc-windows-msvc", vec![])]);
     builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
 
-    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
-
-    insta::assert_snapshot!(krates::petgraph::dot::Dot::new(md.graph()).to_string());
+    ktest::assert_dotgraph!(builder, cmd);
 }
 
 /// Ensures that features only brought in by eg dev-dependencies are not used if
@@ -262,10 +258,8 @@ fn ignores_features_for_ignored_kinds() {
 
     let mut builder = krates::Builder::new();
     builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
-    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
 
-    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
-    insta::assert_snapshot!(dotgraph);
+    ktest::assert_dotgraph!(builder, cmd);
 }
 
 /// Ensures dependencies only brought in by specific features for specific targets
@@ -278,14 +272,13 @@ fn includes_target_specific_feature_dependencies() {
 
     let mut builder = krates::Builder::new();
     builder.ignore_kind(krates::DepKind::Dev, krates::Scope::All);
-    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
 
-    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
-    insta::assert_snapshot!(dotgraph);
+    ktest::assert_dotgraph!(builder, cmd);
 }
 
 /// Ensures that dependencies on the same crate but on different version with
 /// different features, correctly resolves them when doing feature resolution
+///
 /// See <https://github.com/EmbarkStudios/krates/issues/97>
 #[test]
 fn duplicate_versions() {
@@ -293,9 +286,59 @@ fn duplicate_versions() {
     cmd.manifest_path("tests/feature-bug-2/Cargo.toml")
         .all_features();
 
-    let builder = krates::Builder::new();
-    let md: krates::Krates<util::JustId> = builder.build(cmd, krates::NoneFilter).unwrap();
+    ktest::assert_dotgraph!(cmd);
+}
 
-    let dotgraph = krates::petgraph::dot::Dot::new(md.graph()).to_string();
-    insta::assert_snapshot!(dotgraph);
+/// Ensures that features are properly enabled (and bring in) crates that have
+/// their lib target renamed
+///
+/// See <https://github.com/EmbarkStudios/krates/issues/106>
+#[test]
+fn handles_lib_rename() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/lib-rename/Cargo.toml");
+
+    ktest::assert_dotgraph!(cmd);
+}
+
+/// Ensures that weak features enabled for a crate which is itself optional properly
+/// enable the feature in the optional dependency
+#[test]
+fn chained_optional_weak_features() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/chained-weak/app/Cargo.toml");
+
+    ktest::assert_dotgraph!(cmd);
+}
+
+use krates::{Feature, ParsedFeature};
+use ktest::similar_asserts::assert_eq;
+
+#[test]
+fn parses_features() {
+    assert_eq!(
+        ParsedFeature::from("simple").feat(),
+        Feature::Simple("simple"),
+    );
+
+    assert_eq!(
+        ParsedFeature::from("dep:krate-name-here").feat(),
+        Feature::Krate("krate-name-here"),
+    );
+
+    assert_eq!(
+        ParsedFeature::from("krate-name-here?/feature-name-here").feat(),
+        Feature::Weak {
+            krate: "krate-name-here",
+            feature: "feature-name-here"
+        },
+    );
+
+    assert_eq!(
+        ParsedFeature::from("name/feat").feat(),
+        Feature::Strong {
+            krate: "name",
+            feature: "feat"
+        },
+    );
 }

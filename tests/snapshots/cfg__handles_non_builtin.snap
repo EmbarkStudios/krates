@@ -1,6 +1,6 @@
 ---
 source: tests/cfg.rs
-expression: grafs.dotgraph()
+expression: "& grafs.dotgraph()"
 ---
 digraph {
     0 [ label = "crate a 0.1.0 path+file:///krates/tests/ws/a" ]
@@ -171,4 +171,3 @@ digraph {
     35 -> 27 [ label = "" ]
     34 -> 27 [ label = "" ]
 }
-

@@ -1,6 +1,6 @@
 ---
 source: tests/features.rs
-expression: "krates::petgraph::dot::Dot::new(md.graph()).to_string()"
+expression: "krates :: petgraph :: dot :: Dot :: new(md.graph()).to_string()"
 ---
 digraph {
     0 [ label = "crate base-x 0.2.11" ]
@@ -319,4 +319,3 @@ digraph {
     71 -> 30 [ label = "" ]
     41 -> 31 [ label = "" ]
 }
-
