@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.21.1] - 2026-04-10
 ### Fixed
 - [PR#110](https://github.com/EmbarkStudios/krates/pull/110) resolved [#109](https://github.com/EmbarkStudios/krates/issues/109) by properly enabling features of a weak dependency directly referenced by another weak feature.
 
@@ -272,7 +273,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.21.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.21.1...HEAD
+[0.21.1]: https://github.com/EmbarkStudios/krates/compare/0.21.0...0.21.1
 [0.21.0]: https://github.com/EmbarkStudios/krates/compare/0.20.0...0.21.0
 [0.20.0]: https://github.com/EmbarkStudios/krates/compare/0.19.0...0.20.0
 [0.19.0]: https://github.com/EmbarkStudios/krates/compare/0.18.1...0.19.0
