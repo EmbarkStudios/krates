@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#110](https://github.com/EmbarkStudios/krates/pull/110) resolved [#109](https://github.com/EmbarkStudios/krates/issues/109) by properly enabling features of a weak dependency directly referenced by another weak feature.
+
 ## [0.21.0] - 2026-04-01
 ### Changed
 - [PR#107](https://github.com/EmbarkStudios/krates/pull/107) updated crates.
