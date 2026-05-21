@@ -1869,7 +1869,7 @@ mod test {
     #[test]
     fn windows_paths_match() {
         assert!(super::compare_paths(
-            &camino::Utf8Path::new("D:\\a\\krates\\krates\\tests\\package-rename"),
+            camino::Utf8Path::new("D:\\a\\krates\\krates\\tests\\package-rename"),
             "path+file:///D:/a/krates/krates/tests/package-rename"
         ));
     }
