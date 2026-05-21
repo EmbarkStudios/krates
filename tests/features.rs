@@ -301,6 +301,18 @@ fn handles_lib_rename() {
     ktest::assert_dotgraph!(cmd);
 }
 
+/// Ensures that features are properly enabled (and bring in) crates that have
+/// their package renamed
+///
+/// See <https://github.com/EmbarkStudios/krates/issues/111>
+#[test]
+fn handles_package_rename() {
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/package-rename/Cargo.toml");
+
+    ktest::assert_dotgraph!(cmd);
+}
+
 /// Ensures that weak features enabled for a crate which is itself optional properly
 /// enable the feature in the optional dependency
 #[test]

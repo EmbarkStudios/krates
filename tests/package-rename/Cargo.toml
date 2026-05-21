@@ -1,0 +1,10 @@
+[package]
+name = "libc"
+version = "0.1.0"
+
+[features]
+sigh = []
+
+[dev-dependencies]
+libc = { path = ".", features = ["sigh"] }
+libc-real = { package = "libc", version = "0.2" }

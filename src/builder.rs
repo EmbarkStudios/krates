@@ -1344,7 +1344,8 @@ impl Builder {
                                 // Handle case where a dependency may not have a version requirement, which
                                 // typically happens in the case of non-registry dependencies that use a pre-release
                                 // semver, if the version _is_ a prelease it will never match the empty
-                                // requirement
+                                // requirement. Note this will pass through eg. path dependencies that don't specify a
+                                // version, but those should be rejected during source comparison if matching against eg. a registry crate
                                 if !((has_prelease && dep.req.comparators.is_empty()) || dep.req.matches(rdep_version)) {
                                     return false;
                                 }
@@ -1358,13 +1359,13 @@ impl Builder {
                                 }
 
                                 // Finally, even if the name matches and the version matches, the source for the package might
-                                // be different if there are multiple git dependencies at different revisions :(
+                                // be different if there are multiple git dependencies at different revisions :(, or if
                                 // There is also an _extreme_ edge case where a package's lib target can be the same
                                 // name as another package. This actually would mean that the code won't compile, but I
                                 // encountered it in testing (eg. the `md-5` crate names its lib target `md5`, and you
                                 // can have a dependency on the `md5` crate, they both get resolved to the same name, but
                                 // then rustc can't compile `md5::compute` because there are two libs that satisfy that name)
-                                dep.source.as_deref().is_none_or(|dsrc| {
+                                if let Some(dsrc) = &dep.source {
                                     let psrc = rdep.pkg.source();
                                     let Some((dgit, pgit)) = dsrc.strip_prefix("git+").zip(psrc.strip_prefix("git+")) else {
                                         return dsrc == psrc;
@@ -1379,7 +1380,15 @@ impl Builder {
                                     };
 
                                     dgit == pgit
-                                })
+                                } else if let Some(dpath) = &dep.path {
+                                    let Some(rpath) = rdep.pkg.source().strip_prefix("path+file://") else {
+                                        return false;
+                                    };
+
+                                    rpath == dpath
+                                } else {
+                                    false
+                                }
                             }) else {
                                 unreachable!("cargo metadata resolved a dependency for a dependency not specified by the crate: {rdep:?}");
                             };
