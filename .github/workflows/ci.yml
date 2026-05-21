@@ -76,8 +76,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run:
-      - run: |
+      - shell: bash
+        run: |
           echo '```json' >> $GITHUB_STEP_SUMMARY
           cargo metadata --format-version 1 --manifest-path tests/package-rename/Cargo.toml >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
