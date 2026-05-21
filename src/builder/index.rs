@@ -64,9 +64,7 @@ pub(super) fn fix_features(index: &CachingIndex, krate: &mut crate::Package) {
     // features if the crate version was published with cargo <1.60.0 version,
     // so we need to manually fix that up since we depend on that format
     let missing_deps: Vec<_> = krate
-        .features
-        .iter()
-        .flat_map(|(_, sf)| sf.iter())
+        .features.values().flat_map(|sf| sf.iter())
         .filter_map(|sf| {
             let pf = crate::ParsedFeature::from(sf.as_str());
 
