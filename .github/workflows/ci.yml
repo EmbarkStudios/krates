@@ -70,6 +70,16 @@ jobs:
         with:
           rust-version: "1.85.0"
 
+  windows:
+    name: whatdoyoudo
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: echo ```json >> $GITHUB_STEP_SUMMARY
+      - run: cargo metadata --format-version 1 --manifest-path tests/package-rename/Cargo.toml >> $GITHUB_STEP_SUMMARY
+      - run: echo ``` >> $GITHUB_STEP_SUMMARY
+
   publish-check:
     name: Publish Check
     runs-on: ubuntu-24.04
