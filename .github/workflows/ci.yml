@@ -76,9 +76,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: echo ```json >> $GITHUB_STEP_SUMMARY
-      - run: cargo metadata --format-version 1 --manifest-path tests/package-rename/Cargo.toml >> $GITHUB_STEP_SUMMARY
-      - run: echo ``` >> $GITHUB_STEP_SUMMARY
+      - run:
+      - run: |
+          echo ```json >> $GITHUB_STEP_SUMMARY
+          cargo metadata --format-version 1 --manifest-path tests/package-rename/Cargo.toml >> $GITHUB_STEP_SUMMARY
+          echo ``` >> $GITHUB_STEP_SUMMARY
 
   publish-check:
     name: Publish Check
