@@ -1,0 +1,17 @@
+---
+source: tests/misc.rs
+expression: "& grafs.dotgraph()"
+---
+digraph {
+    0 [ label = "crate libc 0.1.0 path+file:///krates/tests/package-rename" ]
+    1 [ label = "crate libc 0.2.186" ]
+    2 [ label = "feature sigh" ]
+    3 [ label = "feature default" ]
+    4 [ label = "feature std" ]
+    0 -> 2 [ label = "(dev)" ]
+    0 -> 3 [ label = "(dev)" ]
+    2 -> 0 [ label = "" ]
+    4 -> 1 [ label = "" ]
+    3 -> 1 [ label = "" ]
+    3 -> 4 [ label = "" ]
+}
