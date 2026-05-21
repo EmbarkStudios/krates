@@ -1335,6 +1335,7 @@ impl Builder {
                                     return false;
                                 }
 
+
                                 // Crates can rename the dependency package themselves
                                 let dname = dep.rename.as_deref().unwrap_or(&dep.name);
                                 if maybe_real_name != dname && !dep_names_match(dname, rdep) {
@@ -1381,11 +1382,7 @@ impl Builder {
 
                                     dgit == pgit
                                 } else if let Some(dpath) = &dep.path {
-                                    let Some(rpath) = rdep.pkg.source().strip_prefix("path+file://") else {
-                                        return false;
-                                    };
-
-                                    rpath == dpath
+                                    compare_paths(dpath, rdep.pkg.source())
                                 } else {
                                     false
                                 }
@@ -1828,5 +1825,52 @@ impl Builder {
             workspace_root: md.workspace_root,
             krates_end,
         })
+    }
+}
+
+#[inline]
+fn compare_paths(dpath: &camino::Utf8Path, src: &str) -> bool {
+    let Some(rpath) = src.strip_prefix("path+file://") else {
+        return false;
+    };
+
+    // Due to the various terrible ways Windows can do paths, we only try to handle the
+    // common case
+    if dpath.starts_with("/") {
+        rpath == dpath
+    } else {
+        // Skip the leading /
+        let mut rcomp = camino::Utf8Path::new(&rpath[1..]).components();
+        // We can't use the components on non-windows, as camino defers to std which when compiled for a unix platform
+        // only recognizes / as a path separator, unlike windows which recognizes both, I would hope people are not
+        // generating metadata on Windows and analyzing it on eg. Linux, but...whatever
+        let mut dcomp = dpath.as_str().split('\\');
+
+        loop {
+            match (rcomp.next(), dcomp.next()) {
+                (Some(r), Some(d)) => {
+                    if r.as_str() != d {
+                        break;
+                    }
+                }
+                (None, None) => {
+                    return true;
+                }
+                _ => break,
+            }
+        }
+
+        false
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn windows_paths_match() {
+        assert!(super::compare_paths(
+            &camino::Utf8Path::new("D:\\a\\krates\\krates\\tests\\package-rename"),
+            "path+file:///D:/a/krates/krates/tests/package-rename"
+        ));
     }
 }

@@ -330,3 +330,9 @@ fn ignores_unknown_fields() {
 
     let _cm = serde_json::from_str::<krates::cm::Metadata>(&json.to_string()).unwrap();
 }
+
+/// Just validates we handle windows paths somewhat
+#[test]
+fn windows_paths() {
+    ktest::assert_dotgraph!(default "windows.json");
+}
