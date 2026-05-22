@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#112](https://github.com/EmbarkStudios/krates/pull/112) resolved [#111](https://github.com/EmbarkStudios/krates/issues/111) by taking into account path sources.
+
 ## [0.21.1] - 2026-04-10
 ### Fixed
 - [PR#110](https://github.com/EmbarkStudios/krates/pull/110) resolved [#109](https://github.com/EmbarkStudios/krates/issues/109) by properly enabling features of a weak dependency directly referenced by another weak feature.
