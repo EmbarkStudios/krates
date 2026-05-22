@@ -261,7 +261,7 @@ impl Ord for Kid {
         let a = &self.repr;
         let b = &o.repr;
 
-        for (ar, br) in self.components.into_iter().zip(o.components.into_iter()) {
+        for (ar, br) in self.components.into_iter().zip(o.components) {
             let ord = a[ar.0..ar.1].cmp(&b[br.0..br.1]);
             if ord != std::cmp::Ordering::Equal {
                 return ord;
