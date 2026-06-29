@@ -28,7 +28,9 @@ serialize = []
 camino = { version = "1.1", features = ["serde1"] }
 # Used to parse and evaluate cfg() expressions for dependencies
 cfg-expr = "0.20"
-# Used to create and traverse graph structures
+# We don't directly depend on this, but need to explicitly pin it to avoid multiple versions of hashbrown
+indexmap = "=2.9.0"
+# Used to create and traverse graph structures, pinned to 0.8.1 to avoid multiple versions of hashbrown
 petgraph = { version = "=0.8.1", default-features = false }
 # Used for checking version requirements
 semver = { version = "1.0", features = ["serde"] }
