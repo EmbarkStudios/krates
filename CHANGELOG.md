@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.21.3] - 2026-06-29
 ### Changed
 - [PR#114](https://github.com/EmbarkStudios/krates/pull/114) updated crates, pinning `indexmap` to avoid multiple versions of the `hashbrown` crate.
 
@@ -280,7 +281,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.21.2...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.21.3...HEAD
+[0.21.3]: https://github.com/EmbarkStudios/krates/compare/0.21.2...0.21.3
 [0.21.2]: https://github.com/EmbarkStudios/krates/compare/0.21.1...0.21.2
 [0.21.1]: https://github.com/EmbarkStudios/krates/compare/0.21.0...0.21.1
 [0.21.0]: https://github.com/EmbarkStudios/krates/compare/0.20.0...0.21.0
