@@ -37,6 +37,7 @@ serde_json = "1.0"
 
 [dev-dependencies]
 ktest = { path = "./ktest" }
+serde = { version = "1.0", features = ["derive"] }
 
 [profile.dev.package.insta]
 opt-level = 3
