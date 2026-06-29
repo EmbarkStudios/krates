@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#114](https://github.com/EmbarkStudios/krates/pull/114) updated crates, pinning `indexmap` to avoid multiple versions of the `hashbrown` crate.
+
 ## [0.21.2] - 2026-05-22
 ### Fixed
 - [PR#112](https://github.com/EmbarkStudios/krates/pull/112) resolved [#111](https://github.com/EmbarkStudios/krates/issues/111) by taking into account path sources.
