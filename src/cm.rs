@@ -10,7 +10,7 @@ mod errors;
 #[cfg(feature = "serialize")]
 mod ser;
 
-pub use cmd::{MetadataCommand, Features};
+pub use cmd::{Features, MetadataCommand};
 pub use errors::Error;
 
 /// An "opaque" identifier for a package.
