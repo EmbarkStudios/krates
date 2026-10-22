@@ -61,6 +61,9 @@ map!(Metadata, map, self, {
         map.serialize_entry("workspace_default_members", wdm)?;
     }
     entries!(map, self, resolve, workspace_root, target_directory);
+    if let Some(build_directory) = &self.build_directory {
+        map.serialize_entry("build_directory", build_directory)?;
+    }
     entry!(map, self, workspace_metadata, "metadata");
     entry!(map, self, version);
 });

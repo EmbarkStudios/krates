@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- Added `Metadata::build_directory` for Cargo's optional separate intermediate build directory.
+
 ## [0.21.3] - 2026-06-29
 ### Changed
 - [PR#114](https://github.com/EmbarkStudios/krates/pull/114) updated crates, pinning `indexmap` to avoid multiple versions of the `hashbrown` crate.

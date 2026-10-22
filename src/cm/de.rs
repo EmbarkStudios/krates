@@ -83,6 +83,7 @@ map!(Metadata, map, {
     let mut resolve = None;
     let mut workspace_root = None;
     let mut target_directory = None;
+    let mut build_directory = None;
     let mut workspace_metadata = serde_json::Value::Null;
     let mut version = 0;
 
@@ -94,6 +95,7 @@ map!(Metadata, map, {
             "resolve" => resolve = Some(tri!(map.next_value())),
             "workspace_root" => workspace_root = Some(tri!(map.next_value())),
             "target_directory" => target_directory = Some(tri!(map.next_value())),
+            "build_directory" => build_directory = tri!(map.next_value()),
             "metadata" => workspace_metadata = tri!(map.next_value()),
             "version" => version = tri!(map.next_value()),
             _ => {
@@ -109,6 +111,7 @@ map!(Metadata, map, {
         resolve,
         workspace_root: required!(workspace_root),
         target_directory: required!(target_directory),
+        build_directory,
         workspace_metadata,
         version,
     })
