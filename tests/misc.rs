@@ -247,13 +247,13 @@ fn finds_duplicates() {
     ktest::assert_snapshot!(opaque);
 }
 
-// #[test]
-// #[cfg(feature = "serialize")]
-// fn roundtrip() {
-//     let contents = std::fs::read_to_string("tests/all-features.json").unwrap();
-//     let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();
-//     ktest::insta::assert_json_snapshot!(md);
-// }
+#[test]
+#[cfg(feature = "serialize")]
+fn roundtrip() {
+    let contents = std::fs::read_to_string("tests/windows.json").unwrap();
+    let md: krates::cm::Metadata = serde_json::from_str(&contents).unwrap();
+    ktest::similar_asserts::assert_eq!(serde_json::to_string_pretty(&md).unwrap(), contents);
+}
 
 /// Tests that manifest deserialization ignores unknown fields from eg. unstable features
 #[test]
@@ -366,4 +366,13 @@ fn ignores_unknown_fields() {
 #[test]
 fn windows_paths() {
     ktest::assert_dotgraph!(default "windows.json");
+}
+
+/// Just confirms we can run and deserialize with `--no-deps` even if that's not the intended usage of this crate overall
+#[test]
+fn no_deps() {
+    let mut cmd = krates::cm::MetadataCommand::new();
+    cmd.no_deps();
+    cmd.manifest_path("tests/package-rename/Cargo.toml");
+    cmd.exec().unwrap();
 }
