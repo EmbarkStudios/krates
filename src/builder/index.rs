@@ -1,27 +1,37 @@
+//! Utilities for fixing features in metadata with information from an index
+
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Callback to transform a set package names to a list of their versions and features for that version
 pub type BuildIndexCache =
     Box<dyn FnOnce(BTreeSet<String>) -> BTreeMap<String, Option<IndexKrate>>>;
 
+/// The map of features for a crate version
 pub type FeaturesMap = BTreeMap<String, Vec<String>>;
 
+/// A specific version of a crate
 #[derive(Clone)]
 pub struct IndexKrateVersion {
+    /// The unique version
     pub version: semver::Version,
+    /// The feature map for that version
     pub features: FeaturesMap,
 }
 
+/// A single crate
 #[derive(Clone)]
 pub struct IndexKrate {
+    /// All the published versions for that crate
     pub versions: Vec<IndexKrateVersion>,
 }
 
+/// A cache of index information that can be used to fix features retrieved from metadata
 pub struct CachingIndex {
     cache: BTreeMap<String, Option<IndexKrate>>,
 }
 
 impl CachingIndex {
-    /// Creates a caching index for information provided by the user
+    /// Creates a caching index with information provided by the user
     #[inline]
     pub fn new(build: BuildIndexCache, krates: BTreeSet<String>) -> Self {
         Self {

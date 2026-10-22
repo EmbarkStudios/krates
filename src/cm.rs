@@ -48,7 +48,9 @@ pub struct Metadata {
     pub workspace_root: PathBuf,
     /// Target directory
     pub target_directory: PathBuf,
-    /// Build directory for intermediate artifacts
+    /// Build directory for intermediate artifacts.
+    ///
+    /// Only filled out when cargo is at version 1.91+
     pub build_directory: Option<PathBuf>,
     /// The workspace-level metadata object. Null if non-existent.
     pub workspace_metadata: serde_json::Value,

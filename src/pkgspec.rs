@@ -1,17 +1,21 @@
 use crate::Error;
 use semver::Version;
 
-/// A package specification. See
-/// [cargo pkgid](https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html)
-/// for more information on this.
+/// A package specification.
+///
+/// See [cargo pkgid](https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html) for more information on this.
 #[derive(Debug, Clone)]
 pub struct PkgSpec {
+    /// The name of the crate
     pub name: String,
+    /// The semver of the crate
     pub version: Option<Version>,
+    /// The source of the crate
     pub url: Option<String>,
 }
 
 impl PkgSpec {
+    /// Returns true if this package spec matches the specified crate
     pub fn matches(&self, krate: &crate::cm::Package) -> bool {
         if self.name != krate.name {
             return false;
