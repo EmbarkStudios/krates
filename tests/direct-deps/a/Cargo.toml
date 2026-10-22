@@ -1,0 +1,11 @@
+[package]
+name = "a"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+b = { path = "../b", features = ["andc"] }
+
+google-cloud-pubsub = { version = "0.8", default-features = false, features = ["rustls-tls"] }
+google-cloud-gax = { version = "0.9",  default-features = false, features = ["rustls-tls"] }
+google-cloud-googleapis = "0.6"

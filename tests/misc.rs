@@ -200,25 +200,55 @@ fn direct_dependencies() {
         vec![],
     )));
 
-    let grafs = build("direct.json", kb).unwrap();
+    let mut cmd = krates::Cmd::new();
+    cmd.manifest_path("tests/direct-deps/Cargo.toml");
 
-    let id = grafs
-        .actual
-        .krates()
-        .find(|k| k.0.repr.starts_with("reqwest"))
-        .unwrap();
+    let k: krates::Krates = kb.build(cmd, krates::NoneFilter).unwrap();
 
-    let mut ids: Vec<_> = grafs
-        .actual
-        .direct_dependencies(grafs.actual.nid_for_kid(&id.0).unwrap())
-        .into_iter()
-        .map(|jid| jid.krate.0.repr.as_str())
-        .collect();
+    let mut s = String::new();
+    s.push_str("reqwest:");
+    let ddeps = k.direct_dependencies(
+        k.nid_for_kid(
+            k.search_matches("reqwest", "*".parse().unwrap())
+                .next()
+                .unwrap()
+                .kid,
+        )
+        .unwrap(),
+    );
 
-    ids.sort();
-    let dd = ids.join("\n");
+    let write =
+        |s: &mut String, mut ddeps: Vec<krates::DirectDependency<'_, krates::cm::Package>>| {
+            ddeps.sort_by(|a, b| a.krate.id.cmp(&b.krate.id));
 
-    ktest::assert_snapshot!(dd);
+            for dd in ddeps {
+                s.push('\n');
+
+                if dd.krate.id.repr.starts_with("path+") {
+                    s.push_str(&dd.krate.id.repr[dd.krate.id.repr.rfind('/').unwrap() + 1..]);
+                } else {
+                    s.push_str(&dd.krate.id.repr[dd.krate.id.repr.rfind('#').unwrap() + 1..]);
+                }
+            }
+        };
+
+    write(&mut s, ddeps);
+
+    s.push_str("\n\na:");
+
+    let ddeps = k.direct_dependencies(
+        k.nid_for_kid(
+            k.search_matches("a", "*".parse().unwrap())
+                .next()
+                .unwrap()
+                .kid,
+        )
+        .unwrap(),
+    );
+
+    write(&mut s, ddeps);
+
+    ktest::assert_snapshot!(s);
 }
 
 /// Validates that there is no difference between the OG "opaque" package id
