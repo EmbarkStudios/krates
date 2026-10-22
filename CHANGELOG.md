@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.22.0] - 2026-10-22
 ### Added
 - [PR#117](https://github.com/EmbarkStudios/krates/pull/117) made `krates::cm::Features` public.
 - [PR#118](https://github.com/EmbarkStudios/krates/pull/118) added `krates::cm::Metadata::build_directory`, stabilized in cargo 1.91.
@@ -289,7 +290,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.21.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/EmbarkStudios/krates/compare/0.21.3...0.22.0
 [0.21.3]: https://github.com/EmbarkStudios/krates/compare/0.21.2...0.21.3
 [0.21.2]: https://github.com/EmbarkStudios/krates/compare/0.21.1...0.21.2
 [0.21.1]: https://github.com/EmbarkStudios/krates/compare/0.21.0...0.21.1
