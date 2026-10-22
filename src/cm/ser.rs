@@ -60,12 +60,15 @@ map!(Metadata, map, self, {
     if let Some(wdm) = &self.workspace_default_members.0 {
         map.serialize_entry("workspace_default_members", wdm)?;
     }
-    entries!(map, self, resolve, workspace_root, target_directory);
+
+    entries!(map, self, resolve, target_directory);
+
     if let Some(build_directory) = &self.build_directory {
         map.serialize_entry("build_directory", build_directory)?;
     }
+
+    entries!(map, self, version, workspace_root);
     entry!(map, self, workspace_metadata, "metadata");
-    entry!(map, self, version);
 });
 
 map!(Package, map, self, {
@@ -74,28 +77,39 @@ map!(Package, map, self, {
         self,
         name,
         version,
-        authors,
         id,
-        source,
-        description,
-        dependencies,
         license,
         license_file,
+        description,
+        source,
+        dependencies,
         targets,
         features,
         manifest_path,
+        metadata,
+        publish,
+        authors,
         categories,
         keywords,
         readme,
         repository,
         homepage,
         documentation,
-        edition
+        edition,
+        links,
+        default_run
     );
-    if !self.metadata.is_null() {
-        entry!(map, self, metadata);
+
+    if let Some(rv) = &self.rust_version {
+        let mut s = format!("{}.{}", rv.major, rv.minor);
+        if rv.patch > 0 {
+            use std::fmt::Write;
+            write!(&mut s, ".{}", rv.patch).unwrap();
+        }
+        map.serialize_entry("rust_version", &s)?;
+    } else {
+        map.serialize_entry("rust_version", &self.rust_version)?;
     }
-    entries!(map, self, links, publish, default_run, rust_version);
 });
 
 map!(Resolve, map, self, {
@@ -103,7 +117,7 @@ map!(Resolve, map, self, {
 });
 
 map!(Node, map, self, {
-    entries!(map, self, id, deps, dependencies, features);
+    entries!(map, self, id, dependencies, deps, features);
 });
 
 map!(NodeDep, map, self, {
@@ -119,13 +133,11 @@ impl Serialize for DependencyKind {
     where
         S: Serializer,
     {
-        let s = match self {
-            Self::Normal => "normal",
-            Self::Development => "dev",
-            Self::Build => "build",
-        };
-
-        serializer.serialize_str(s)
+        match self {
+            Self::Normal => serializer.serialize_none(),
+            Self::Development => serializer.serialize_str("dev"),
+            Self::Build => serializer.serialize_str("build"),
+        }
     }
 }
 
@@ -137,31 +149,27 @@ map!(Dependency, map, self, {
         source,
         req,
         kind,
+        rename,
         optional,
         uses_default_features,
         features,
         target,
-        rename,
-        registry,
-        path
+        registry
     );
+
+    if let Some(p) = &self.path {
+        map.serialize_entry("path", p)?;
+    }
 });
 
 map!(Target, map, self, {
-    entries!(
-        map,
-        self,
-        name,
-        kind,
-        crate_types,
-        required_features,
-        src_path,
-        edition,
-        doctest,
-        doctest,
-        test,
-        doc
-    );
+    entries!(map, self, kind, crate_types, name, src_path, edition);
+
+    if !self.required_features.is_empty() {
+        entry!(map, self, required_features);
+    }
+
+    entries!(map, self, doc, doctest, test);
 });
 
 impl Serialize for Edition {

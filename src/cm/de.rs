@@ -92,7 +92,7 @@ map!(Metadata, map, {
             "packages" => packages = Some(tri!(map.next_value())),
             "workspace_members" => workspace_members = Some(tri!(map.next_value())),
             "workspace_default_members" => workspace_default_members = Some(tri!(map.next_value())),
-            "resolve" => resolve = Some(tri!(map.next_value())),
+            "resolve" => resolve = tri!(map.next_value()),
             "workspace_root" => workspace_root = Some(tri!(map.next_value())),
             "target_directory" => target_directory = Some(tri!(map.next_value())),
             "build_directory" => build_directory = tri!(map.next_value()),
