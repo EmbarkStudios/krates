@@ -46,8 +46,10 @@ pub struct Metadata {
     pub resolve: Option<Resolve>,
     /// Workspace root
     pub workspace_root: PathBuf,
-    /// Build directory
+    /// Target directory
     pub target_directory: PathBuf,
+    /// Build directory for intermediate artifacts
+    pub build_directory: Option<PathBuf>,
     /// The workspace-level metadata object. Null if non-existent.
     pub workspace_metadata: serde_json::Value,
     /// The metadata format version

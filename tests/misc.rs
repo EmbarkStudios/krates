@@ -1,5 +1,36 @@
 use ktest::util::build;
 
+fn metadata_with_build_directory() -> krates::cm::Metadata {
+    serde_json::from_value(serde_json::json!({
+        "packages": [],
+        "workspace_members": [],
+        "workspace_default_members": [],
+        "workspace_root": "/workspace",
+        "target_directory": "/workspace/target",
+        "build_directory": "/cache/build",
+        "metadata": null,
+        "version": 1,
+    }))
+    .unwrap()
+}
+
+#[test]
+fn deserializes_build_directory() {
+    let metadata = metadata_with_build_directory();
+    assert_eq!(
+        metadata.build_directory,
+        Some(krates::cm::PathBuf::from("/cache/build"))
+    );
+}
+
+#[test]
+#[cfg(feature = "serialize")]
+fn serializes_build_directory() {
+    let metadata = metadata_with_build_directory();
+    let json = serde_json::to_value(metadata).unwrap();
+    assert_eq!(json.get("build_directory").unwrap(), "/cache/build");
+}
+
 #[test]
 fn iter_names() {
     let contents = std::fs::read_to_string("tests/all-features.json")
