@@ -507,17 +507,30 @@ impl<N, E> Krates<N, E> {
 
     /// Gets crates directly depended upon by the specified node
     #[inline]
-    pub fn direct_dependencies(&self, nid: NodeId) -> Vec<DirectDependency<'_, N>> {
+    pub fn direct_dependencies(&self, root: NodeId) -> Vec<DirectDependency<'_, N>> {
         let graph = self.graph();
-        let mut direct_dependencies = Vec::new();
-        let mut stack = vec![nid];
+
+        let Node::Krate { dep_mapping, .. } = &graph[root] else {
+            return Vec::new();
+        };
+
+        let mut stack = vec![root];
+        let mut expected: Vec<_> = dep_mapping.iter().filter_map(|dm| dm.clone()).collect();
+        expected.sort();
+        let mut direct_dependencies = Vec::with_capacity(expected.len());
         let mut visited = std::collections::BTreeSet::new();
 
         while let Some(nid) = stack.pop() {
             for edge in graph.edges_directed(nid, Direction::Outgoing) {
+                if !visited.insert(edge.target()) {
+                    continue;
+                }
+
                 match &graph[edge.target()] {
                     Node::Krate { krate, .. } => {
-                        if visited.insert(edge.target()) {
+                        if let Ok(i) = expected.binary_search(&edge.target()) {
+                            expected.remove(i);
+
                             direct_dependencies.push(DirectDependency {
                                 krate,
                                 node_id: edge.target(),
@@ -526,9 +539,7 @@ impl<N, E> Krates<N, E> {
                         }
                     }
                     Node::Feature { .. } => {
-                        if visited.insert(edge.target()) {
-                            stack.push(edge.target());
-                        }
+                        stack.push(edge.target());
                     }
                 }
             }
@@ -572,7 +583,7 @@ impl<N, E> Krates<N, E> {
     /// Retrieves the krate that was resolved for the specified crate dependency.
     ///
     /// This will return `None` if the krate doesn't exist, the dependency doesn't
-    /// exist, or dependency was pruned.
+    /// exist, or the dependency was pruned.
     ///
     /// Note that `dep_index` is the index of [`cargo_metadata::Package::dependencies`]
     #[inline]

@@ -3,8 +3,8 @@ name = "b"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-c = { path = "../c", optional = true }
-
 [features]
 andc = ["dep:c"]
+
+[dependencies]
+c = { path = "../c", optional = true }
