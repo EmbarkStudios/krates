@@ -515,7 +515,7 @@ impl<N, E> Krates<N, E> {
         };
 
         let mut stack = vec![root];
-        let mut expected: Vec<_> = dep_mapping.iter().filter_map(|dm| dm.clone()).collect();
+        let mut expected: Vec<_> = dep_mapping.iter().filter_map(|dm| *dm).collect();
         expected.sort();
         let mut direct_dependencies = Vec::with_capacity(expected.len());
         let mut visited = std::collections::BTreeSet::new();
