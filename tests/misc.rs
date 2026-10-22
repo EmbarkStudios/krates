@@ -367,3 +367,12 @@ fn ignores_unknown_fields() {
 fn windows_paths() {
     ktest::assert_dotgraph!(default "windows.json");
 }
+
+/// Just confirms we can run and deserialize with `--no-deps` even if that's not the intended usage of this crate overall
+#[test]
+fn no_deps() {
+    let mut cmd = krates::cm::MetadataCommand::new();
+    cmd.no_deps();
+    cmd.manifest_path("tests/package-rename/Cargo.toml");
+    cmd.exec().unwrap();
+}
