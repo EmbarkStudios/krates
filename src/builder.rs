@@ -9,8 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// An alternative to [`cargo_metadata::MetadataCommand`] which allows correct
-/// feature usage, as well as ensuring that the command can run successfully
+/// An alternative to [`cargo_metadata::MetadataCommand`].
+///
+/// Allows correct feature usage, as well as ensuring that the command can run successfully
 /// regardless of where it is executed and on what.
 #[derive(Default, Debug)]
 pub struct Cmd {
@@ -26,30 +27,32 @@ pub struct Cmd {
     offline: bool,
 }
 
+/// Options related to how the lockfile and network is utilized.
 #[derive(Copy, Clone)]
 pub struct LockOptions {
-    /// Requires that the Cargo.lock file is up-to-date. If the lock file is
-    /// missing, or it needs to be updated, Cargo will exit with an error.
-    /// Prevents Cargo from attempting to access the network to determine if it
-    /// is out-of-date.
-    pub frozen: bool,
-    /// Requires that the Cargo.lock file is up-to-date. If the lock file is
-    /// missing, or it needs to be updated, Cargo will exit with an error.
-    pub locked: bool,
-    /// Prevents Cargo from accessing the network for any reason. Without this
-    /// flag, Cargo will stop with an error if it needs to access the network
-    /// and the network is not available. With this flag, Cargo will attempt to
-    /// proceed without the network if possible.
+    /// Requires that the Cargo.lock file is up-to-date.
     ///
-    /// Beware that this may result in different dependency resolution than
-    /// online mode. Cargo will restrict itself to crates that are downloaded
-    /// locally, even if there might be a newer version as indicated in the
-    /// local copy of the index. See the [cargo fetch](https://doc.rust-lang.org/cargo/commands/cargo-fetch.html)
-    /// command to download dependencies before going offline.
+    /// If the lock file is missing, or it needs to be updated, Cargo will exit with an error. Prevents Cargo from
+    /// attempting to access the network to determine if it is out-of-date.
+    pub frozen: bool,
+    /// Requires that the Cargo.lock file is up-to-date.
+    ///
+    /// If the lock file is missing, or it needs to be updated, Cargo will exit with an error.
+    pub locked: bool,
+    /// Prevents Cargo from accessing the network for any reason.
+    ///
+    /// Without this flag, Cargo will stop with an error if it needs to access the network and the network is not
+    /// available. With this flag, Cargo will attempt to proceed without the network if possible.
+    ///
+    /// Beware that this may result in different dependency resolution than online mode. Cargo will restrict itself to
+    /// crates that are downloaded locally, even if there might be a newer version as indicated in the local copy of the
+    /// index. See the [cargo fetch](https://doc.rust-lang.org/cargo/commands/cargo-fetch.html) command to download
+    /// dependencies before going offline.
     pub offline: bool,
 }
 
 impl Cmd {
+    /// Creates a [`Self`]
     pub fn new() -> Self {
         Self::default()
     }
@@ -187,11 +190,15 @@ impl From<Cmd> for cm::MetadataCommand {
     }
 }
 
+/// A target to filter crates by
 #[derive(Clone)]
 pub enum Target {
+    /// One of the builtin targets available in `rustc`
     Builtin(&'static cfg_expr::targets::TargetInfo),
+    /// A parsed target triple
     #[cfg(feature = "targets")]
     Triple(cfg_expr::target_lexicon::Triple),
+    /// A target that was not a builtin, or could not be parsed
     Unknown(String),
 }
 
@@ -283,10 +290,12 @@ pub enum Scope {
     All,
 }
 
-/// Trait used to report back any crates that are completely ignored in the
-/// final crate graph that is built. This occurs when the crate has no
-/// dependents any longer due to the applied filters.
+/// Trait used to report back any crates that are completely ignored in the final crate graph that is built.
 pub trait OnFilter {
+    /// Called when a crate is encountered but filtered for some reason
+    ///
+    /// This occurs when the crate has no dependents any longer due to the applied filters, such as explicitly excluded,
+    /// ignored due to its dependency kind, ignored do to its target, or ignored due to which features were enabled.
     fn filtered(&mut self, krate: cm::Package);
 }
 
@@ -318,6 +327,7 @@ pub struct Builder {
 }
 
 impl Builder {
+    /// Creates a new [`Self`]
     pub fn new() -> Self {
         Self::default()
     }

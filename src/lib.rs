@@ -25,6 +25,8 @@
 //! }
 //! ```
 
+#![deny(missing_docs)]
+
 pub mod cm;
 
 pub use cfg_expr;
@@ -289,12 +291,16 @@ impl PartialEq for Kid {
 /// The set of features that have been enabled on a crate
 pub type EnabledFeatures = std::collections::BTreeSet<String>;
 
-/// The dependency kind. A crate can depend on the same crate multiple times
-/// with different dependency kinds
+/// The dependency kind.
+///
+/// A crate can depend on the same crate multiple times with different dependency kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DepKind {
+    /// A normal dependency
     Normal,
+    /// A build dependency
     Build,
+    /// A development dependency
     Dev,
 }
 
@@ -329,10 +335,12 @@ impl fmt::Display for DepKind {
 
 /// A node identifier.
 pub type NodeId = NodeIndex<u32>;
+/// An edge identifier.
 pub type EdgeId = EdgeIndex<u32>;
 
 /// A node in the crate graph.
 pub enum Node<N> {
+    /// A crate
     Krate {
         /// The unique identifier for this node.
         id: Kid,
@@ -346,9 +354,11 @@ pub enum Node<N> {
         /// is easier to use
         dep_mapping: Vec<Option<NodeId>>,
     },
+    /// A feature
     Feature {
         /// The node index for the crate this feature is for
         krate_index: NodeId,
+        /// The name of the feature
         name: String,
     },
 }
@@ -388,6 +398,7 @@ where
 /// The default type used for edges in the crate graph.
 #[derive(Debug, Clone)]
 pub enum Edge {
+    /// An edge from one crate to another
     Dep {
         /// The dependency kind for the edge link
         kind: DepKind,
@@ -396,6 +407,7 @@ pub enum Edge {
     },
     /// An edge from one feature to another
     Feature,
+    /// An edge from a crate to a feature of a dependency
     DepFeature {
         /// The dependency kind for the edge link
         kind: DepKind,
@@ -628,6 +640,7 @@ impl<N, E> Krates<N, E> {
         self.nid_for_kid(kid).map(|nid| &self.graph[nid])
     }
 
+    /// Gets the node of the specified crate id and optional feature
     #[inline]
     pub fn get_node(&self, kid: &Kid, feature: Option<&str>) -> Option<(NodeId, &Node<N>)> {
         self.nid_for_kid(kid).and_then(|nid| {
@@ -854,9 +867,13 @@ where
     }
 }
 
+/// A match for a crate query
 pub struct KrateMatch<'graph, N> {
+    /// The crate that matched
     pub krate: &'graph N,
+    /// The unique id of the krate
     pub kid: &'graph Kid,
+    /// The id of the crate's node
     pub node_id: NodeId,
 }
 

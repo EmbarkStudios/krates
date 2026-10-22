@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#117](https://github.com/EmbarkStudios/krates/pull/117) made `krates::cm::Features` public.
+- [PR#118](https://github.com/EmbarkStudios/krates/pull/118) added `krates::cm::Metadata::build_directory`, stabilized in cargo 1.91.
+
+### Fixed
+- [PR#121](https://github.com/EmbarkStudios/krates/pull/121) resolved [#115](https://github.com/EmbarkStudios/krates/issues/115) by correctly deserializing metadata emitted by cargo when `--no-deps` is passed and `resolve` is `null`, even if that's not the point of this crate. It also changes how JSON serialization so that metadata can be roundtripped to exactly match cargo.
+- [PR#122](https://github.com/EmbarkStudios/krates/pull/122) resolved [#116](https://github.com/EmbarkStudios/krates/issues/116) by only returning the actual direct dependencies from `Krates::direct_dependencies`.
+
 ## [0.21.3] - 2026-06-29
 ### Changed
 - [PR#114](https://github.com/EmbarkStudios/krates/pull/114) updated crates, pinning `indexmap` to avoid multiple versions of the `hashbrown` crate.

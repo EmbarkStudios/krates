@@ -1,14 +1,23 @@
+/// A feature declared by a crate
 #[derive(Debug, PartialEq, Eq)]
 pub enum Feature<'feat> {
+    /// A `dep:<crate>`
     Krate(&'feat str),
+    /// A `<crate>?/<feature>`
     Weak {
+        /// The crate the feature is for
         krate: &'feat str,
+        /// The feature enabled if the crate is enabled
         feature: &'feat str,
     },
+    /// A `<crate>/<feature>`
     Strong {
+        /// The crate the feature is for
         krate: &'feat str,
+        /// The feature
         feature: &'feat str,
     },
+    /// A feature name for the current crate
     Simple(&'feat str),
 }
 
@@ -19,12 +28,14 @@ enum FeatureKind {
     Simple,
 }
 
+/// A parsed feature
 pub struct ParsedFeature<'feat> {
     inner: &'feat str,
     kind: FeatureKind,
 }
 
 impl<'feat> ParsedFeature<'feat> {
+    /// Gets the feature that was parsed
     #[inline]
     pub fn feat(&self) -> Feature<'feat> {
         match self.kind {
