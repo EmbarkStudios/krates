@@ -14,6 +14,12 @@ pub struct PkgSpec {
     pub url: Option<String>,
 }
 
+pub struct PkgSpecComponents<'s> {
+    pub name: &'s str,
+    pub version: Option<&'s str>,
+    pub url: Option<&'s str>,
+}
+
 impl PkgSpec {
     /// Returns true if this package spec matches the specified crate
     pub fn matches(&self, krate: &crate::cm::Package) -> bool {
@@ -27,29 +33,52 @@ impl PkgSpec {
             }
         }
 
-        let Some((url, src)) = self
-            .url
-            .as_ref()
-            .zip(krate.source.as_ref().map(|s| s.repr.as_str()))
-        else {
-            return true;
-        };
+        match (
+            self.url.as_deref(),
+            krate.source.as_ref().map(|s| s.repr.as_str()),
+        ) {
+            (Some(url), Some(src)) => {
+                let begin = src.find('+').map_or(0, |i| i + 1);
+                let end = src
+                    .rfind('?')
+                    .or_else(|| src.rfind('#'))
+                    .unwrap_or(src.len());
 
-        let begin = src.find('+').map_or(0, |i| i + 1);
-        let end = src.find('?').or_else(|| src.find('#')).unwrap_or(src.len());
+                url == &src[begin..end]
+            }
+            (None, None) => true,
+            (Some(url), None) => {
+                // It should never be the case that a package has a null source and is not a path
+                if !krate.id.repr.contains("path+file://") {
+                    // technically unreachable barring a bug in the metadata generation
+                    return false;
+                };
 
-        url == &src[begin..end]
+                let pkid = crate::ParsedKid::parse(&krate.id.repr);
+
+                // We _could_ recheck the name and version but them differing would indicate a serious bug in the metadata
+                // generation that would realistically never? happen
+                let src = match pkid {
+                    crate::ParsedKid::Opaque(comps) => comps[2],
+                    crate::ParsedKid::Stable { src, .. } => (0, src),
+                };
+
+                url == &krate.id.repr[src.0..src.1]
+            }
+            // The crates.io is used as the source and pkgid source even when using source replacement, the only way
+            // to actually tell if a crate is sourced from a non-crates.io registry is to look at the source paths or
+            // parse the source replacement from the cargo configuration/environment
+            (None, Some(url)) => url == "registry+https://github.com/rust-lang/crates.io-index",
+        }
     }
-}
 
-impl std::str::FromStr for PkgSpec {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let name_and_or_version = |nv: Option<&str>,
-                                   url: Option<&str>|
-         -> Result<(String, Option<Version>), Self::Err> {
-            let validate_name = |n: &str| -> Result<String, Self::Err> {
+    /// Attempts to parse a string as the components of a [`Self`]
+    pub fn parse_components(s: &str) -> Result<PkgSpecComponents<'_>, Error> {
+        fn name_and_or_version<'s>(
+            nv: Option<&'s str>,
+            url: Option<&'s str>,
+        ) -> Result<(&'s str, Option<&'s str>), Error> {
+            fn validate_name(n: &str) -> Result<&str, Error> {
                 if n.find(|c: char| c != '-' && c != '_' && !c.is_ascii_alphanumeric())
                     .is_some()
                 {
@@ -57,9 +86,9 @@ impl std::str::FromStr for PkgSpec {
                         "found an invalid character for the package name",
                     ))
                 } else {
-                    Ok(n.to_owned())
+                    Ok(n)
                 }
-            };
+            }
 
             // We validate the url portion regardless, unlike cargo
             let path_name = match url {
@@ -71,105 +100,99 @@ impl std::str::FromStr for PkgSpec {
                         return Err(Error::InvalidPkgSpec("url ends with /"));
                     }
 
-                    match url.rfind("://") {
-                        Some(ind) => match url.rfind('/') {
-                            Some(pind) => {
-                                if pind == ind + 2 {
-                                    return Err(Error::InvalidPkgSpec("path required for urls"));
-                                }
+                    let Some(ind) = url.find("://") else {
+                        return Err(Error::InvalidPkgSpec("missing url scheme"));
+                    };
 
-                                let path = &url[pind + 1..];
-                                Some(path)
-                            }
-                            None => return Err(Error::InvalidPkgSpec("path required for urls")),
-                        },
-                        None => return Err(Error::InvalidPkgSpec("missing url scheme")),
+                    let Some(pind) = url.rfind('/') else {
+                        return Err(Error::InvalidPkgSpec("path required for urls"));
+                    };
+
+                    if pind == ind + 2 {
+                        return Err(Error::InvalidPkgSpec("path required for urls"));
                     }
+
+                    let path = &url[pind + 1..];
+                    Some(path)
                 }
                 None => None,
             };
 
-            match nv {
-                Some(nv) => {
-                    match nv.find([':', '@']) {
-                        Some(ind) => {
-                            if ind == nv.len() - 1 {
-                                return Err(Error::InvalidPkgSpec(
-                                    "package spec cannot end with ':'",
-                                ));
-                            }
-
-                            Ok((
-                                validate_name(&nv[..ind])?,
-                                Some(Version::parse(&nv[ind + 1..]).map_err(|_e| {
-                                    Error::InvalidPkgSpec("failed to parse version")
-                                })?),
-                            ))
-                        }
-                        None => {
-                            // If we have a url, this could be either a name and/or a version
-                            match path_name {
-                                Some(name) => {
-                                    // This is the same way that cargo itself parses
-                                    if nv.chars().next().unwrap().is_alphabetic() {
-                                        Ok((validate_name(nv)?, None))
-                                    } else {
-                                        let version = Version::parse(nv).map_err(|_e| {
-                                            Error::InvalidPkgSpec("failed to parse version")
-                                        })?;
-
-                                        Ok((validate_name(name)?, Some(version)))
-                                    }
-                                }
-                                None => Ok((validate_name(nv)?, None)),
-                            }
-                        }
-                    }
-                }
-                None => Ok((validate_name(path_name.unwrap())?, None)),
-            }
-        };
-
-        if s.contains('/') {
-            let url = if s.contains("://") {
-                std::borrow::Cow::Borrowed(s)
-            } else {
-                std::borrow::Cow::Owned(format!("cargo://{}", s))
+            let Some(nv) = nv else {
+                return Ok((validate_name(path_name.unwrap())?, None));
             };
 
-            if let Some(ind) = url.find('#') {
-                if ind == url.len() - 1 {
+            if let Some(ind) = nv.find([':', '@']) {
+                if ind == nv.len() - 1 {
+                    return Err(Error::InvalidPkgSpec(
+                        "package spec cannot end with ':' or '@'",
+                    ));
+                }
+
+                Ok((validate_name(&nv[..ind])?, Some(&nv[ind + 1..])))
+            } else {
+                // If we have a url, this could be either a name and/or a version
+                let Some(name) = path_name else {
+                    return Ok((validate_name(nv)?, None));
+                };
+
+                let Some(first) = nv.chars().next() else {
+                    return Err(Error::InvalidPkgSpec("fragment was empty"));
+                };
+
+                let (name, version) = if first.is_alphabetic() {
+                    (validate_name(nv)?, None)
+                } else {
+                    (validate_name(name)?, Some(nv))
+                };
+
+                Ok((name, version))
+            }
+        }
+
+        let (url, name, version) = if s.contains('/') {
+            let url = s;
+
+            if let Some((url, frag)) = url.rsplit_once('#') {
+                if frag.is_empty() {
                     return Err(Error::InvalidPkgSpec("package spec cannot end with '#'"));
                 }
 
-                let url_no_frag = url[..ind].to_owned();
-
-                let (name, version) =
-                    name_and_or_version(Some(&url[ind + 1..]), Some(&url_no_frag))?;
-
-                Ok(Self {
-                    url: Some(url_no_frag),
-                    name,
-                    version,
-                })
+                let (name, version) = name_and_or_version(Some(frag), Some(url))?;
+                (Some(url), name, version)
             } else {
-                let (name, version) = name_and_or_version(None, Some(&url))?;
-
-                Ok(Self {
-                    url: Some(url.into_owned()),
-                    name,
-                    version,
-                })
+                let (name, version) = name_and_or_version(None, Some(url))?;
+                (Some(url), name, version)
             }
         } else {
             let (name, version) = name_and_or_version(Some(s), None)?;
+            (None, name, version)
+        };
+
+        Ok(PkgSpecComponents { url, name, version })
+    }
+}
+
+impl std::str::FromStr for PkgSpec {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse_components(s).and_then(|comps| {
+            let version = if let Some(vs) = comps.version {
+                Some(
+                    Version::parse(vs)
+                        .map_err(|_e| Error::InvalidPkgSpec("failed to parse version"))?,
+                )
+            } else {
+                None
+            };
 
             Ok(Self {
-                url: None,
-                name,
+                name: comps.name.to_owned(),
                 version,
+                url: comps.url.map(|s| s.to_owned()),
             })
-        }
+        })
     }
 }
 
@@ -241,33 +264,6 @@ mod test {
             assert_eq!(Version::parse("0.21.0").unwrap(), spec.version.unwrap());
             assert_eq!("https://github.com/rust-lang/cargo", spec.url.unwrap());
         }
-    }
-
-    #[test]
-    fn no_proto() {
-        let spec: PkgSpec = "crates.io/foo".parse().unwrap();
-
-        assert_eq!("foo", spec.name);
-        assert!(spec.version.is_none());
-        assert_eq!("cargo://crates.io/foo", spec.url.unwrap());
-    }
-
-    #[test]
-    fn no_proto_and_version() {
-        let spec: PkgSpec = "crates.io/foo#1.2.3".parse().unwrap();
-
-        assert_eq!("foo", spec.name);
-        assert_eq!(Version::parse("1.2.3").unwrap(), spec.version.unwrap());
-        assert_eq!("cargo://crates.io/foo", spec.url.unwrap());
-    }
-
-    #[test]
-    fn no_proto_and_name_and_version() {
-        let spec: PkgSpec = "crates.io/foo#1.2.3".parse().unwrap();
-
-        assert_eq!("foo", spec.name);
-        assert_eq!(Version::parse("1.2.3").unwrap(), spec.version.unwrap());
-        assert_eq!("cargo://crates.io/foo", spec.url.unwrap());
     }
 
     #[test]
