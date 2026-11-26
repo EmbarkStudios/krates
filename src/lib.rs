@@ -88,6 +88,33 @@ impl Kid {
     }
 }
 
+pub struct KidComponents<'s> {
+    pub repr: &'s str,
+    name: (usize, usize),
+    version: (usize, usize),
+}
+
+impl KidComponents<'_> {
+    /// Gets the name of the package
+    #[inline]
+    pub fn name(&self) -> &str {
+        &self.repr[self.name.0..self.name.1]
+    }
+
+    /// Gets the semver of the package
+    #[inline]
+    pub fn version(&self) -> &str {
+        &self.repr[self.version.0..self.version.1]
+    }
+
+    /// Gets the source url of the package
+    #[inline]
+    pub fn source(&self) -> &str {
+        let (s, e) = self.components[2];
+        &self.repr[s..e]
+    }
+}
+
 #[allow(clippy::fallible_impl_from)]
 impl From<PackageId> for Kid {
     fn from(pid: PackageId) -> Self {
@@ -443,6 +470,15 @@ pub struct Krates<N = cm::Package, E = Edge> {
     /// We split the graph between crate and feature nodes, but keep the crates
     /// grouped together in the front since most queries are against them
     krates_end: usize,
+}
+
+impl<N, E> fmt::Debug for Krates<N, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Krates")
+            .field("count", &self.krates_end)
+            .field("workspace_count", &self.workspace_members.len())
+            .finish_non_exhaustive()
+    }
 }
 
 #[allow(clippy::len_without_is_empty)]
@@ -980,6 +1016,13 @@ mod tests {
                 "0.5.2",
                 "git+https://github.com/vtavernier/glsl-lang?tag=v0.5.2",
             ),
+            // Url encoded git
+            (
+                "git+https://github.com/EmbarkStudios/krates?branch=%7D%7Bplease_don%27t-ever_do%2Fthis%21%23%24%25%26%28%29#0.16.10",
+                "krates",
+                "0.16.10",
+                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb",
+            ),
             // OPAQUE
             (
                 "fuser 0.4.1 (git+https://github.com/cberner/fuser?branch=master#b2e7622942e52a28ffa85cdaf48e28e982bb6923)",
@@ -1004,6 +1047,12 @@ mod tests {
                 "bindgen",
                 "0.59.2",
                 "registry+https://github.com/rust-lang/crates.io-index",
+            ),
+            (
+                "krates 0.16.10 (git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb)",
+                "krates",
+                "0.16.10",
+                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb",
             ),
         ];
 

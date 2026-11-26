@@ -11,10 +11,9 @@ repository = "https://github.com/EmbarkStudios/krates"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/krates"
-homepage = "https://github.com/EmbarkStudios/krates"
 keywords = ["cargo", "metadata", "graph"]
 categories = ["visualization"]
-exclude = [".github", "tests"]
+exclude = [".github", "tests", "ktest"]
 rust-version = "1.85.0"
 
 [features]
