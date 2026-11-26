@@ -88,172 +88,207 @@ impl Kid {
     }
 }
 
-pub struct KidComponents<'s> {
-    pub repr: &'s str,
-    name: (usize, usize),
-    version: (usize, usize),
+enum ParsedKid {
+    Opaque([(usize, usize); 3]),
+    Stable {
+        name: (usize, usize),
+        version: (usize, usize),
+        src: usize,
+        decode_diff: Option<(usize, usize)>,
+    },
 }
 
-impl KidComponents<'_> {
-    /// Gets the name of the package
-    #[inline]
-    pub fn name(&self) -> &str {
-        &self.repr[self.name.0..self.name.1]
-    }
-
-    /// Gets the semver of the package
-    #[inline]
-    pub fn version(&self) -> &str {
-        &self.repr[self.version.0..self.version.1]
-    }
-
-    /// Gets the source url of the package
-    #[inline]
-    pub fn source(&self) -> &str {
-        let (s, e) = self.components[2];
-        &self.repr[s..e]
-    }
-}
-
-#[allow(clippy::fallible_impl_from)]
-impl From<PackageId> for Kid {
-    fn from(pid: PackageId) -> Self {
-        let mut repr = pid.repr;
-
-        let mut parse = || {
-            let components = if repr.contains(' ') {
-                let name = (0, repr.find(' ')?);
-                let version = (name.1 + 1, repr[name.1 + 1..].find(' ')? + name.1 + 1);
-                // Note we skip the open and close parentheses as they are superfluous
-                // as every source has them, as well as not being present in the new
-                // stabilized format
-                //
-                // Note that we also chop off the commit id, it is not present in
-                // the stabilized format and is not used for package identification anyways
-                let source = (version.1 + 2, repr.rfind('#').unwrap_or(repr.len() - 1));
-
-                [name, version, source]
-            } else {
-                let mut vmn = repr.rfind('#')?;
-                let (name, version) = if let Some(split) = repr[vmn..].find('@') {
-                    ((vmn + 1, vmn + split), (vmn + split + 1, repr.len()))
-                } else {
-                    let begin = repr.rfind('/')? + 1;
-                    let end = if repr.starts_with("git+") {
-                        // Unfortunately the stable format percent encodes the source url in the metadata, and since
-                        // git branches/tags can contain various special characters, notably '/', we need to decode them
-                        // to be able to match against the non-encoded url used...everywhere else
-                        let end = repr[begin..].rfind('?').map_or(vmn, |q| q + begin);
-
-                        if repr[end..].contains('%') {
-                            let mut decoded = String::new();
-                            let mut encoded = &repr[end..];
-                            let before = encoded.len();
-
-                            loop {
-                                let Some(pi) = encoded.find('%') else {
-                                    decoded.push_str(encoded);
-                                    break;
-                                };
-
-                                decoded.push_str(&encoded[..pi]);
-
-                                let Some(encoding) = encoded.get(pi + 1..pi + 3) else {
-                                    // This _should_ never happen, but just in case
-                                    panic!(
-                                        "invalid percent encoding in '{}', '{}' should be exactly 3 digits long",
-                                        &repr[end..],
-                                        &encoded[pi..]
-                                    );
-                                };
-
-                                // https://en.wikipedia.org/wiki/Percent-encoding
-                                // Reserved characters after percent-encoding
-                                //
-                                // ␣   !   "   #   $   %   &   '   (   )   *   +   ,   /   :   ;   =   ?   @   [   ]
-                                // %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %2A %2B %2C %2F %3A %3B %3D %3F %40 %5B %5D
-                                //
-                                // Common characters after percent-encoding (ASCII or UTF-8 based)
-                                //
-                                // -   .   <   >   \   ^   _   `   {   |   }   ~
-                                // %2D %2E %3C %3E %5C %5E %5F %60 %7B %7C %7D %7E
-                                //
-                                // Note that `£` and `€` can also be percent encoded, but are _completely_ different and
-                                // I don't feel like supporting it until someone actually complains
-
-                                let c = match encoding {
-                                    // By far the most likely one
-                                    "2F" | "2f" => '/',
-                                    "21" => '!',
-                                    "22" => '"',
-                                    "23" => '#',
-                                    "24" => '$',
-                                    "25" => '%',
-                                    "26" => '&',
-                                    "27" => '\'',
-                                    "28" => '(',
-                                    "29" => ')',
-                                    "2A" | "2a" => '*',
-                                    "2B" | "2b" => '+',
-                                    "2C" | "2c" => ',',
-                                    "2D" | "2d" => '-',
-                                    "2E" | "2e" => '.',
-                                    "3B" | "3b" => ';',
-                                    "3C" | "3c" => '<',
-                                    "3D" | "3d" => '=',
-                                    "3E" | "3e" => '>',
-                                    "40" => '@',
-                                    "5D" | "5d" => ']',
-                                    "5F" | "5f" => '_',
-                                    "60" => '`',
-                                    "7B" | "7b" => '{',
-                                    "7C" | "7c" => '|',
-                                    "7D" | "7d" => '}',
-                                    // These are invalid in branches/tags, but meh
-                                    // https://git-scm.com/docs/git-check-ref-format
-                                    "20" => ' ',
-                                    "3A" | "3a" => ':',
-                                    "3F" | "3f" => '?',
-                                    "5B" | "5b" => '[',
-                                    "5C" | "5c" => '\\',
-                                    "5E" | "5e" => '^',
-                                    "7E" | "7e" => '~',
-                                    _ => panic!(
-                                        "unknown percent encoding '%{encoding}' in '{}'",
-                                        &repr[end..]
-                                    ),
-                                };
-
-                                decoded.push(c);
-                                encoded = &encoded[pi + 3..];
-                            }
-
-                            repr.truncate(end);
-                            repr.push_str(&decoded);
-
-                            // move the version string back to account for the now shorter decoded repr
-                            vmn -= before - decoded.len();
-                        }
-
-                        end
-                    } else {
-                        vmn
+impl ParsedKid {
+    fn into_kid(self, repr: String) -> Kid {
+        match self {
+            Self::Opaque(components) => Kid { repr, components },
+            Self::Stable {
+                mut name,
+                mut version,
+                src,
+                decode_diff,
+            } => {
+                let Some((decode_diff, query)) = decode_diff else {
+                    return Kid {
+                        repr,
+                        components: [name, version, (0, src)],
                     };
-
-                    ((begin, end), (vmn + 1, repr.len()))
                 };
 
-                [name, version, (0, vmn)]
+                // If the last path component is the same as the package name, the name is not included after the #, only the version
+                let path_name = name.1 < src;
+
+                let mut decoded = String::with_capacity(
+                    src.saturating_sub(decode_diff) + version.1 - version.0
+                        + if path_name { 0 } else { name.1 - name.0 },
+                );
+
+                decoded.push_str(&repr[..query]);
+
+                let mut encoded = &repr[query..src];
+                let query = encoded;
+
+                loop {
+                    let Some(pi) = encoded.find('%') else {
+                        decoded.push_str(encoded);
+                        break;
+                    };
+
+                    decoded.push_str(&encoded[..pi]);
+
+                    let Some(encoding) = encoded.get(pi + 1..pi + 3) else {
+                        // This _should_ never happen, but just in case
+                        panic!(
+                            "invalid percent encoding in '{query}', '{}' should be exactly 3 characters long",
+                            &encoded[pi..]
+                        );
+                    };
+
+                    // https://en.wikipedia.org/wiki/Percent-encoding
+                    // Reserved characters after percent-encoding
+                    //
+                    // ␣   !   "   #   $   %   &   '   (   )   *   +   ,   /   :   ;   =   ?   @   [   ]
+                    // %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %2A %2B %2C %2F %3A %3B %3D %3F %40 %5B %5D
+                    //
+                    // Common characters after percent-encoding (ASCII or UTF-8 based)
+                    //
+                    // -   .   <   >   \   ^   _   `   {   |   }   ~
+                    // %2D %2E %3C %3E %5C %5E %5F %60 %7B %7C %7D %7E
+                    //
+                    // Note that `£` and `€` can also be percent encoded, but are _completely_ different and
+                    // I don't feel like supporting it until someone actually complains
+
+                    let c = match encoding {
+                        // By far the most likely one
+                        "2F" | "2f" => '/',
+                        "21" => '!',
+                        "22" => '"',
+                        "23" => '#',
+                        "24" => '$',
+                        "25" => '%',
+                        "26" => '&',
+                        "27" => '\'',
+                        "28" => '(',
+                        "29" => ')',
+                        "2A" | "2a" => '*',
+                        "2B" | "2b" => '+',
+                        "2C" | "2c" => ',',
+                        "2D" | "2d" => '-',
+                        "2E" | "2e" => '.',
+                        "3B" | "3b" => ';',
+                        "3C" | "3c" => '<',
+                        "3D" | "3d" => '=',
+                        "3E" | "3e" => '>',
+                        "40" => '@',
+                        "5D" | "5d" => ']',
+                        "5F" | "5f" => '_',
+                        "60" => '`',
+                        "7B" | "7b" => '{',
+                        "7C" | "7c" => '|',
+                        "7D" | "7d" => '}',
+                        // These are invalid in branches/tags, but meh
+                        // https://git-scm.com/docs/git-check-ref-format
+                        "20" => ' ',
+                        "3A" | "3a" => ':',
+                        "3F" | "3f" => '?',
+                        "5B" | "5b" => '[',
+                        "5C" | "5c" => '\\',
+                        "5E" | "5e" => '^',
+                        "7E" | "7e" => '~',
+                        _ => panic!("unknown percent encoding '%{encoding}' in '{query}'",),
+                    };
+
+                    decoded.push(c);
+                    encoded = &encoded[pi + 3..];
+                }
+
+                let src = (0, decoded.len());
+
+                if !path_name {
+                    let names = &repr[name.0..name.1];
+                    name = (decoded.len(), decoded.len() + names.len());
+                    decoded.push_str(names);
+                    decoded.push('@');
+                }
+
+                let vers = &repr[version.0..version.1];
+                version = (decoded.len(), decoded.len() + vers.len());
+                decoded.push_str(vers);
+
+                Kid {
+                    repr: decoded,
+                    components: [name, version, src],
+                }
+            }
+        }
+    }
+
+    /// Parses a pkg id from either the old opaque format or the stabilized format
+    ///
+    /// This is only meant to parse pkgid's output from cargo, so the various errors that can occur are treated as panics
+    /// that should theoretically never occur barring bugs in cargo's metadata generation
+    fn parse(repr: &str) -> Self {
+        if let Some(first) = repr.find(' ') {
+            let name = (0, first);
+            let version = (
+                first + 1,
+                repr[first + 1..]
+                    .find(' ')
+                    .expect("opaque formater missing second ' '")
+                    + first
+                    + 1,
+            );
+            // Note we skip the open and close parentheses as they are superfluous
+            // as every source has them, as well as not being present in the new
+            // stabilized format
+            //
+            // Note that we also chop off the commit id, it is not present in
+            // the stabilized format and is not used for package identification anyways
+            let src = (version.1 + 2, repr.rfind('#').unwrap_or(repr.len() - 1));
+
+            Self::Opaque([name, version, src])
+        } else {
+            let vmn = repr
+                .rfind('#')
+                .expect("stable pkgid did not contain the required '#'");
+            let begin = repr[..vmn]
+                .rfind('/')
+                .expect("stable pkgid did not have a single path separator")
+                + 1;
+            let query = repr[begin..vmn].rfind('?').map(|q| q + begin);
+
+            // Unfortunately the stable format percent encodes the source url in the metadata, and since
+            // git branches/tags can contain various special characters, notably '/', we need to decode them
+            // to be able to match against the non-encoded url used...everywhere else, fortunately, git ref specs
+            // disallow spaces so we don't need to deal with the potential for '+' == ' '
+            let decode_diff = query.and_then(|q| {
+                let count = repr[q..].matches('%').count();
+                (count > 0).then_some((count * 2, q))
+            });
+
+            // @ means we have both a name and version, its absence means we only have a version and the name is the last
+            // path part
+            let (name, version) = if let Some(split) = repr[vmn..].find('@') {
+                ((vmn + 1, vmn + split), (vmn + split + 1, repr.len()))
+            } else {
+                let end = query.unwrap_or(vmn);
+                ((begin, end), (vmn + 1, repr.len()))
             };
 
-            Some(components)
-        };
-
-        if let Some(components) = parse() {
-            Self { repr, components }
-        } else {
-            panic!("unable to parse package id '{repr}'");
+            Self::Stable {
+                name,
+                version,
+                src: vmn,
+                decode_diff,
+            }
         }
+    }
+}
+
+impl From<PackageId> for Kid {
+    fn from(pid: PackageId) -> Self {
+        let comps = ParsedKid::parse(&pid.repr);
+        comps.into_kid(pid.repr)
     }
 }
 
@@ -1021,7 +1056,21 @@ mod tests {
                 "git+https://github.com/EmbarkStudios/krates?branch=%7D%7Bplease_don%27t-ever_do%2Fthis%21%23%24%25%26%28%29#0.16.10",
                 "krates",
                 "0.16.10",
-                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb",
+                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()",
+            ),
+            // Normal path
+            (
+                "path+file:///home/jake/code/krates/tests/pid#0.1.0",
+                "pid",
+                "0.1.0",
+                "path+file:///home/jake/code/krates/tests/pid",
+            ),
+            // Path with name that differs from the last path component
+            (
+                "path+file:///home/jake/code/krates/tests/pid#pid-renamed@0.1.0",
+                "pid-renamed",
+                "0.1.0",
+                "path+file:///home/jake/code/krates/tests/pid",
             ),
             // OPAQUE
             (
@@ -1052,7 +1101,7 @@ mod tests {
                 "krates 0.16.10 (git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb)",
                 "krates",
                 "0.16.10",
-                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()#54b5fea417be67fabe0d449873333ab1e59b8dcb",
+                "git+https://github.com/EmbarkStudios/krates?branch=}{please_don't-ever_do/this!#$%&()",
             ),
         ];
 
@@ -1061,9 +1110,9 @@ mod tests {
                 repr: repr.to_owned(),
             });
 
-            assert_eq!(kid.name(), name);
-            assert_eq!(kid.version(), version);
-            assert_eq!(kid.source(), source);
+            assert_eq!(kid.name(), name, "{repr}");
+            assert_eq!(kid.version(), version, "{repr}");
+            assert_eq!(kid.source(), source, "{repr}");
         }
     }
 }

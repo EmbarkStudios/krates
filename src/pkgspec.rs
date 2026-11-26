@@ -48,21 +48,27 @@ impl PkgSpec {
             }
             (None, None) => true,
             (Some(url), None) => {
+                // It should never be the case that a package has a null source and is not a path
                 if !krate.id.repr.contains("path+file://") {
-                    // technically unreachable barring a bug in the metadata
+                    // technically unreachable barring a bug in the metadata generation
                     return false;
                 };
 
-                let Some(id_url) = Self::parse_components(&krate.id.repr)
-                    .ok()
-                    .and_then(|psc| psc.url)
-                else {
-                    return false;
+                let pkid = crate::ParsedKid::parse(&krate.id.repr);
+
+                // We _could_ recheck the name and version but them differing would indicate a serious bug in the metadata
+                // generation that would realistically never? happen
+                let src = match pkid {
+                    crate::ParsedKid::Opaque(comps) => comps[2],
+                    crate::ParsedKid::Stable { src, .. } => (0, src),
                 };
 
-                url == id_url
+                url == &krate.id.repr[src.0..src.1]
             }
-            (None, Some(_)) => false,
+            // The crates.io is used as the source and pkgid source even when using source replacement, the only way
+            // to actually tell if a crate is sourced from a non-crates.io registry is to look at the source paths or
+            // parse the source replacement from the cargo configuration/environment
+            (None, Some(url)) => url == "registry+https://github.com/rust-lang/crates.io-index",
         }
     }
 
