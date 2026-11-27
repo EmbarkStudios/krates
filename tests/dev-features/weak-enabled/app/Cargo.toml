@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+liba = { path = "../liba", features = ["w", "dup"] }
+
+[dev-dependencies]
+liba = { path = "../liba", features = ["dup"] }

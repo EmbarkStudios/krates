@@ -1,0 +1,10 @@
+[package]
+name = "dup"
+version = "2.0.0"
+edition = "2024"
+
+[features]
+x = ["dep:leaf"]
+
+[dependencies]
+leaf = { path = "../leaf", optional = true }
