@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#125](https://github.com/EmbarkStudios/krates/pull/125) resolved [#124](https://github.com/EmbarkStudios/krates/issues/124) by changing how package specs determine if they match a particular crate version, as previously a spec that included a registry source would erroneously match a path package if it had the same name.
+
 ## [0.22.0] - 2026-10-22
 ### Added
 - [PR#117](https://github.com/EmbarkStudios/krates/pull/117) made `krates::cm::Features` public.
