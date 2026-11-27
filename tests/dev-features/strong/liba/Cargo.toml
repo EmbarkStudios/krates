@@ -1,0 +1,11 @@
+[package]
+name = "liba"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+s = ["dup/x"]
+extra = ["dep:dup"]
+
+[dependencies]
+dup = { path = "../../dup2", optional = true }
