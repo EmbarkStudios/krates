@@ -996,6 +996,8 @@ impl Builder {
         struct FeatureEdge<'nodes> {
             kid: &'nodes Kid,
             name: FeatureEdgeName,
+            /// `dep?/feature`, which does not enable `dep` itself
+            weak: bool,
         }
 
         #[derive(Debug)]
@@ -1128,11 +1130,13 @@ impl Builder {
                                             } else {
                                                 FeatureEdgeName::Krate
                                             },
+                                            weak: false,
                                         })
                                     }
                                     Feature::Simple(s) => Some(FeatureEdge {
                                         kid: pid,
                                         name: FeatureEdgeName::Feature(s.to_owned()),
+                                        weak: false,
                                     }),
                                     Feature::Strong {
                                         krate: krate_name,
@@ -1140,6 +1144,7 @@ impl Builder {
                                     } => Some(FeatureEdge {
                                         kid: get_dep_id(krate_name)?,
                                         name: FeatureEdgeName::Feature(feature.to_owned()),
+                                        weak: false,
                                     }),
                                     Feature::Weak {
                                         krate: krate_name,
@@ -1149,6 +1154,7 @@ impl Builder {
                                             Some(FeatureEdge {
                                                 kid: get_dep_id(krate_name)?,
                                                 name: FeatureEdgeName::Feature(feature.to_owned()),
+                                                weak: true,
                                             })
                                         } else {
                                             None
@@ -1541,6 +1547,9 @@ impl Builder {
         graph.reserve_nodes(dep_edge_map.len());
 
         let mut edge_count = 0;
+        // Whether each declared dependency of each crate node is optional, so
+        // that edges to optional dependencies can be recorded
+        let mut optional_deps = Vec::with_capacity(dep_edge_map.len());
 
         // Preserve the ordering of the krates when inserting them into the graph
         // so that we can easily binary search for the crates based on their
@@ -1567,6 +1576,13 @@ impl Builder {
             };
 
             let dep_mapping = vec![None; krate.dependencies.len()];
+            optional_deps.push(
+                krate
+                    .dependencies
+                    .iter()
+                    .map(|dep| dep.optional)
+                    .collect::<Vec<_>>(),
+            );
 
             let krate = crate::Node::Krate {
                 id,
@@ -1580,6 +1596,8 @@ impl Builder {
         }
 
         let krates_end = graph.node_count();
+        let mut optional_edges = Vec::new();
+        let mut weak_edges = Vec::new();
 
         // Reserve space for each edge from a crate to another crate's feature(s)
         graph.reserve_edges(edge_count);
@@ -1648,7 +1666,7 @@ impl Builder {
         graph.reserve_edges(edge_count);
 
         // Keep edges between crates ordered as well, though we don't depend on this
-        for srcind in 0..graph.node_count() {
+        for (srcind, optional) in optional_deps.iter().enumerate() {
             let srcid = crate::NodeId::new(srcind);
             let crate::Node::Krate { id: pid, .. } = &graph[srcid] else {
                 continue;
@@ -1679,7 +1697,7 @@ impl Builder {
                             })
                         };
 
-                        graph.add_edge(srcid, feat_node, edge.into());
+                        graph.add_edge(srcid, feat_node, edge.into())
                     };
 
                 let rnode = get_rnode(dep_id);
@@ -1688,10 +1706,11 @@ impl Builder {
                 // normal/dev/build dependency
                 for edge in dep.edges {
                     let attach_direct_edge = edge.features.is_empty();
+                    let is_optional = optional[edge.dep_index];
 
                     for feat in edge.features {
                         let feat = rnode.feature(feat);
-                        attach(
+                        let eid = attach(
                             &mut graph,
                             feat.to_owned(),
                             Edge::DepFeature {
@@ -1699,6 +1718,10 @@ impl Builder {
                                 cfg: edge.cfg.clone(),
                             },
                         );
+
+                        if is_optional {
+                            optional_edges.push(eid);
+                        }
                     }
 
                     if let crate::Node::Krate { dep_mapping, .. } = &mut graph[srcid] {
@@ -1706,7 +1729,7 @@ impl Builder {
                     }
 
                     if attach_direct_edge {
-                        graph.add_edge(
+                        let eid = graph.add_edge(
                             srcid,
                             target_krate,
                             Edge::Dep {
@@ -1715,6 +1738,10 @@ impl Builder {
                             }
                             .into(),
                         );
+
+                        if is_optional {
+                            optional_edges.push(eid);
+                        }
                     }
                 }
 
@@ -1824,7 +1851,10 @@ impl Builder {
                         target_id
                     };
 
-                    graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
+                    let eid = graph.add_edge(src_id, target_id, E::from(crate::Edge::Feature));
+                    if sub_feat.weak {
+                        weak_edges.push(eid);
+                    }
                 }
             }
         }
@@ -1834,6 +1864,8 @@ impl Builder {
             workspace_members,
             workspace_root: md.workspace_root,
             krates_end,
+            optional_edges,
+            weak_edges,
         })
     }
 }

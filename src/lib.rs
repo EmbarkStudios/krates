@@ -505,6 +505,12 @@ pub struct Krates<N = cm::Package, E = Edge> {
     /// We split the graph between crate and feature nodes, but keep the crates
     /// grouped together in the front since most queries are against them
     krates_end: usize,
+    /// Edges from a crate to an optional dependency, or to a feature of one,
+    /// in ascending order
+    optional_edges: Vec<EdgeId>,
+    /// Edges from a feature to a weak (`dep?/feature`) feature of a
+    /// dependency, in ascending order
+    weak_edges: Vec<EdgeId>,
 }
 
 impl<N, E> fmt::Debug for Krates<N, E> {
@@ -802,51 +808,116 @@ where
     ///
     /// This gives the same output as if the graph had been built by using
     /// [`ignore_kind`](crate::Builder::ignore_kind) with [`Scope::all`](crate::Scope::All)
+    ///
+    /// Features are taken into account, so an optional dependency that is only
+    /// enabled by a feature that is itself only enabled through an edge of the
+    /// filtered kind is removed as well.
     pub fn krates_filtered(&self, filter: DepKind) -> Vec<&N> {
+        use std::collections::{BTreeMap, BTreeSet};
+
         let graph = self.graph();
-        let mut filtered: std::collections::BTreeMap<_, _> = self
-            .workspace_members()
-            .filter_map(|n| {
-                let Node::Krate { id, krate, .. } = n else {
-                    return None;
-                };
-                Some((id, krate))
-            })
-            .collect();
-        let mut stack: Vec<_> = self
+        let is_optional = |eid: EdgeId| self.optional_edges.binary_search(&eid).is_ok();
+        let is_weak = |eid: EdgeId| self.weak_edges.binary_search(&eid).is_ok();
+        let krate_of = |nid: NodeId| match &graph[nid] {
+            Node::Krate { .. } => nid,
+            Node::Feature { krate_index, .. } => *krate_index,
+        };
+
+        let mut filtered = BTreeMap::new();
+        let mut visited = BTreeSet::new();
+        // (crate, optional dependency) pairs that a kept feature enables
+        let mut enabled = BTreeSet::new();
+        let mut stack = Vec::new();
+
+        // Workspace members are roots, along with all of their features, the
+        // same as the builder treats them
+        let members: BTreeSet<_> = self
             .workspace_members
             .iter()
             .filter_map(|pid| self.nid_for_kid(pid))
             .collect();
-        let mut visited = std::collections::BTreeSet::new();
+        for nid in graph.node_indices() {
+            if members.contains(&krate_of(nid)) && visited.insert(nid) {
+                stack.push(nid);
+            }
+        }
+
+        // An edge to a dependency from `parent` is usable if it is not of the
+        // filtered kind, and the dependency is either not optional, or one
+        // of the kept features of `parent` enables it
+        let reaches = |enabled: &BTreeSet<(NodeId, NodeId)>, parent: NodeId, dep: NodeId| {
+            dep == parent
+                || enabled.contains(&(parent, dep))
+                || graph
+                    .edges_directed(parent, Direction::Outgoing)
+                    .any(|edge| match edge.weight() {
+                        Edge::Dep { kind, .. } | Edge::DepFeature { kind, .. } => {
+                            *kind != filter
+                                && krate_of(edge.target()) == dep
+                                && !is_optional(edge.id())
+                        }
+                        Edge::Feature => false,
+                    })
+        };
 
         while let Some(nid) = stack.pop() {
-            for edge in graph.edges_directed(nid, Direction::Outgoing) {
-                match edge.weight() {
-                    Edge::Dep { kind, .. } | Edge::DepFeature { kind, .. } => {
-                        if *kind == filter {
-                            continue;
-                        }
-                    }
-                    Edge::Feature => {}
-                };
-
-                match &graph[edge.target()] {
-                    Node::Krate { id, krate, .. } => {
-                        if visited.insert(edge.target()) {
-                            stack.push(edge.target());
-                            filtered.insert(id, krate);
-                        }
-                    }
-                    Node::Feature { .. } => {
-                        if visited.insert(edge.target()) {
-                            stack.push(edge.target());
-                        }
-                    }
-                }
+            if let Node::Krate { id, krate, .. } = &graph[nid] {
+                filtered.insert(id, krate);
             }
 
-            visited.insert(nid);
+            for edge in graph.edges_directed(nid, Direction::Outgoing) {
+                let target = edge.target();
+                let dep = krate_of(target);
+
+                let follow = match (&graph[nid], edge.weight()) {
+                    (_, Edge::Dep { kind, .. } | Edge::DepFeature { kind, .. })
+                        if *kind == filter =>
+                    {
+                        false
+                    }
+                    (Node::Krate { .. }, Edge::Dep { .. } | Edge::DepFeature { .. }) => {
+                        !is_optional(edge.id()) || enabled.contains(&(nid, dep))
+                    }
+                    // A crate -> dependency feature edge summarizes features
+                    // the crate's own features turn on. When a feature of
+                    // this crate links to the same target, rely on that,
+                    // since it says which feature it came from
+                    (Node::Krate { .. }, Edge::Feature) => {
+                        let attributed = graph
+                            .edges_directed(target, Direction::Incoming)
+                            .any(|e| {
+                                matches!(&graph[e.source()], Node::Feature { krate_index, .. } if *krate_index == nid)
+                            });
+
+                        !attributed && reaches(&enabled, nid, dep)
+                    }
+                    (Node::Feature { krate_index, .. }, _) => {
+                        let parent = *krate_index;
+                        if dep == parent {
+                            true
+                        } else if is_weak(edge.id()) {
+                            // `dep?/feature` only applies if `dep` is enabled
+                            // some other way
+                            reaches(&enabled, parent, dep)
+                        } else {
+                            // `dep:name`, `name` or `dep/feature` enable the
+                            // dependency, revisit the crate and its kept
+                            // features so edges waiting on it are followed
+                            if enabled.insert((parent, dep)) {
+                                stack.push(parent);
+                                stack.extend(graph.node_indices().filter(|n| {
+                                    *n != parent && krate_of(*n) == parent && visited.contains(n)
+                                }));
+                            }
+                            true
+                        }
+                    }
+                };
+
+                if follow && visited.insert(target) {
+                    stack.push(target);
+                }
+            }
         }
 
         filtered.into_values().collect()
