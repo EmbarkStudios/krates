@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.22.1] - 2026-11-27
 ### Fixed
 - [PR#125](https://github.com/EmbarkStudios/krates/pull/125) resolved [#124](https://github.com/EmbarkStudios/krates/issues/124) by changing how package specs determine if they match a particular crate version, as previously a spec that included a registry source would erroneously match a path package if it had the same name.
 
@@ -293,7 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial implementation
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.22.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/krates/compare/0.22.1...HEAD
+[0.22.1]: https://github.com/EmbarkStudios/krates/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/EmbarkStudios/krates/compare/0.21.3...0.22.0
 [0.21.3]: https://github.com/EmbarkStudios/krates/compare/0.21.2...0.21.3
 [0.21.2]: https://github.com/EmbarkStudios/krates/compare/0.21.1...0.21.2
